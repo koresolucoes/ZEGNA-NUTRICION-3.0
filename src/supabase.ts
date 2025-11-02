@@ -35,78 +35,32 @@ export const supabase = supabaseClient as ReturnType<typeof createClient<Databas
 
 /*
 -- =================================================================
--- V24.0 SCRIPT DE MIGRACIÓN (Resultados de Laboratorio para IA)
--- Este script actualiza la función RPC `get_my_data_for_ai` para incluir
--- los resultados de laboratorio más recientes del paciente.
+-- V25.0 SCRIPT DE MIGRACIÓN (Optimización de Lista de Pacientes)
+-- Esta función RPC recupera eficientemente la fecha de la última
+-- consulta para una lista de IDs de personas.
 -- =================================================================
 BEGIN;
 
-CREATE OR REPLACE FUNCTION public.get_my_data_for_ai(p_person_id uuid, day_offset integer)
-RETURNS json
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-    target_date date;
-    person_data record;
-    diet_log_json json;
-    exercise_log_json json;
-    latest_lab_results_json json;
+CREATE OR REPLACE FUNCTION get_last_consultation_for_persons(p_person_ids uuid[])
+RETURNS TABLE(person_id uuid, last_consultation_date date) AS $$
 BEGIN
-    -- Determinar la fecha objetivo
-    target_date := current_date + day_offset;
-
-    -- Obtener datos básicos del paciente
-    SELECT full_name, subscription_end_date, gamification_points, gamification_rank
-    INTO person_data
-    FROM public.persons
-    WHERE id = p_person_id;
-
-    -- Obtener el plan de alimentación para la fecha objetivo
-    SELECT row_to_json(dl.*)
-    INTO diet_log_json
-    FROM public.diet_logs dl
-    WHERE dl.person_id = p_person_id AND dl.log_date = target_date;
-
-    -- Obtener la rutina de ejercicio para la fecha objetivo
-    SELECT row_to_json(el.*)
-    INTO exercise_log_json
-    FROM public.exercise_logs el
-    WHERE el.person_id = p_person_id AND el.log_date = target_date;
-
-    -- Obtener los resultados de laboratorio más recientes
-    SELECT row_to_json(lr.*)
-    INTO latest_lab_results_json
-    FROM public.lab_results lr
-    JOIN public.consultations c ON lr.consultation_id = c.id
-    WHERE c.person_id = p_person_id
-    ORDER BY c.consultation_date DESC
-    LIMIT 1;
-
-    -- Construir y devolver el objeto JSON final
-    RETURN json_build_object(
-        'nome_paciente', person_data.full_name,
-        'plano_alimentar_do_dia', diet_log_json,
-        'rotina_exercicio_do_dia', exercise_log_json,
-        'status_plano', json_build_object(
-            'data_vencimento', person_data.subscription_end_date,
-            'ativo', CASE WHEN person_data.subscription_end_date IS NULL THEN true ELSE person_data.subscription_end_date >= current_date END
-        ),
-        'progresso_gamificacao', json_build_object(
-            'pontos', person_data.gamification_points,
-            'ranking', person_data.gamification_rank
-        ),
-        'ultimos_resultados_laboratoriais', latest_lab_results_json
-    );
+    RETURN QUERY
+    SELECT 
+        c.person_id,
+        MAX(c.consultation_date) as last_consultation_date
+    FROM 
+        public.consultations c
+    WHERE 
+        c.person_id = ANY(p_person_ids)
+    GROUP BY 
+        c.person_id;
 END;
-$$;
-
+$$ LANGUAGE plpgsql;
 
 COMMIT;
 -- =================================================================
 -- Fin del Script de Migración
 -- =================================================================
-
 
 -- =================================================================
 -- SCRIPT PARA CAPTURA DE FEEDBACK BETA (Temporal)
