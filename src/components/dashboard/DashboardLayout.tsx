@@ -37,6 +37,7 @@ import DisplayManagement from '../dashboard/DisplayManagement';
 import SubscriptionPage from '../../pages/SubscriptionPage';
 import AffiliatesPage from '../../pages/AffiliatesPage';
 import BetaFeedbackModal from '../shared/BetaFeedbackModal';
+import UserGuidePage from '../../pages/UserGuidePage';
 
 const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
     const { clinic, role } = useClinic(); // Use clinic context
@@ -46,7 +47,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
     const [profile, setProfile] = useState<NutritionistProfile | null>(null);
 
     // State for new collapsible sidebar
-    const [openCategory, setOpenCategory] = useState<string | null>(null);
+    const [openCategory, setOpenCategory] = useState<string | null>('gestion-clinica');
 
     // State lifted for FAB and Quick Consultation Modal
     const [isQuickConsultModalOpen, setQuickConsultModalOpen] = useState(false);
@@ -106,8 +107,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
     
     const navigate = (page: string, context = {}) => {
         setView({ page, context });
-        // Smarter sidebar: close for content-heavy pages or on mobile
-        const contentHeavyPages = ['client-detail', 'afiliado-detail', 'calculators', 'consultation-form', 'log-form', 'profile-form', 'aliado-form', 'afiliado-form', 'client-form', 'agenda', 'queue', 'clinic-network', 'chat', 'finanzas', 'affiliates'];
+        const contentHeavyPages = ['client-detail', 'afiliado-detail', 'calculators', 'consultation-form', 'log-form', 'profile-form', 'aliado-form', 'afiliado-form', 'client-form', 'agenda', 'queue', 'clinic-network', 'chat', 'finanzas', 'affiliates', 'user-guide'];
         if (contentHeavyPages.includes(page) || isMobile) {
             setSidebarOpen(false);
         }
@@ -161,6 +161,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
             case 'chat': return <ChatPage isMobile={isMobile} />;
             case 'finanzas': return <FinanzasPage isMobile={isMobile} navigate={navigate} />;
             case 'affiliates': return <AffiliatesPage navigate={navigate} />;
+            case 'user-guide': return <UserGuidePage />; 
 
             case 'profile': return <ProfilePage user={session.user} onEditProfile={() => navigate('profile-form')} />;
             case 'profile-form': return <ProfileFormPage user={session.user} onBack={() => navigate('profile')} />;
@@ -179,12 +180,12 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
         return (
         <div
             onClick={() => navigate(pageName, context)}
-            style={{...styles.navItem, backgroundColor: isActive ? 'var(--primary-light)' : 'transparent', color: isActive ? 'var(--primary-color)' : 'var(--text-color)', borderLeft: isActive ? '4px solid var(--primary-color)' : '4px solid transparent', ...(isSubItem && {paddingLeft: '2.5rem'})}}
+            style={{...styles.navItem, backgroundColor: isActive ? 'var(--primary-light)' : 'transparent', color: isActive ? 'var(--primary-color)' : 'var(--text-color)', borderLeft: isActive ? '3px solid var(--primary-color)' : '3px solid transparent', ...(isSubItem && {paddingLeft: '2.75rem'})}}
             className="nav-item-hover"
             role="button"
             aria-label={`Navegar a ${name}`}
         >
-            {icon && <span style={{color: 'var(--primary-color)'}}>{icon}</span>}
+            {icon && <span style={{color: isActive ? 'var(--primary-color)' : 'var(--text-light)'}}>{icon}</span>}
             {name}
         </div>
     )};
@@ -196,25 +197,24 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
         pageNames: string[];
         children: React.ReactNode;
     }> = ({ name, icon, categoryKey, pageNames, children }) => {
-        const isActive = pageNames.some(page => view.page.startsWith(page));
+        const isCategoryActive = pageNames.some(page => view.page.startsWith(page));
         const isOpen = openCategory === categoryKey;
 
         return (
             <div>
-                <div
+                <button
                     onClick={() => setOpenCategory(isOpen ? null : categoryKey)}
-                    style={{...styles.navItem, backgroundColor: isActive && !isOpen ? 'var(--primary-light)' : 'transparent', color: isActive && !isOpen ? 'var(--primary-color)' : 'var(--text-color)', borderLeft: isActive && !isOpen ? '4px solid var(--primary-color)' : '4px solid transparent'}}
-                    className="nav-item-hover category-header"
-                    role="button"
+                    style={{...styles.navItem, width: '100%', justifyContent: 'space-between', borderLeft: '3px solid transparent', backgroundColor: 'transparent'}}
+                    className="nav-item-hover"
                     aria-expanded={isOpen}
                 >
-                    <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
-                        {icon && <span style={{color: 'var(--primary-color)'}}>{icon}</span>}
-                        {name}
+                    <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem', color: isCategoryActive ? 'var(--text-color)' : 'var(--text-light)'}}>
+                        {icon && <span style={{color: isCategoryActive ? 'var(--primary-color)' : 'var(--text-light)'}}>{icon}</span>}
+                        <span style={{fontWeight: 600}}>{name}</span>
                     </div>
-                    <span className={`category-chevron ${isOpen ? 'open' : ''}`}>{ICONS.chevronDown}</span>
-                </div>
-                {isOpen && <div className="submenu-container">{children}</div>}
+                    <span style={{transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s', color: 'var(--text-light)'}}>{ICONS.chevronDown}</span>
+                </button>
+                {isOpen && <div style={{paddingTop: '0.25rem', paddingBottom: '0.25rem'}}>{children}</div>}
             </div>
         );
     };
@@ -224,7 +224,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
         ...(isMobile ? styles.mainContentMobile : (isSidebarOpen ? styles.mainContentDesktop : { ...styles.mainContentDesktop, marginLeft: '0' }))
     };
 
-    const pagesWithoutFab = ['client-form', 'afiliado-form', 'aliado-form', 'consultation-form', 'log-form', 'profile-form', 'settings', 'calculators', 'agenda', 'queue', 'client-detail', 'afiliado-detail', 'chat', 'finanzas', 'clinic-settings', 'affiliates'];
+    const pagesWithoutFab = ['client-form', 'afiliado-form', 'aliado-form', 'consultation-form', 'log-form', 'profile-form', 'settings', 'calculators', 'agenda', 'queue', 'client-detail', 'afiliado-detail', 'chat', 'finanzas', 'clinic-settings', 'affiliates', 'user-guide'];
     const isFabHidden = pagesWithoutFab.includes(view.page);
 
     return (
@@ -254,7 +254,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                             alt="Logo de la clínica" 
                             style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
                         />
-                        <h2 style={{ color: 'var(--primary-color)', fontSize: '1.1rem', fontWeight: 600, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <h2 style={{ color: 'var(--text-color)', fontSize: '1.1rem', fontWeight: 600, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {clinic?.name || 'zegna nutricion'}
                         </h2>
                     </div>
@@ -280,7 +280,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                     </CollapsibleCategory>
 
                     <CollapsibleCategory name="Red" icon={ICONS.network} categoryKey="red" pageNames={['aliados', 'clinic-network']}>
-                        <NavItem name="Red de Colaboradores" pageName="aliados" isSubItem />
+                        <NavItem name="Colaboradores" pageName="aliados" isSubItem />
                         <NavItem name="Red de Clínicas" pageName="clinic-network" isSubItem />
                     </CollapsibleCategory>
                     
@@ -307,6 +307,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                  <div>
                      <NavItem name="Mi Perfil" pageName="profile" icon={ICONS.user} />
                      <NavItem name="Configuración" pageName="settings" icon={ICONS.settings} context={{ initialTab: 'account' }} />
+                     <NavItem name="Guía de Uso" pageName="user-guide" icon={ICONS.book} />
                 </div>
             </div>
 

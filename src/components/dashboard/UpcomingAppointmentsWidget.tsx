@@ -28,9 +28,9 @@ const formatDate = (dateString: string) => {
 const UpcomingAppointmentsWidget: FC<UpcomingAppointmentsWidgetProps> = ({ appointments, loading, navigateToDetail }) => {
     
     const renderSkeleton = (lines = 4) => (
-        <div>
+        <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
             {[...Array(lines)].map((_, i) => (
-                <div key={i} style={{height: '40px', backgroundColor: 'var(--surface-hover-color)', borderRadius: '4px', marginBottom: '1rem'}}></div>
+                <div key={i} style={{height: '40px', backgroundColor: 'var(--surface-hover-color)', borderRadius: '4px'}}></div>
             ))}
         </div>
     );
@@ -43,13 +43,13 @@ const UpcomingAppointmentsWidget: FC<UpcomingAppointmentsWidgetProps> = ({ appoi
     };
 
     return (
-        <div style={styles.infoCard}>
-            <div style={styles.infoCardHeader}><h3 style={{...styles.detailCardTitle, fontSize: '1.1rem'}}>Próximas Citas</h3></div>
-            <div style={styles.infoCardBody}>
+        <div className="card">
+            <div className="card-header"><h3 style={{...styles.detailCardTitle, fontSize: '1.1rem'}}>Próximas Citas</h3></div>
+            <div className="card-body">
                 {loading ? renderSkeleton() : (
                     <ul style={styles.activityList}>
                         {appointments.length > 0 ? appointments.map(appt => (
-                            <li key={appt.id} style={{...styles.activityItem, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem', cursor: appt.person_id ? 'pointer' : 'default' }} onClick={() => handleClick(appt)}>
+                            <li key={appt.id} style={{...styles.activityItem, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem', cursor: appt.person_id ? 'pointer' : 'default', padding: '0.75rem', borderRadius: '8px' }} onClick={() => handleClick(appt)} className="nav-item-hover">
                                 <div style={{width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                                     <p style={{margin: 0, fontWeight: 500, color: 'var(--primary-color)'}}>{appt.title}</p>
                                     <span style={{fontSize: '0.85rem', color: 'var(--text-light)', textAlign: 'right' as const, flexShrink: 0, fontWeight: 600}}>{formatDate(appt.start_time)}</span>

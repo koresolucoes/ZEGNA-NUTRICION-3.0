@@ -1,5 +1,3 @@
-
-
 import React, { FC, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
@@ -10,6 +8,7 @@ import { Log, Person, NutritionistProfile, ChurnFeedback, AppointmentWithPerson 
 import RecentFeedbackWidget from '../components/dashboard/RecentFeedbackWidget';
 import { useClinic } from '../contexts/ClinicContext';
 import UpcomingAppointmentsWidget from '../components/dashboard/UpcomingAppointmentsWidget';
+import FinancialSummaryCard from '../components/finanzas/FinancialSummaryCard';
 
 // FIX: This type is now simpler as logs are unified
 type CombinedLog = Log & {
@@ -133,7 +132,6 @@ const HomePage: FC<HomePageProps> = ({ user, isMobile, navigate, openQuickConsul
             })).sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime());
             setExpiring(allExpiring);
 
-            // FIX: Logs are now from a single table with a join
             const allLogs = ((logsRes.data as any[]) || []).map(log => ({
                 ...log, 
                 person_type: log.persons.person_type,
@@ -195,97 +193,10 @@ const HomePage: FC<HomePageProps> = ({ user, isMobile, navigate, openQuickConsul
         const page = type === 'client' ? 'client-detail' : 'afiliado-detail';
         navigate(page, { personId: id });
     };
-
-    const navigateToEdit = (type: 'client' | 'member', id: string) => {
-        const page = type === 'client' ? 'client-form' : 'afiliado-form';
-        navigate(page, { personId: id });
-    };
     
-    const getDaysRemainingText = (dateString: string) => {
-        const today = new Date();
-        const todayUTC = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
-        const endDateUTC = new Date(dateString); // 'YYYY-MM-DD' is parsed as UTC midnight
-        const diffTime = endDateUTC.getTime() - todayUTC.getTime();
-        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-        if (diffDays === 0) return { text: 'Vence hoy', color: 'orange' };
-        if (diffDays === 1) return { text: 'Vence mañana', color: 'orange' };
-        if (diffDays > 1) return { text: `Vence en ${diffDays} días`, color: 'var(--text-light)' };
-        return { text: `Vencido`, color: 'var(--error-color)' };
-    };
-
-    const renderSkeleton = (lines = 3) => (
-        <div>
-            {[...Array(lines)].map((_, i) => (
-                <div key={i} style={{height: '20px', backgroundColor: '#e0e0e0', borderRadius: '4px', marginBottom: '1rem', width: `${Math.random() * 40 + 50}%`}}></div>
-            ))}
-        </div>
-    );
-
-    const renderExpiringPlans = () => (
-        <div style={styles.infoCard}>
-            <div style={styles.infoCardHeader}><h3 style={{...styles.detailCardTitle, fontSize: '1.1rem'}}>Planes Próximos a Vencer</h3></div>
-            <div style={styles.infoCardBody}>
-                {loading ? renderSkeleton() : (
-                    <ul style={styles.activityList}>
-                        {expiring.length > 0 ? expiring.map(plan => {
-                            const { text, color } = getDaysRemainingText(plan.endDate);
-                            return (
-                                <li key={`${plan.type}-${plan.id}`} style={{...styles.activityItem, gap: '1rem'}}>
-                                    <div style={{flexGrow: 1}}>
-                                        <a onClick={() => navigateToDetail(plan.type, plan.id)} style={styles.activityItemLink} role="button">{plan.name}</a>
-                                        <span style={{fontSize: '0.85rem', fontWeight: 500, color: color, display: 'block' }}>{text}</span>
-                                    </div>
-                                    <button onClick={() => navigateToEdit(plan.type, plan.id)} className="button-secondary" style={{padding: '6px 12px', fontSize: '0.8rem'}}>Renovar</button>
-                                </li>
-                            )
-                        }) : <p>No hay planes por vencer en los próximos 15 días.</p>}
-                    </ul>
-                )}
-            </div>
-        </div>
-    );
-    
-    const renderRecentActivity = () => (
-         <div style={styles.infoCard}>
-            <div style={styles.infoCardHeader}><h3 style={{...styles.detailCardTitle, fontSize: '1.1rem'}}>Timeline Clínico</h3></div>
-            <div style={styles.infoCardBody}>
-                 {loading ? renderSkeleton(5) : (
-                    <ul style={styles.activityList}>
-                        {recentActivity.length > 0 ? recentActivity.map(log => (
-                            <li key={log.id} style={{...styles.activityItem, alignItems: 'flex-start', flexDirection: 'column', gap: '0.25rem'}}>
-                                <div style={{width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                                    <p style={{margin: 0, fontWeight: 500}}>{log.log_type}</p>
-                                    <span style={{fontSize: '0.8rem', color: 'var(--text-light)', textAlign: 'right' as const, flexShrink: 0}}>{new Date(log.created_at).toLocaleDateString('es-MX')}</span>
-                                </div>
-                                 <p style={{margin: '0.1rem 0', fontSize: '0.85rem', color: 'var(--text-light)', width: '100%'}}>
-                                    <span style={{
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        display: '-webkit-box',
-                                        WebkitLineClamp: 2,
-                                        WebkitBoxOrient: 'vertical'
-                                    }}>
-                                       {log.description}
-                                    </span>
-                                </p>
-                                <p style={{margin: '0.1rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-light)'}}>
-                                    {log.person_type === 'client' ? 'Paciente: ' : 'Afiliado: '}
-                                   <a onClick={() => navigateToDetail(log.person_type, log.person_id)} style={{...styles.activityItemLink, marginLeft: '4px'}} role="button">
-                                     {log.person_name || 'N/A'}
-                                   </a>
-                                </p>
-                            </li>
-                        )) : <p>No hay actividad reciente.</p>}
-                    </ul>
-                )}
-            </div>
-        </div>
-    );
-
-
     return (
         <div className="fade-in">
-            <div style={{...styles.pageHeader, borderBottom: 'none', paddingBottom: 0, marginBottom: '2rem', alignItems: 'flex-start'}}>
+            <div style={{...styles.pageHeader, borderBottom: 'none', paddingBottom: 0, alignItems: 'flex-start'}}>
                 <div>
                     <h1>Dashboard</h1>
                     <p style={{ marginTop: '0.25rem', color: 'var(--text-light)' }}>¡Bienvenido de nuevo, {displayName}!</p>
@@ -308,8 +219,7 @@ const HomePage: FC<HomePageProps> = ({ user, isMobile, navigate, openQuickConsul
                                     {ICONS.user} Mi Perfil
                                 </button>
                                 <button onClick={() => navigate('settings')} style={styles.profileDropdownItem} className="nav-item-hover">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                                    Configuración
+                                    {ICONS.settings} Configuración
                                 </button>
                                 <hr style={{margin: '4px 0', border: 'none', borderTop: '1px solid var(--border-color)'}} />
                                 <button onClick={handleLogout} style={{...styles.profileDropdownItem, color: 'var(--error-color)'}} className="nav-item-hover">
@@ -323,36 +233,19 @@ const HomePage: FC<HomePageProps> = ({ user, isMobile, navigate, openQuickConsul
 
             {error && <p style={styles.error}>{error}</p>}
             
-            <section aria-labelledby="activity-summary-title">
-                <h2 id="activity-summary-title" style={{...styles.detailCardTitle, fontSize: '1.5rem', marginBottom: '1.5rem'}}>Resumen de Actividad</h2>
-                {isMobile ? (
-                    <div>
-                        <div className="summary-tabs">
-                            <button className={`summary-tab-button ${activeSummaryTab === 'appointments' ? 'active' : ''}`} onClick={() => setActiveSummaryTab('appointments')}>Próximas Citas</button>
-                            <button className={`summary-tab-button ${activeSummaryTab === 'expiring' ? 'active' : ''}`} onClick={() => setActiveSummaryTab('expiring')}>Planes por Vencer</button>
-                            <button className={`summary-tab-button ${activeSummaryTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveSummaryTab('activity')}>Timeline Clínico</button>
-                            <button className={`summary-tab-button ${activeSummaryTab === 'feedback' ? 'active' : ''}`} onClick={() => setActiveSummaryTab('feedback')}>Feedback</button>
-                        </div>
-                        <div className="fade-in">
-                            {activeSummaryTab === 'appointments' && <UpcomingAppointmentsWidget appointments={upcomingAppointments} loading={loading} navigateToDetail={navigateToDetail} />}
-                            {activeSummaryTab === 'expiring' && renderExpiringPlans()}
-                            {activeSummaryTab === 'activity' && renderRecentActivity()}
-                            {activeSummaryTab === 'feedback' && <RecentFeedbackWidget recentFeedback={recentFeedback} loading={loading} navigateToDetail={navigateToDetail} />}
-                        </div>
-                    </div>
-                ) : (
-                    <div style={{...styles.dashboardColumns, gridTemplateColumns: '1fr 1fr', gap: '1.5rem'}}>
-                        <UpcomingAppointmentsWidget appointments={upcomingAppointments} loading={loading} navigateToDetail={navigateToDetail} />
-                        {renderExpiringPlans()}
-                        {renderRecentActivity()}
-                        <RecentFeedbackWidget recentFeedback={recentFeedback} loading={loading} navigateToDetail={navigateToDetail} />
-                    </div>
-                )}
+             <section aria-labelledby="stats-title" style={{margin: '1rem 0 2.5rem 0'}}>
+                <h2 id="stats-title" className="sr-only">Estadísticas del Negocio</h2>
+                <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem'}}>
+                    <FinancialSummaryCard title="Pacientes Activos" value={loading ? '...' : stats.activeClients.toString()} icon={ICONS.users} />
+                    <FinancialSummaryCard title="Afiliados Activos" value={loading ? '...' : stats.activeAfiliados.toString()} icon={ICONS.users} />
+                    <FinancialSummaryCard title="Colaboradores" value={loading ? '...' : stats.aliados.toString()} icon={ICONS.briefcase} />
+                    <FinancialSummaryCard title="% Pacientes Vencidos" value={loading ? '...' : (stats.totalClients > 0 ? `${((stats.expiredClients / stats.totalClients) * 100).toFixed(0)}%` : '0%')} icon={ICONS.activity} />
+                </div>
             </section>
-
+            
             <section aria-labelledby="actions-title" style={{margin: '2.5rem 0'}}>
                 <h2 id="actions-title" style={{...styles.detailCardTitle, fontSize: '1.5rem', marginBottom: '1.5rem'}}>Acciones Rápidas</h2>
-                <div className="actions-grid">
+                <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem'}} className="actions-grid">
                     <button className="action-card" onClick={() => navigate('client-form')}>
                         {ICONS.add}
                         <span>Nuevo Paciente</span>
@@ -372,17 +265,30 @@ const HomePage: FC<HomePageProps> = ({ user, isMobile, navigate, openQuickConsul
                 </div>
             </section>
 
-             <section aria-labelledby="stats-title">
-                <h2 id="stats-title" style={{...styles.detailCardTitle, fontSize: '1.5rem', marginBottom: '1.5rem'}}>Estadísticas del Negocio</h2>
-                <div style={{...styles.dashboardGrid, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))'}} className="dashboard-grid">
-                    <div style={styles.summaryCard} className="card-hover"><div style={styles.summaryCardIcon}>{ICONS.users}</div>{loading ? <p>...</p> : <p style={{...styles.summaryCardValue}} className="summary-card-value">{stats.activeClients}</p>}<p style={styles.summaryCardLabel}>Pacientes Activos</p></div>
-                    <div style={styles.summaryCard} className="card-hover"><div style={styles.summaryCardIcon}>{ICONS.users}</div>{loading ? <p>...</p> : <p style={{...styles.summaryCardValue}} className="summary-card-value">{stats.activeAfiliados}</p>}<p style={styles.summaryCardLabel}>Afiliados Activos</p></div>
-                    <div style={styles.summaryCard} className="card-hover"><div style={styles.summaryCardIcon}>{ICONS.briefcase}</div>{loading ? <p>...</p> : <p style={{...styles.summaryCardValue}} className="summary-card-value">{stats.aliados}</p>}<p style={styles.summaryCardLabel}>Colaboradores Activos</p></div>
-                    {/* FIX: Removed erroneous function call () on a string literal. */}
-                    <div style={styles.summaryCard} className="card-hover"><div style={styles.summaryCardIcon}><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="17" y1="8" x2="23" y2="14"></line><line x1="23" y1="8" x2="17" y2="14"></line></svg></div>{loading ? <p>...</p> : <p style={{...styles.summaryCardValue, color: stats.expiredClients > 0 ? 'var(--error-color)' : 'var(--primary-color)'}} className="summary-card-value">{stats.totalClients > 0 ? `${((stats.expiredClients / stats.totalClients) * 100).toFixed(0)}%` : '0%'}</p>}<p style={styles.summaryCardLabel}>Pacientes con Plan Vencido</p></div>
-                </div>
+             <section aria-labelledby="activity-summary-title" style={{margin: '2.5rem 0'}}>
+                <h2 id="activity-summary-title" style={{...styles.detailCardTitle, fontSize: '1.5rem', marginBottom: '1.5rem'}}>Resumen de Actividad</h2>
+                {isMobile ? (
+                    <div>
+                        <div className="summary-tabs" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem'}}>
+                            <button className={`summary-tab-button ${activeSummaryTab === 'appointments' ? 'active' : ''}`} style={{backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '1rem', borderRadius: '8px', fontWeight: 600, textAlign: 'center'}} onClick={() => setActiveSummaryTab('appointments')}>Próximas Citas</button>
+                            <button className={`summary-tab-button ${activeSummaryTab === 'expiring' ? 'active' : ''}`} style={{backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '1rem', borderRadius: '8px', fontWeight: 600, textAlign: 'center'}} onClick={() => setActiveSummaryTab('expiring')}>Planes por Vencer</button>
+                            <button className={`summary-tab-button ${activeSummaryTab === 'activity' ? 'active' : ''}`} style={{backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '1rem', borderRadius: '8px', fontWeight: 600, textAlign: 'center'}} onClick={() => setActiveSummaryTab('activity')}>Timeline Clínico</button>
+                            <button className={`summary-tab-button ${activeSummaryTab === 'feedback' ? 'active' : ''}`} style={{backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '1rem', borderRadius: '8px', fontWeight: 600, textAlign: 'center'}} onClick={() => setActiveSummaryTab('feedback')}>Feedback</button>
+                        </div>
+                        <div className="fade-in">
+                            {activeSummaryTab === 'appointments' && <UpcomingAppointmentsWidget appointments={upcomingAppointments} loading={loading} navigateToDetail={navigateToDetail} />}
+                            {activeSummaryTab === 'expiring' && <p>Planes por vencer...</p>}
+                            {activeSummaryTab === 'activity' && <p>Actividad reciente...</p>}
+                            {activeSummaryTab === 'feedback' && <RecentFeedbackWidget recentFeedback={recentFeedback} loading={loading} navigateToDetail={navigateToDetail} />}
+                        </div>
+                    </div>
+                ) : (
+                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem'}}>
+                        <UpcomingAppointmentsWidget appointments={upcomingAppointments} loading={loading} navigateToDetail={navigateToDetail} />
+                        <RecentFeedbackWidget recentFeedback={recentFeedback} loading={loading} navigateToDetail={navigateToDetail} />
+                    </div>
+                )}
             </section>
-
         </div>
     );
 };
