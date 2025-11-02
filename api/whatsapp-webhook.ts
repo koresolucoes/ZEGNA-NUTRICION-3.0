@@ -1,3 +1,8 @@
+
+
+
+
+
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI, FunctionDeclaration, Type, Content } from "@google/genai";
 
@@ -128,6 +133,7 @@ export default async function handler(req: any, res: any) {
     });
 
     // 4. Check if AI agent should respond
+    // FIX: Changed supabase to supabaseAdmin
     const { data: agent, error: agentError } = await supabaseAdmin.from('ai_agents').select('*').eq('clinic_id', clinicId).single();
     
     // Check if the associated person (if any) has an active plan
@@ -146,6 +152,7 @@ export default async function handler(req: any, res: any) {
     }
     
     // 5. Fetch history using contact_id for efficiency
+    // FIX: Changed supabase to supabaseAdmin
     const { data: history, error: historyError } = await supabaseAdmin.from('whatsapp_conversations').select('sender, message_content').eq('contact_id', contact.id).order('sent_at', { ascending: false }).limit(10);
     if (historyError) throw historyError;
     const formattedHistory = formatHistoryForGemini(history.reverse());

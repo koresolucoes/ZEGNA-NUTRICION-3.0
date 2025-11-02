@@ -1,4 +1,3 @@
-
 import React, { FC, useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../supabase';
@@ -26,8 +25,7 @@ const ManageContactModal: FC<ManageContactModalProps> = ({ isOpen, onClose, onSu
 
     useEffect(() => {
         const fetchPersons = async () => {
-            // FIX: Changed select to '*' to fetch all fields and match the `Person` type.
-            const { data, error } = await supabase.from('persons').select('*').eq('clinic_id', clinicId).order('full_name');
+            const { data, error } = await supabase.from('persons').select('id, full_name').eq('clinic_id', clinicId).order('full_name');
             if (error) { setError(error.message); } else { setPersons(data || []); }
         };
         fetchPersons();

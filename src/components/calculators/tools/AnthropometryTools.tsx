@@ -1,4 +1,3 @@
-
 import React, { FC, useState, useMemo, useEffect } from 'react';
 import { ToolProps } from './tool-types';
 import { ICONS } from '../../../pages/AuthPage';
@@ -39,7 +38,8 @@ const AnthropometryTools: FC<ToolProps> = ({ selectedPerson, lastConsultation, h
     });
 
     useEffect(() => {
-        const gender: 'male' | 'female' = selectedPerson?.gender === 'male' ? 'male' : 'female';
+        // FIX: Explicitly cast person gender to 'male' | 'female' to match state type.
+        const gender = (selectedPerson?.gender as 'male' | 'female') || 'female';
         const weightStr = lastConsultation?.weight_kg?.toString() || '';
         const heightStr = lastConsultation?.height_cm?.toString() || '';
         
@@ -273,14 +273,14 @@ const AnthropometryTools: FC<ToolProps> = ({ selectedPerson, lastConsultation, h
                     <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'var(--background-color)', borderRadius: '8px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                              <p style={{ margin: 0, color: 'var(--text-light)' }}>Síndrome Metabólico (ATP III)</p>
-                             <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: 600, color: results.metabolicSyndrome.diagnosis ? 'var(--error-color)' : 'var(--primary-color)'}}>
-                                 {results.metabolicSyndrome.diagnosis ? 'Diagnóstico Positivo ⚠️' : 'Diagnóstico Negativo'} ({results.metabolicSyndrome.count}/5)
+                             <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: 600, color: results.metabolicSyndrome.diagnosis ? 'var(--error-color)' : 'var(--primary-color)' }}>
+                                {results.metabolicSyndrome.diagnosis ? 'Presente ⚠️' : 'Ausente'} ({results.metabolicSyndrome.count}/5)
                              </p>
                         </div>
-                        <ul style={{listStyle: 'none', padding: 0, margin: '1rem 0 0 0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.9rem' }}>
-                            {Object.entries(results.metabolicSyndrome.criteria).map(([key, met]) => (
-                                <li key={key} style={{display: 'flex', alignItems: 'center', gap: '0.5rem', color: met ? 'var(--error-color)' : 'var(--text-light)'}}>
-                                    <span>{met ? '✅' : '–'}</span>
+                        <ul style={{listStyle: 'none', padding: 0, margin: '1rem 0 0 0', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
+                            {Object.entries(results.metabolicSyndrome.criteria).map(([key, value]) => (
+                                <li key={key} style={{display: 'flex', alignItems: 'center', gap: '0.5rem', color: value ? 'var(--text-color)' : 'var(--text-light)'}}>
+                                    <span style={{color: value ? 'var(--primary-color)' : 'var(--border-color)'}}>{value ? '✅' : '❌'}</span>
                                     <span>{MS_CRITERIA_LABELS[key as keyof typeof MS_CRITERIA_LABELS]}</span>
                                 </li>
                             ))}
@@ -288,12 +288,11 @@ const AnthropometryTools: FC<ToolProps> = ({ selectedPerson, lastConsultation, h
                     </div>
                 </div>
             </div>
-
-            <div style={{display: 'flex', justifyContent: 'flex-end', marginTop: '2rem', maxWidth: '1000px', margin: '2rem auto 0 auto'}}>
+            <div style={{maxWidth: '1000px', margin: '1.5rem auto 0 auto', display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end'}}>
                 <button 
                     onClick={handleSave} 
-                    disabled={!selectedPerson || saveStatus['anthropometryPanel'] === 'saving' || saveStatus['anthropometryPanel'] === 'success'}
-                    style={{minWidth: '250px'}}
+                    disabled={!selectedPerson || saveStatus['anthropometryPanel'] === 'saving' || saveStatus['anthropometryPanel'] === 'success'} 
+                    style={{minWidth: '250px', width: isMobile ? '100%' : 'auto'}}
                 >
                      {saveStatus['anthropometryPanel'] === 'saving' ? 'Guardando...' : saveStatus['anthropometryPanel'] === 'success' ? '¡Guardado!' : 'Guardar Evaluación en Expediente'}
                 </button>

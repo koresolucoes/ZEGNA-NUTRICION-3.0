@@ -1,4 +1,3 @@
-
 import React, { FC, useState, useEffect, useCallback, useMemo, FormEvent } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
@@ -8,7 +7,9 @@ import { Person, ConsultationWithLabs, Log, DietLog, ExerciseLog, Allergy, Medic
 import { createPortal } from 'react-dom';
 
 // Shared Components
+import PlanStatusIndicator from '../components/shared/PlanStatusIndicator';
 import ConfirmationModal from '../components/shared/ConfirmationModal';
+import PatientStickyHeader from '../components/shared/PatientStickyHeader';
 import ReportModal from '../components/ReportModal';
 import ConsultingRoomModal from '../components/shared/ConsultingRoomModal';
 
@@ -37,6 +38,7 @@ import { useClinic } from '../contexts/ClinicContext';
 import ConsultationModePage from './ConsultationModePage';
 
 // Tab Components
+import { SummaryTab } from '../components/person_detail/tabs/SummaryTab';
 import { InfoTab } from '../components/person_detail/tabs/InfoTab';
 import { ClinicalHistoryTab } from '../components/person_detail/tabs/ClinicalHistoryTab';
 import { ConsultationsTab } from '../components/person_detail/tabs/ConsultationsTab';
@@ -48,7 +50,6 @@ import { LogTab } from '../components/person_detail/tabs/LogTab';
 import { FilesTab } from '../components/person_detail/tabs/FilesTab';
 import { DailyTrackingTab } from '../components/person_detail/tabs/DailyTrackingTab';
 import { TeamTab } from '../components/person_detail/tabs/TeamTab';
-import { SummaryTab } from '../components/person_detail/tabs/SummaryTab';
 
 const modalRoot = document.getElementById('modal-root');
 
@@ -171,7 +172,7 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
     
     // UI States
     const [activeTab, setActiveTab] = useState('resumen');
-    const [activeSubTab, setActiveSubTab] = useState('');
+    const [activeSubTab, setActiveSubTab] = useState(''); // Kept for components that might still use it
     const [isConsultationMode, setConsultationMode] = useState(initialConsultationMode);
     const [isUploadingConsent, setIsUploadingConsent] = useState(false);
     
@@ -209,11 +210,6 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
     }, [subscription]);
 
     const memberMap = useMemo(() => new Map(teamMembers.map(m => [m.user_id, m])), [teamMembers]);
-    
-    const handleTabClick = (tab: string, defaultSubTab: string = '') => {
-        setActiveTab(tab);
-        setActiveSubTab(defaultSubTab);
-    };
 
     const fetchData = useCallback(async () => {
         if (!clinic) return;
@@ -356,7 +352,6 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
         try {
             const payload = { clinic_id: clinic.id, user_id: formData.user_id, person_id: formData.person_id || null, title: formData.title, notes: formData.notes, status: formData.status, start_time: new Date(formData.start_time).toISOString(), end_time: new Date(formData.end_time).toISOString() };
             
-            // --- GAMIFICATION LOGIC ---
             const wasCompleted = editingAppointment?.status === 'completed';
             const isNowCompleted = formData.status === 'completed';
     
@@ -367,20 +362,18 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
                 });
                 if (rpcError) console.warn('Could not award points on appointment completion:', rpcError.message);
             }
-            // --- END GAMIFICATION ---
 
             if (formData.id) {
                 await supabase.from('appointments').update(payload).eq('id', formData.id);
             } else {
                 const { data, error } = await supabase.from('appointments').insert(payload).select().single();
                 if (error) throw error;
-                // Award points if a new appointment is created as 'completed'
                 if (data && isNowCompleted && data.person_id) {
                      const { error: rpcError } = await supabase.rpc('award_points_for_consultation_attendance', {
                         p_person_id: data.person_id,
                         p_appointment_id: data.id
                     });
-                    if (rpcError) console.warn('Could not award points on new completed appointment:', rpcError);
+                    if (rpcError) console.warn('Could not award points on new completed appointment:', rpcError.message);
                 }
             }
             setIsAppointmentModalOpen(false); setEditingAppointment(null);
@@ -404,7 +397,7 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
             if (error) {
                 setError(`Error al eliminar: ${error.message}`);
             } else {
-                onBack(); // Go back to the list after deleting
+                onBack();
             }
             closeModal();
             return;
@@ -441,7 +434,7 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
         if (error) {
             setError(`Error al registrar consentimiento: ${error.message}`);
         } else {
-            fetchData(); // Refresh data to show the new consent date
+            fetchData();
         }
     };
     
@@ -450,7 +443,7 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
         setIsUploadingConsent(true);
         setError(null);
         try {
-            const fileExt = file.name.split('.').pop();
+            const fileExt = file.name.split('.pop();
             const filePath = `consent-forms/${person.id}/consentimiento_firmado.${fileExt}`;
 
             const { error: uploadError } = await supabase.storage.from('files').upload(filePath, file, { upsert: true });
@@ -482,27 +475,8 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
 
     const handleExportData = async () => {
         if (!person) return;
-        const exportData = {
-            person,
-            consultations,
-            logs,
-            dietLogs: allDietLogs,
-            exerciseLogs: allExerciseLogs,
-            allergies,
-            medicalHistory,
-            medications,
-            lifestyleHabits,
-            dailyCheckins,
-            files,
-            careTeam,
-            internalNotes,
-            planHistory,
-            appointments,
-        };
-
-        const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
-            JSON.stringify(exportData, null, 2)
-        )}`;
+        const exportData = { person, consultations, logs, dietLogs: allDietLogs, exerciseLogs: allExerciseLogs, allergies, medicalHistory, medications, lifestyleHabits, dailyCheckins, files, careTeam, internalNotes, planHistory, appointments };
+        const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(exportData, null, 2))}`;
         const link = document.createElement("a");
         link.href = jsonString;
         link.download = `Expediente_${person.full_name.replace(/\s/g, '_')}.json`;
@@ -526,16 +500,12 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
             if (updateError) {
                 setError(`Error al finalizar la consulta: ${updateError.message}`);
             } else {
-                // Award points only if the update was successful
                 if (currentAppointment.person_id) {
                     const { error: rpcError } = await supabase.rpc('award_points_for_consultation_attendance', {
                         p_person_id: currentAppointment.person_id,
                         p_appointment_id: currentAppointment.id
                     });
-
-                    if (rpcError) {
-                        console.warn('Could not award points for consultation attendance:', rpcError);
-                    }
+                    if (rpcError) console.warn('Could not award points for consultation attendance:', rpcError);
                 }
             }
         } else {
@@ -558,57 +528,14 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
     const renderActiveTab = () => {
         switch(activeTab) {
             case 'resumen':
-                return <SummaryTab 
-                            person={person} 
-                            consultations={consultations} 
-                            allergies={allergies} 
-                            medicalHistory={medicalHistory} 
-                            appointments={appointments} 
-                            medications={medications}
-                            servicePlans={servicePlans}
-                            isMobile={isMobile} 
-                            onRegisterPayment={() => setIsPaymentModalOpen(true)} 
-                            onAddAppointment={() => setIsAppointmentModalOpen(true)}
-                            onAddLog={() => navigate('log-form', { personId: person.id, personType })}
-                            onPrescribe={() => handleTabClick('planes', 'current_plans')}
-                            onViewDetailed={() => handleTabClick('expediente', 'clinical_history')}
-                        />;
+                return <SummaryTab person={person} consultations={consultations} allergies={allergies} medicalHistory={medicalHistory} dietLogs={allDietLogs} exerciseLogs={allExerciseLogs} appointments={appointments} isMobile={isMobile} onRegisterPayment={() => setIsPaymentModalOpen(true)} />;
             case 'expediente':
-                return (
-                    <section className="fade-in">
-                        <nav className="sub-tabs">
-                            <button className={`sub-tab-button ${activeSubTab === 'clinical_history' ? 'active' : ''}`} onClick={() => setActiveSubTab('clinical_history')}>H. Clínico</button>
-                            <button className={`sub-tab-button ${activeSubTab === 'consultations' ? 'active' : ''}`} onClick={() => setActiveSubTab('consultations')}>Consultas</button>
-                            <button className={`sub-tab-button ${activeSubTab === 'progress' ? 'active' : ''}`} onClick={() => setActiveSubTab('progress')}>Progreso</button>
-                        </nav>
-                        {activeSubTab === 'clinical_history' && <ClinicalHistoryTab allergies={allergies} medicalHistory={medicalHistory} medications={medications} lifestyleHabits={lifestyleHabits} memberMap={memberMap} onEditAllergy={(a) => handleOpenClinicalHistoryModal('allergy', a)} onEditMedicalHistory={(h) => handleOpenClinicalHistoryModal('medical', h)} onEditMedication={(m) => handleOpenClinicalHistoryModal('medication', m)} onEditLifestyle={() => setLifestyleModalOpen(true)} openModal={openModal} />}
-                        {activeSubTab === 'consultations' && <ConsultationsTab consultations={consultations} memberMap={memberMap} onAdd={() => navigate('consultation-form', { personId: person.id, personType })} onEdit={(id) => navigate('consultation-form', { personId: person.id, personType, consultationId: id })} onView={setViewingConsultation} openModal={openModal} />}
-                        {activeSubTab === 'progress' && <ProgressTab consultations={consultations} isMobile={isMobile} />}
-                    </section>
-                );
+                return <ClinicalHistoryTab allergies={allergies} medicalHistory={medicalHistory} medications={medications} lifestyleHabits={lifestyleHabits} memberMap={memberMap} onEditAllergy={(a) => handleOpenClinicalHistoryModal('allergy', a)} onEditMedicalHistory={(h) => handleOpenClinicalHistoryModal('medical', h)} onEditMedication={(m) => handleOpenClinicalHistoryModal('medication', m)} onEditLifestyle={() => setLifestyleModalOpen(true)} openModal={openModal} />;
             case 'planes':
-                 return (
-                    <section className="fade-in">
-                        <nav className="sub-tabs">
-                            <button className={`sub-tab-button ${activeSubTab === 'current_plans' ? 'active' : ''}`} onClick={() => setActiveSubTab('current_plans')}>Planes Actuales</button>
-                            <button className={`sub-tab-button ${activeSubTab === 'calculated_plans' ? 'active' : ''}`} onClick={() => setActiveSubTab('calculated_plans')}>Planes Calculados</button>
-                            <button className={`sub-tab-button ${activeSubTab === 'log_files' ? 'active' : ''}`} onClick={() => setActiveSubTab('log_files')}>Bitácora y Archivos</button>
-                            <button className={`sub-tab-button ${activeSubTab === 'daily_tracking' ? 'active' : ''}`} onClick={() => setActiveSubTab('daily_tracking')}>Auto-Registro</button>
-                        </nav>
-                        {activeSubTab === 'current_plans' && <PlansTab allDietLogs={allDietLogs} allExerciseLogs={allExerciseLogs} onGenerateMeal={() => setMealPlanModalOpen(true)} onGenerateExercise={() => setExercisePlanModalOpen(true)} onAddManualDiet={() => setIsCreatingManualLog('diet')} onAddManualExercise={() => setIsCreatingManualLog('exercise')} onEditDietLog={setEditingDietLog} onViewDietLog={setViewingDietLog} onEditExerciseLog={setEditingExerciseLog} onViewExerciseLog={setViewingExerciseLog} openModal={openModal} hasAiFeature={hasAiFeature} />}
-                        {activeSubTab === 'calculated_plans' && <CalculatedPlansTab planHistory={planHistory} navigate={navigate} openModal={openModal} />}
-                        {activeSubTab === 'log_files' && (
-                            <div>
-                                <LogTab logs={logs} memberMap={memberMap} onAdd={() => navigate('log-form', { personId: person.id, personType })} onEdit={(id) => navigate('log-form', { personId: person.id, personType, logId: id })} onView={setViewingLog} openModal={openModal} />
-                                <div style={{marginTop: '2rem'}}><FilesTab files={files} memberMap={memberMap} onAdd={() => setFileUploadModalOpen(true)} onDelete={(file) => openModal('deleteFile', file.id, `¿Eliminar el archivo "${file.file_name}"?`, file.file_path)} /></div>
-                            </div>
-                        )}
-                        {activeSubTab === 'daily_tracking' && <DailyTrackingTab checkins={dailyCheckins} />}
-                    </section>
-                 );
+                return <PlansTab allDietLogs={allDietLogs} allExerciseLogs={allExerciseLogs} onGenerateMeal={() => setMealPlanModalOpen(true)} onGenerateExercise={() => setExercisePlanModalOpen(true)} onAddManualDiet={() => setIsCreatingManualLog('diet')} onAddManualExercise={() => setIsCreatingManualLog('exercise')} onEditDietLog={setEditingDietLog} onViewDietLog={setViewingDietLog} onEditExerciseLog={setEditingExerciseLog} onViewExerciseLog={setViewingExerciseLog} openModal={openModal} hasAiFeature={hasAiFeature} />;
             case 'gestion':
                 return (
-                    <section className="fade-in">
+                     <section className="fade-in">
                         <nav className="sub-tabs">
                             <button className={`sub-tab-button ${activeSubTab === 'appointments' ? 'active' : ''}`} onClick={() => setActiveSubTab('appointments')}>Citas</button>
                             <button className={`sub-tab-button ${activeSubTab === 'team' ? 'active' : ''}`} onClick={() => setActiveSubTab('team')}>Equipo y Notas</button>
@@ -623,25 +550,6 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
         }
     };
 
-    if (isConsultationMode) {
-        return (
-            <ConsultationModePage 
-                person={person} personType={personType} consultations={consultations} 
-                logs={logs} dietLogs={allDietLogs} exerciseLogs={allExerciseLogs} planHistory={planHistory}
-                appointments={appointments} allergies={allergies} medicalHistory={medicalHistory} 
-                medications={medications} lifestyleHabits={lifestyleHabits} internalNotes={internalNotes} 
-                onDataRefresh={fetchData} onExit={handleFinishConsultation} isMobile={isMobile}
-                setViewingConsultation={setViewingConsultation}
-                setViewingLog={setViewingLog}
-                setViewingDietLog={setViewingDietLog}
-                setViewingExerciseLog={setViewingExerciseLog}
-                clinic={clinic}
-                subscription={subscription}
-            />
-        );
-    }
-    
-    // Default view (non-consultation mode)
     return (
         <>
             {isInvitationModalOpen && <PatientInvitationModal person={person} clinic={clinic!} onClose={() => setIsInvitationModalOpen(false)} />}
@@ -666,18 +574,34 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
             {viewingExerciseLog && <ExerciseLogDetailModal log={viewingExerciseLog} onClose={() => setViewingExerciseLog(null)} />}
             {isRoomModalOpen && appointmentToCall && <ConsultingRoomModal isOpen={isRoomModalOpen} onClose={() => { setIsRoomModalOpen(false); setAppointmentToCall(null); }} onConfirm={handleConfirmRoom} patientName={appointmentToCall.persons?.full_name || appointmentToCall.title} /> }
 
-            <div className="fade-in">
-                <div style={{...styles.pageHeader, borderBottom: 'none', paddingTop: 0}}>
-                    {/* Header buttons are now inside the Summary Tab */}
+            {isConsultationMode ? (
+                <ConsultationModePage person={person} personType={personType} consultations={consultations} logs={logs} dietLogs={allDietLogs} exerciseLogs={allExerciseLogs} planHistory={planHistory} appointments={appointments} allergies={allergies} medicalHistory={medicalHistory} medications={medications} lifestyleHabits={lifestyleHabits} internalNotes={internalNotes} onDataRefresh={fetchData} onExit={handleFinishConsultation} isMobile={isMobile} setViewingConsultation={setViewingConsultation} setViewingLog={setViewingLog} setViewingDietLog={setViewingDietLog} setViewingExerciseLog={setViewingExerciseLog} clinic={clinic} subscription={subscription} />
+            ) : (
+                <div className="fade-in">
+                    <PatientStickyHeader person={person} allergies={allergies} medicalHistory={medicalHistory} consultations={consultations} logs={logs} />
+                    <div style={{...styles.pageHeader, borderBottom: 'none', paddingTop: 0}}>
+                        <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap'}}>
+                            <button onClick={() => { onStartConsultation(); setConsultationMode(true); }}>Iniciar Consulta</button>
+                            {checkedInAppointmentForToday && (
+                                <button onClick={handleCallPatient} className="button-secondary">{ICONS.send} Llamar a Consulta</button>
+                            )}
+                             <button onClick={() => setIsReferralModalOpen(true)} className="button-secondary">{ICONS.send} Referir</button>
+                            {!person.user_id && personType === 'client' && (
+                                <button onClick={() => setIsInvitationModalOpen(true)} className="button-secondary">{ICONS.send} Invitar al Portal</button>
+                            )}
+                            <button onClick={() => setReportModalOpen(true)} className="button-secondary">{ICONS.print} Generar Reporte</button>
+                            <button onClick={onBack} className="button-secondary">{ICONS.back} Volver</button>
+                        </div>
+                    </div>
+                    <nav className="main-tabs">
+                        <button className={`main-tab-button ${activeTab === 'resumen' ? 'active' : ''}`} onClick={() => setActiveTab('resumen')}>{ICONS.home} Resumen</button>
+                        <button className={`main-tab-button ${activeTab === 'expediente' ? 'active' : ''}`} onClick={() => setActiveTab('expediente')}>{ICONS.briefcase} Expediente</button>
+                        <button className={`main-tab-button ${activeTab === 'planes' ? 'active' : ''}`} onClick={() => setActiveTab('planes')}>{ICONS.book} Planes</button>
+                        <button className={`main-tab-button ${activeTab === 'gestion' ? 'active' : ''}`} onClick={() => { setActiveTab('gestion'); setActiveSubTab('appointments'); }}>{ICONS.settings} Gestión</button>
+                    </nav>
+                    <div>{renderActiveTab()}</div>
                 </div>
-                <nav className="tabs">
-                    <button className={`tab-button ${activeTab === 'resumen' ? 'active' : ''}`} onClick={() => handleTabClick('resumen')}>Resumen</button>
-                    <button className={`tab-button ${activeTab === 'expediente' ? 'active' : ''}`} onClick={() => handleTabClick('expediente', 'clinical_history')}>Expediente Clínico</button>
-                    <button className={`tab-button ${activeTab === 'planes' ? 'active' : ''}`} onClick={() => handleTabClick('planes', 'current_plans')}>Planes y Seguimiento</button>
-                    <button className={`tab-button ${activeTab === 'gestion' ? 'active' : ''}`} onClick={() => handleTabClick('gestion', 'appointments')}>Gestión y Admin.</button>
-                </nav>
-                <div>{renderActiveTab()}</div>
-            </div>
+            )}
         </>
     );
 };

@@ -1,4 +1,3 @@
-
 import React, { FC, useState, useEffect, FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase, Json } from '../../supabase';

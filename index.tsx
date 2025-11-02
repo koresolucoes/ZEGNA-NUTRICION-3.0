@@ -10,7 +10,7 @@ const root = createRoot(rootElement);
 // and the app will not attempt to render, preventing crashes.
 if (!supabase) {
     root.render(
-      <div style={{ padding: '2rem', textAlign: 'center', backgroundColor: '#FFFFFF', color: '#111827', margin: '2rem auto', borderRadius: '12px', maxWidth: '600px', border: '1px solid #E5E7EB', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+      <div style={{ padding: '2rem', textAlign: 'center', backgroundColor: '#1F2937', color: '#E9ECEF', margin: '2rem auto', borderRadius: '8px', maxWidth: '600px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
         <h1 style={{color: 'var(--primary-color)'}}>Zegna Nutrición</h1>
         <h2>Configuración Requerida</h2>
         <p style={{textAlign: 'left', lineHeight: '1.6'}}>Para que la aplicación funcione, necesitas configurar tu base de datos de Supabase. Sigue estos pasos:</p>

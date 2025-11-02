@@ -1,4 +1,3 @@
-
 // FIX: Import React to provide the 'React' namespace for CSSProperties.
 import React from 'react';
 import { Person, ConsultationWithLabs } from '../../../types';

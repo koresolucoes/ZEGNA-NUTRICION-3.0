@@ -1,6 +1,5 @@
-
 import React, { FC, useState, useEffect } from 'react';
-import { supabase, VAPID_PUBLIC_KEY, Json } from '../../supabase';
+import { supabase, VAPID_PUBLIC_KEY } from '../../supabase';
 import { styles } from '../../constants';
 import { ICONS } from '../../pages/AuthPage';
 
@@ -89,12 +88,11 @@ const PushNotificationManager: FC = () => {
             if (!user) throw new Error('Usuario no autenticado.');
 
             // Use upsert to handle new subscriptions or updates for the same device
-            // FIX: Cast subscription object to `unknown as Json` to match Supabase's expected type.
             const { error: dbError } = await supabase
                 .from('push_subscriptions')
                 .upsert({
                     user_id: user.id,
-                    subscription_object: sub.toJSON() as unknown as Json,
+                    subscription_object: sub.toJSON(),
                     endpoint: sub.endpoint,
                 }, { onConflict: 'endpoint' });
 
