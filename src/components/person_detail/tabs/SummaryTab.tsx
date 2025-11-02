@@ -16,7 +16,7 @@ interface SummaryTabProps {
     onRegisterPayment: () => void;
 }
 
-export const SummaryTab: FC<SummaryTabProps> = ({ person, consultations, allergies, medicalHistory, dietLogs, exerciseLogs, appointments, isMobile, onRegisterPayment }) => {
+export const SummaryTab: FC<SummaryTabProps> = ({ person, consultations, allergies, medicalHistory, appointments, onRegisterPayment }) => {
     
     const latestConsultation = consultations?.[0] || null;
 
@@ -37,45 +37,47 @@ export const SummaryTab: FC<SummaryTabProps> = ({ person, consultations, allergi
     );
     
     return (
-        <div className="fade-in" style={{ 
-            display: 'grid', 
-            gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(320px, 1fr))', 
-            gap: '1.5rem' 
-        }}>
+        <div className="fade-in">
+            <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
+                gap: '1.5rem' 
+            }}>
 
-            <Widget title="Próxima Cita" icon={ICONS.calendar}>
-                {upcomingAppointment ? (
-                    <>
-                        <p style={{margin: '0 0 0.25rem 0', fontWeight: 600, fontSize: '1.1rem'}}>{upcomingAppointment.title}</p>
-                        <p style={{margin: 0, color: 'var(--text-light)', fontSize: '0.9rem'}}>
-                            {new Date(upcomingAppointment.start_time).toLocaleString('es-MX', { dateStyle: 'full', timeStyle: 'short' })}
+                <Widget title="Próxima Cita" icon={ICONS.calendar}>
+                    {upcomingAppointment ? (
+                        <>
+                            <p style={{margin: '0 0 0.25rem 0', fontWeight: 600, fontSize: '1.1rem'}}>{upcomingAppointment.title}</p>
+                            <p style={{margin: 0, color: 'var(--text-light)', fontSize: '0.9rem'}}>
+                                {new Date(upcomingAppointment.start_time).toLocaleString('es-MX', { dateStyle: 'full', timeStyle: 'short' })}
+                            </p>
+                        </>
+                    ) : <p>No hay citas próximas agendadas.</p>}
+                </Widget>
+
+                <Widget title="Último Peso Registrado" icon={ICONS.activity}>
+                    {latestConsultation?.weight_kg ? (
+                         <p style={{margin: 0, fontSize: '2.5rem', fontWeight: 700, color: 'var(--text-color)'}}>
+                            {latestConsultation.weight_kg} <span style={{fontSize: '1.5rem', color: 'var(--text-light)'}}>kg</span>
                         </p>
-                    </>
-                ) : <p>No hay citas próximas agendadas.</p>}
-            </Widget>
+                    ) : <p>Sin registro de peso.</p>}
+                </Widget>
 
-            <Widget title="Último Peso Registrado" icon={ICONS.activity}>
-                {latestConsultation?.weight_kg ? (
-                     <p style={{margin: 0, fontSize: '2.5rem', fontWeight: 700, color: 'var(--text-color)'}}>
-                        {latestConsultation.weight_kg} <span style={{fontSize: '1.5rem', color: 'var(--text-light)'}}>kg</span>
-                    </p>
-                ) : <p>Sin registro de peso.</p>}
-            </Widget>
+                 <Widget title="Estado del Plan" icon={ICONS.check}>
+                    <PlanStatusIndicator planEndDate={person.subscription_end_date} />
+                </Widget>
 
-             <Widget title="Estado del Plan" icon={ICONS.check}>
-                <PlanStatusIndicator planEndDate={person.subscription_end_date} />
-            </Widget>
-
-             <Widget title="Alertas Clínicas" icon={ICONS.briefcase}>
-                {allergies.length > 0 || medicalHistory.length > 0 ? (
-                    <ul style={{margin: 0, paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
-                        {allergies.slice(0, 2).map(a => <li key={a.id} style={{color: 'var(--error-color)'}}>Alergia: {a.substance}</li>)}
-                        {medicalHistory.slice(0, 2).map(h => <li key={h.id}>{h.condition}</li>)}
-                    </ul>
-                ) : <p>No hay alertas clínicas importantes.</p>}
-            </Widget>
+                 <Widget title="Alertas Clínicas" icon={ICONS.briefcase}>
+                    {allergies.length > 0 || medicalHistory.length > 0 ? (
+                        <ul style={{margin: 0, paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
+                            {allergies.slice(0, 2).map(a => <li key={a.id} style={{color: 'var(--error-color)'}}>Alergia: {a.substance}</li>)}
+                            {medicalHistory.slice(0, 2).map(h => <li key={h.id}>{h.condition}</li>)}
+                        </ul>
+                    ) : <p>No hay alertas clínicas importantes.</p>}
+                </Widget>
+            </div>
             
-            <div style={{gridColumn: '1 / -1', marginTop: '1rem'}}>
+            <div style={{marginTop: '2rem'}}>
                 <div className="section-header">
                      <h2 className="section-title">Acciones Rápidas</h2>
                 </div>
@@ -85,7 +87,6 @@ export const SummaryTab: FC<SummaryTabProps> = ({ person, consultations, allergi
                     </button>
                  </div>
             </div>
-
         </div>
     );
 };

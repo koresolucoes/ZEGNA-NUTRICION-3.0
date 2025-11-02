@@ -360,7 +360,7 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
                     p_person_id: formData.person_id,
                     p_appointment_id: formData.id
                 });
-                if (rpcError) console.warn('Could not award points on appointment completion:', rpcError.message);
+                if (rpcError) console.warn('Could not award points on appointment completion:', rpcError);
             }
 
             if (formData.id) {
@@ -373,7 +373,7 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
                         p_person_id: data.person_id,
                         p_appointment_id: data.id
                     });
-                    if (rpcError) console.warn('Could not award points on new completed appointment:', rpcError.message);
+                    if (rpcError) console.warn('Could not award points on new completed appointment:', rpcError);
                 }
             }
             setIsAppointmentModalOpen(false); setEditingAppointment(null);
@@ -443,7 +443,7 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
         setIsUploadingConsent(true);
         setError(null);
         try {
-            const fileExt = file.name.split('.pop();
+            const fileExt = file.name.split('.').pop();
             const filePath = `consent-forms/${person.id}/consentimiento_firmado.${fileExt}`;
 
             const { error: uploadError } = await supabase.storage.from('files').upload(filePath, file, { upsert: true });
@@ -525,8 +525,15 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
         if (type === 'medication') { setEditingMedication(item); setMedicationModalOpen(true); }
     };
 
+    const mainTabs = [
+        { key: 'resumen', label: 'Resumen', icon: ICONS.home },
+        { key: 'expediente', label: 'Expediente Clínico', icon: ICONS.briefcase },
+        { key: 'planes', label: 'Planes y Seguimiento', icon: ICONS.book },
+        { key: 'gestion', label: 'Gestión y Admin.', icon: ICONS.settings },
+    ];
+    
     const renderActiveTab = () => {
-        switch(activeTab) {
+        switch (activeTab) {
             case 'resumen':
                 return <SummaryTab person={person} consultations={consultations} allergies={allergies} medicalHistory={medicalHistory} dietLogs={allDietLogs} exerciseLogs={allExerciseLogs} appointments={appointments} isMobile={isMobile} onRegisterPayment={() => setIsPaymentModalOpen(true)} />;
             case 'expediente':
@@ -534,19 +541,9 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
             case 'planes':
                 return <PlansTab allDietLogs={allDietLogs} allExerciseLogs={allExerciseLogs} onGenerateMeal={() => setMealPlanModalOpen(true)} onGenerateExercise={() => setExercisePlanModalOpen(true)} onAddManualDiet={() => setIsCreatingManualLog('diet')} onAddManualExercise={() => setIsCreatingManualLog('exercise')} onEditDietLog={setEditingDietLog} onViewDietLog={setViewingDietLog} onEditExerciseLog={setEditingExerciseLog} onViewExerciseLog={setViewingExerciseLog} openModal={openModal} hasAiFeature={hasAiFeature} />;
             case 'gestion':
-                return (
-                     <section className="fade-in">
-                        <nav className="sub-tabs">
-                            <button className={`sub-tab-button ${activeSubTab === 'appointments' ? 'active' : ''}`} onClick={() => setActiveSubTab('appointments')}>Citas</button>
-                            <button className={`sub-tab-button ${activeSubTab === 'team' ? 'active' : ''}`} onClick={() => setActiveSubTab('team')}>Equipo y Notas</button>
-                            <button className={`sub-tab-button ${activeSubTab === 'info' ? 'active' : ''}`} onClick={() => setActiveSubTab('info')}>Información</button>
-                        </nav>
-                        {activeSubTab === 'appointments' && <AppointmentsTab appointments={appointments} memberMap={memberMap} onAdd={() => setIsAppointmentModalOpen(true)} onEdit={(a) => {setEditingAppointment(a); setIsAppointmentModalOpen(true);}} />}
-                        {activeSubTab === 'team' && <TeamTab careTeam={careTeam} allTeamMembers={teamMembers} personId={personId} isAdmin={role === 'admin'} onTeamUpdate={fetchData} internalNotes={internalNotes} user={user} />}
-                        {activeSubTab === 'info' && <InfoTab person={person} consultations={consultations} allergies={allergies} medicalHistory={medicalHistory} onRegisterConsent={handleRegisterConsent} onRevokeConsent={handleRevokeConsent} onExportData={handleExportData} onUploadConsent={handleConsentFileUpload} isUploadingConsent={isUploadingConsent} openModal={openModal} onManagePlan={() => setPlanModalOpen(true)} servicePlans={servicePlans} />}
-                    </section>
-                );
-            default: return null;
+                return <InfoTab person={person} servicePlans={servicePlans} onRegisterConsent={handleRegisterConsent} onRevokeConsent={handleRevokeConsent} onExportData={handleExportData} onUploadConsent={handleConsentFileUpload} isUploadingConsent={isUploadingConsent} openModal={openModal} onManagePlan={() => setPlanModalOpen(true)} />;
+            default:
+                return null;
         }
     };
 
@@ -594,10 +591,15 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
                         </div>
                     </div>
                     <nav className="main-tabs">
-                        <button className={`main-tab-button ${activeTab === 'resumen' ? 'active' : ''}`} onClick={() => setActiveTab('resumen')}>{ICONS.home} Resumen</button>
-                        <button className={`main-tab-button ${activeTab === 'expediente' ? 'active' : ''}`} onClick={() => setActiveTab('expediente')}>{ICONS.briefcase} Expediente</button>
-                        <button className={`main-tab-button ${activeTab === 'planes' ? 'active' : ''}`} onClick={() => setActiveTab('planes')}>{ICONS.book} Planes</button>
-                        <button className={`main-tab-button ${activeTab === 'gestion' ? 'active' : ''}`} onClick={() => { setActiveTab('gestion'); setActiveSubTab('appointments'); }}>{ICONS.settings} Gestión</button>
+                        {mainTabs.map(tab => (
+                             <button 
+                                key={tab.key}
+                                className={`main-tab-button ${activeTab === tab.key ? 'active' : ''}`} 
+                                onClick={() => setActiveTab(tab.key)}
+                            >
+                                {tab.icon} {tab.label}
+                            </button>
+                        ))}
                     </nav>
                     <div>{renderActiveTab()}</div>
                 </div>

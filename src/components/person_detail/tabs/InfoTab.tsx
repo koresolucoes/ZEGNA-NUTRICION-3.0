@@ -1,14 +1,11 @@
 import React, { FC, useRef } from 'react';
-import { Person, ConsultationWithLabs, Allergy, MedicalHistory, PatientServicePlan } from '../../../types';
+import { Person, PatientServicePlan } from '../../../types';
 import { styles } from '../../../constants';
 import PlanStatusIndicator from '../../shared/PlanStatusIndicator';
 import { ICONS } from '../../../pages/AuthPage';
 
 interface InfoTabProps {
     person: Person;
-    consultations: ConsultationWithLabs[];
-    allergies: Allergy[];
-    medicalHistory: MedicalHistory[];
     servicePlans: PatientServicePlan[];
     onRegisterConsent: () => void;
     onRevokeConsent: () => void;
@@ -20,7 +17,7 @@ interface InfoTabProps {
 }
 
 export const InfoTab: FC<InfoTabProps> = ({ 
-    person, consultations, allergies, medicalHistory, servicePlans,
+    person, servicePlans,
     onRegisterConsent, onRevokeConsent, onExportData, onUploadConsent, isUploadingConsent, openModal, onManagePlan
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
