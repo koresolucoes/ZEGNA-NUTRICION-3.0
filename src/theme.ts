@@ -2,10 +2,10 @@ import { createGlobalStyle } from 'styled-components';
 
 export const themes = {
     default: {
-        primaryColor: '#3B82F6',
-        primaryLight: 'rgba(59, 130, 246, 0.1)',
-        primaryDark: '#2563EB',
-        accentColor: '#10B981',
+        primaryColor: '#2563EB', // Darker blue for better contrast with white text
+        primaryLight: 'rgba(37, 99, 235, 0.1)',
+        primaryDark: '#1D4ED8', // Even darker blue
+        accentColor: '#F59E0B', // Switched to amber for better contrast as text
         textColor: '#E5E7EB',
         textLight: '#9CA3AF',
         backgroundColor: '#1F2937',
@@ -17,9 +17,9 @@ export const themes = {
         errorBg: 'rgba(239, 68, 68, 0.1)',
     },
     natural: {
-        primaryColor: '#8FBC8F',
-        primaryLight: 'rgba(143, 188, 143, 0.15)',
-        primaryDark: '#79a379',
+        primaryColor: '#2E7D32', // Darker green for accessible buttons
+        primaryLight: 'rgba(46, 125, 50, 0.15)',
+        primaryDark: '#1B5E20',
         accentColor: '#F4A261',
         backgroundColor: '#242b24',
         surfaceColor: '#3a423a',
@@ -32,9 +32,9 @@ export const themes = {
         errorBg: 'rgba(239, 68, 68, 0.1)',
     },
     clinical: {
-        primaryColor: '#6A8EAE',
-        primaryLight: 'rgba(106, 142, 174, 0.15)',
-        primaryDark: '#5a7a99',
+        primaryColor: '#546E7A', // Darker blue-gray for accessible buttons
+        primaryLight: 'rgba(84, 110, 122, 0.15)',
+        primaryDark: '#455A64',
         accentColor: '#C5A169',
         backgroundColor: '#272d31',
         surfaceColor: '#383f45',
@@ -47,10 +47,10 @@ export const themes = {
         errorBg: 'rgba(239, 68, 68, 0.1)',
     },
     vitality: {
-        primaryColor: '#E57A44',
-        primaryLight: 'rgba(229, 122, 68, 0.15)',
-        primaryDark: '#d16a34',
-        accentColor: '#48B2A7',
+        primaryColor: '#D84315', // Darker orange for accessible buttons
+        primaryLight: 'rgba(216, 67, 21, 0.15)',
+        primaryDark: '#BF360C',
+        accentColor: '#26A69A', // Brighter teal for better contrast
         backgroundColor: '#2c2826',
         surfaceColor: '#443d3a',
         surfaceHoverColor: '#59504c',
@@ -62,9 +62,9 @@ export const themes = {
         errorBg: 'rgba(239, 68, 68, 0.1)',
     },
     light: {
-        primaryColor: '#4A90E2',
-        primaryLight: 'rgba(74, 144, 226, 0.15)',
-        primaryDark: '#357ABD',
+        primaryColor: '#2563EB', // Darker blue for accessible buttons
+        primaryLight: 'rgba(37, 99, 235, 0.1)',
+        primaryDark: '#1D4ED8',
         accentColor: '#50E3C2',
         backgroundColor: '#F4F6F8',
         surfaceColor: '#FFFFFF',
