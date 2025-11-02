@@ -7,7 +7,6 @@ import { Person, ConsultationWithLabs, Log, DietLog, ExerciseLog, Allergy, Medic
 import { createPortal } from 'react-dom';
 
 // Shared Components
-import PlanStatusIndicator from '../components/shared/PlanStatusIndicator';
 import ConfirmationModal from '../components/shared/ConfirmationModal';
 import PatientStickyHeader from '../components/shared/PatientStickyHeader';
 import ReportModal from '../components/ReportModal';
@@ -32,24 +31,16 @@ import ReferPersonModal from '../components/person_detail/ReferPersonModal';
 import PaymentFormModal from '../components/person_detail/PaymentFormModal';
 import PlanAssignmentModal from '../components/person_detail/PlanAssignmentModal';
 
-
 // Context & Pages
 import { useClinic } from '../contexts/ClinicContext';
 import ConsultationModePage from './ConsultationModePage';
 
-// Tab Components
+// Main Tab Container Components
 import { SummaryTab } from '../components/person_detail/tabs/SummaryTab';
-import { InfoTab } from '../components/person_detail/tabs/InfoTab';
-import { ClinicalHistoryTab } from '../components/person_detail/tabs/ClinicalHistoryTab';
-import { ConsultationsTab } from '../components/person_detail/tabs/ConsultationsTab';
-import { AppointmentsTab } from '../components/person_detail/tabs/AppointmentsTab';
-import { PlansTab } from '../components/person_detail/tabs/PlansTab';
-import { CalculatedPlansTab } from '../components/person_detail/tabs/CalculatedPlansTab';
-import { ProgressTab } from '../components/person_detail/tabs/ProgressTab';
-import { LogTab } from '../components/person_detail/tabs/LogTab';
-import { FilesTab } from '../components/person_detail/tabs/FilesTab';
-import { DailyTrackingTab } from '../components/person_detail/tabs/DailyTrackingTab';
-import { TeamTab } from '../components/person_detail/tabs/TeamTab';
+import { ExpedienteClinicoContainer } from '../components/person_detail/containers/ExpedienteClinicoContainer';
+import { PlanesYSeguimientoContainer } from '../components/person_detail/containers/PlanesYSeguimientoContainer';
+import { GestionAdminContainer } from '../components/person_detail/containers/GestionAdminContainer';
+
 
 const modalRoot = document.getElementById('modal-root');
 
@@ -172,7 +163,6 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
     
     // UI States
     const [activeTab, setActiveTab] = useState('resumen');
-    const [activeSubTab, setActiveSubTab] = useState(''); // Kept for components that might still use it
     const [isConsultationMode, setConsultationMode] = useState(initialConsultationMode);
     const [isUploadingConsent, setIsUploadingConsent] = useState(false);
     
@@ -537,11 +527,71 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
             case 'resumen':
                 return <SummaryTab person={person} consultations={consultations} allergies={allergies} medicalHistory={medicalHistory} dietLogs={allDietLogs} exerciseLogs={allExerciseLogs} appointments={appointments} isMobile={isMobile} onRegisterPayment={() => setIsPaymentModalOpen(true)} />;
             case 'expediente':
-                return <ClinicalHistoryTab allergies={allergies} medicalHistory={medicalHistory} medications={medications} lifestyleHabits={lifestyleHabits} memberMap={memberMap} onEditAllergy={(a) => handleOpenClinicalHistoryModal('allergy', a)} onEditMedicalHistory={(h) => handleOpenClinicalHistoryModal('medical', h)} onEditMedication={(m) => handleOpenClinicalHistoryModal('medication', m)} onEditLifestyle={() => setLifestyleModalOpen(true)} openModal={openModal} />;
+                return <ExpedienteClinicoContainer 
+                    allergies={allergies}
+                    medicalHistory={medicalHistory}
+                    medications={medications}
+                    lifestyleHabits={lifestyleHabits}
+                    consultations={consultations}
+                    logs={logs}
+                    memberMap={memberMap}
+                    onEditAllergy={(item) => { setEditingAllergy(item); setAllergyModalOpen(true); }}
+                    onEditMedicalHistory={(item) => { setEditingMedicalHistory(item); setMedicalHistoryModalOpen(true); }}
+                    onEditMedication={(item) => { setEditingMedication(item); setMedicationModalOpen(true); }}
+                    onEditLifestyle={() => setLifestyleModalOpen(true)}
+                    onAddConsultation={() => navigate('consultation-form', { personId, personType })}
+                    onEditConsultation={(id) => navigate('consultation-form', { personId, personType, consultationId: id })}
+                    onViewConsultation={setViewingConsultation}
+                    onAddLog={() => navigate('log-form', { personId, personType })}
+                    onEditLog={(id) => navigate('log-form', { personId, personType, logId: id })}
+                    onViewLog={setViewingLog}
+                    openModal={openModal}
+                />;
             case 'planes':
-                return <PlansTab allDietLogs={allDietLogs} allExerciseLogs={allExerciseLogs} onGenerateMeal={() => setMealPlanModalOpen(true)} onGenerateExercise={() => setExercisePlanModalOpen(true)} onAddManualDiet={() => setIsCreatingManualLog('diet')} onAddManualExercise={() => setIsCreatingManualLog('exercise')} onEditDietLog={setEditingDietLog} onViewDietLog={setViewingDietLog} onEditExerciseLog={setEditingExerciseLog} onViewExerciseLog={setViewingExerciseLog} openModal={openModal} hasAiFeature={hasAiFeature} />;
+                return <PlanesYSeguimientoContainer 
+                    allDietLogs={allDietLogs}
+                    allExerciseLogs={allExerciseLogs}
+                    planHistory={planHistory}
+                    consultations={consultations}
+                    dailyCheckins={dailyCheckins}
+                    isMobile={isMobile}
+                    hasAiFeature={hasAiFeature}
+                    onGenerateMeal={() => setMealPlanModalOpen(true)}
+                    onGenerateExercise={() => setExercisePlanModalOpen(true)}
+                    onAddManualDiet={() => setIsCreatingManualLog('diet')}
+                    onAddManualExercise={() => setIsCreatingManualLog('exercise')}
+                    onEditDietLog={setEditingDietLog}
+                    onViewDietLog={setViewingDietLog}
+                    onEditExerciseLog={setEditingExerciseLog}
+                    onViewExerciseLog={setViewingExerciseLog}
+                    onLoadPlan={(plan) => navigate('calculators', { planToLoad: plan })}
+                    openModal={openModal}
+                />;
             case 'gestion':
-                return <InfoTab person={person} servicePlans={servicePlans} onRegisterConsent={handleRegisterConsent} onRevokeConsent={handleRevokeConsent} onExportData={handleExportData} onUploadConsent={handleConsentFileUpload} isUploadingConsent={isUploadingConsent} openModal={openModal} onManagePlan={() => setPlanModalOpen(true)} />;
+                return <GestionAdminContainer 
+                    person={person}
+                    servicePlans={servicePlans}
+                    appointments={appointments}
+                    careTeam={careTeam}
+                    allTeamMembers={teamMembers}
+                    internalNotes={internalNotes}
+                    files={files}
+                    user={user}
+                    isAdmin={role === 'admin'}
+                    memberMap={memberMap}
+                    onTeamUpdate={fetchData}
+                    onAddAppointment={() => setIsAppointmentModalOpen(true)}
+                    onEditAppointment={(appt) => { setEditingAppointment(appt); setIsAppointmentModalOpen(true); }}
+                    onAddFile={() => setFileUploadModalOpen(true)}
+                    onDeleteFile={(file) => openModal('deleteFile', file.id, `¿Eliminar el archivo "${file.file_name}"?`, file.file_path)}
+                    onRegisterConsent={handleRegisterConsent}
+                    onRevokeConsent={handleRevokeConsent}
+                    onExportData={handleExportData}
+                    onUploadConsent={handleConsentFileUpload}
+                    isUploadingConsent={isUploadingConsent}
+                    onManagePlan={() => setPlanModalOpen(true)}
+                    openModal={openModal}
+                />;
             default:
                 return null;
         }
