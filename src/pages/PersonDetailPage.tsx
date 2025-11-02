@@ -667,4 +667,3 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
 };
 
 export default PersonDetailPage;
-```
