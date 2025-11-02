@@ -1,0 +1,10 @@
+{
+  "name": "Zegna Nutrición",
+  "short_name": "ZegnaNutri",
+  "description": "Zegna Nutrición es un sistema para nutricionistas que centraliza la gestión de pacientes con expedientes clínicos completos y gráficos de progreso.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#212529",
+  "theme_color": "#007BFF"
+}

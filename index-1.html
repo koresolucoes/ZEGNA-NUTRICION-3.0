@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>zegna nutricion</title>
+    
+    <!-- PWA Enhancements -->
+    <meta name="theme-color" content="#3B82F6"/>
+    <link rel="manifest" href="/manifest.json">
+    
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --primary-color: #3B82F6; /* A modern, vibrant blue */
+            --primary-light: rgba(59, 130, 246, 0.1);
+            --primary-dark: #2563EB;
+            --accent-color: #10B981; /* A complementary green for success states */
+            --text-color: #E5E7EB; /* Lighter off-white for better contrast */
+            --text-light: #9CA3AF; /* A softer gray for secondary text */
+            --background-color: #1F2937; /* Darker, slightly blue-tinted gray */
+            --surface-color: #374151; /* Lighter gray for cards and surfaces */
+            --surface-hover-color: #4B5563;
+            --white: #fff;
+            --border-color: #4B5563; /* Subtle border color */
+            --error-color: #EF4444;
+            --error-bg: rgba(239, 68, 68, 0.1);
+        }
+
+        /* General styles */
+        body * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.5;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        #root {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Patient Portal Specific Styles */
+        .patient-portal-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 960px) {
+            .patient-portal-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .widget-card {
+            background-color: var(--surface-color);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .widget-header {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .widget-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .widget-body {
+            padding: 1.25rem;
+        }
+        
+        .progress-bar-bg {
+            background-color: var(--background-color);
+            border-radius: 8px;
+            height: 12px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-dark), var(--primary-color));
+            border-radius: 8px;
+            transition: width 0.5s ease-in-out;
+        }
+
+        /* Form elements */
+        body input, body textarea, body select {
+            width: 100%;
+            padding: 12px 15px;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: 'Inter', sans-serif;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background-color: var(--surface-color); /* Darker background */
+            color: var(--text-color); /* Lighter text */
+        }
+        
+        /* Hide number input arrows */
+        body input[type=number]::-webkit-inner-spin-button,
+        body input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        body input[type=number] {
+            -moz-appearance: textfield;
+        }
+        
+        body input::placeholder, body textarea::placeholder {
+            color: var(--text-light);
+            opacity: 1;
+        }
+
+        body input:focus, body textarea:focus, body select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+        
+        body label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        body button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            background-color: var(--primary-color);
+            color: var(--white);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        body button:hover {
+            background-color: var(--primary-dark);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.25);
+        }
+
+        body button:active {
+            transform: scale(0.98);
+        }
+
+        body button:disabled {
+            background-color: #555;
+            color: #999;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        body button.button-secondary {
+            background-color: var(--surface-hover-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+
+        body button.button-secondary:hover {
+            background-color: var(--border-color);
+        }
+        
+        body button.button-danger {
+            background-color: var(--error-bg);
+            color: var(--error-color);
+            border: 1px solid var(--error-color);
+        }
+        
+        body button.button-danger:hover {
+            background-color: var(--error-color);
+            color: var(--white);
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes spin { 
+            0% { transform: rotate(0deg); } 
+            100% { transform: rotate(360deg); } 
+        }
+        
+        .nav-item-hover:hover {
+            background-color: var(--primary-light) !important;
+            color: var(--primary-color) !important;
+        }
+        
+        .table-row-hover:hover {
+             background-color: var(--surface-hover-color);
+        }
+
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+        }
+
+        .dashboard-grid {
+            grid-template-columns: repeat(4, 1fr);
+        }
+        @media (max-width: 1200px) {
+            .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 600px) {
+            .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        
+        .summary-card-value {
+            transition: color 0.2s;
+        }
+        .card-hover:hover .summary-card-value {
+             color: var(--primary-color);
+        }
+        
+        /* Tabs Navigation */
+        .tabs {
+            display: flex;
+            overflow-x: auto;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 1.5rem;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary-color) var(--background-color);
+        }
+        
+        /* Hide scrollbar for Webkit browsers */
+        .tabs::-webkit-scrollbar,
+        .sub-tabs::-webkit-scrollbar,
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        
+        /* Hide scrollbar for IE, Edge, and Firefox */
+        .tabs,
+        .sub-tabs,
+        .hide-scrollbar {
+            -ms-overflow-style: none; /* IE and Edge */
+            scrollbar-width: none; /* Firefox */
+        }
+
+        .tab-button {
+            padding: 0.8rem 1.2rem;
+            border: none;
+            border-bottom: 3px solid transparent;
+            background-color: transparent;
+            color: var(--text-light);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.2s ease-in-out;
+            white-space: nowrap;
+        }
+
+        .tab-button:hover {
+            background-color: var(--primary-light);
+            color: var(--primary-color);
+        }
+
+        .tab-button.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+            font-weight: 600;
+        }
+        
+        /* Sub-tabs Navigation */
+        .sub-tabs {
+            display: flex;
+            overflow-x: auto;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+        }
+
+        .sub-tab-button {
+            padding: 0.6rem 1rem;
+            border: none;
+            border-bottom: 2px solid transparent;
+            background-color: transparent;
+            color: var(--text-light);
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.2s ease-in-out;
+            white-space: nowrap;
+        }
+
+        .sub-tab-button:hover {
+            background-color: var(--surface-hover-color);
+            color: var(--primary-color);
+        }
+
+        .sub-tab-button.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+            font-weight: 600;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+        
+        .info-card {
+            background-color: var(--surface-color);
+            border-radius: 8px;
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+            transition: box-shadow 0.2s, border-color 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .info-card-clickable {
+            cursor: pointer;
+        }
+
+        .info-card-clickable:hover {
+            border-color: var(--primary-color);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+        }
+        
+        .card-actions {
+            display: flex;
+            gap: 0.25rem;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .info-card:hover .card-actions {
+            opacity: 1;
+        }
+        
+        /* Patient Portal Responsive Styles - Updated for new sidebar layout */
+        @media (max-width: 768px) {
+            .patient-portal-header-content {
+                padding: 0.75rem 1rem;
+            }
+            .patient-portal-header h1 {
+                font-size: 1.2rem;
+            }
+            .user-info-desktop {
+                display: none;
+            }
+        }
+        
+        /* Styles for mobile view of dashboard home page */
+        @media (max-width: 959px) {
+            .summary-tabs {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 1rem;
+                margin-bottom: 1.5rem;
+            }
+            .summary-tab-button {
+                background-color: var(--surface-color);
+                border: 1px solid var(--border-color);
+                color: var(--text-color);
+                padding: 1rem;
+                border-radius: 8px;
+                font-weight: 600;
+                text-align: center;
+                cursor: pointer;
+                transition: all 0.2s;
+                white-space: normal; /* Allow text wrapping */
+            }
+            .summary-tab-button:hover {
+                background-color: var(--surface-hover-color);
+                border-color: var(--primary-color);
+            }
+            .summary-tab-button.active {
+                background-color: var(--primary-color);
+                color: var(--white);
+                border-color: var(--primary-color);
+                box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2);
+            }
+        }
+        
+        /* Acciones Rápidas section styling */
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 600px) {
+            .actions-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 1rem;
+            }
+        }
+
+        .action-card {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 1.5rem 1rem;
+            border-radius: 12px;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            min-height: 120px;
+        }
+        .action-card:hover {
+            background-color: var(--surface-hover-color);
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+        }
+        .action-card svg {
+            width: 24px;
+            height: 24px;
+            transition: color 0.2s;
+        }
+
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printable-area, #printable-area * {
+                visibility: visible;
+            }
+            #printable-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+        }
+
+        /* NEW Collapsible Sidebar Styles */
+        .category-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            text-align: left;
+            background: none;
+            border: none;
+            color: var(--text-color);
+        }
+        .category-chevron {
+            transition: transform 0.3s ease;
+            transform: rotate(-90deg);
+        }
+        .category-chevron.open {
+            transform: rotate(0deg);
+        }
+        .submenu-container {
+            overflow: hidden;
+            animation: slide-down 0.4s ease-out;
+            padding-left: 1rem; /* Indent sub-items */
+        }
+        @keyframes slide-down {
+            from {
+                opacity: 0;
+                max-height: 0;
+            }
+            to {
+                opacity: 1;
+                max-height: 500px; /* Adjust as needed */
+            }
+        }
+        .nav-sub-item {
+            padding-left: 2.25rem !important; /* Deeper indent for sub-items */
+        }
+
+    </style>
+    <script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.19.0",
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react-dom": "https://aistudiocdn.com/react-dom@^19.1.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.57.4",
+    "web-push": "https://aistudiocdn.com/web-push@^3.6.7",
+    "html2canvas": "https://aistudiocdn.com/html2canvas@^1.4.1",
+    "jspdf": "https://aistudiocdn.com/jspdf@^3.0.3",
+    "puppeteer-core": "https://aistudiocdn.com/puppeteer-core@^24.25.0",
+    "@sparticuz/chromium": "https://aistudiocdn.com/@sparticuz/chromium@^141.0.0",
+    "fiscalapi": "https://aistudiocdn.com/fiscalapi@^4.0.270",
+    "module": "https://aistudiocdn.com/module@^1.2.5",
+    "crypto": "https://aistudiocdn.com/crypto@^1.0.1"
+  }
+}
+</script>
+    <script type="module" src="/index.tsx" defer></script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <div id="modal-root"></div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+              console.log('ServiceWorker registration successful with scope: ', registration.scope);
+            })
+            .catch(err => {
+              console.log('ServiceWorker registration failed: ', err);
+            });
+        });
+      }
+    </script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
