@@ -1,5 +1,3 @@
-
-
 import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req: any, res: any) {
@@ -38,7 +36,6 @@ export default async function handler(req: any, res: any) {
     
     // 2. Use Supabase Admin API to invite the user.
     // The data payload will be used by our new database trigger to link the person record.
-    // FIX: Property 'admin' does not exist on type 'SupabaseAuthClient'. Cast to any to resolve.
     const { error: inviteError } = await (supabaseAdmin.auth as any).admin.inviteUserByEmail(email, {
       data: {
         is_patient_invitation: true,

@@ -1,3 +1,4 @@
+
 import React, { FC, useState } from 'react';
 import { Allergy, MedicalHistory, Medication, LifestyleHabits, TeamMember } from '../../../types';
 import AllergiesManager from '../../client_detail/AllergiesManager';

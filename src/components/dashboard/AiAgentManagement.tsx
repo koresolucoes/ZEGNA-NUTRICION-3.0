@@ -1,4 +1,5 @@
 
+
 import React, { FC, useState, useEffect, FormEvent, useMemo } from 'react';
 import { supabase } from '../../supabase';
 import { styles } from '../../constants';
@@ -90,13 +91,15 @@ const AiAgentManagement: FC = () => {
                     get_available_slots: { enabled: false },
                     book_appointment: { enabled: false },
                 };
+                // FIX: Ensure agentData.tools is an object before spreading to avoid type errors.
+                const safeTools = agentData.tools && typeof agentData.tools === 'object' ? agentData.tools : {};
                 setAgent({ 
                     ...agentData, 
                     model_provider: agentData.model_provider || 'gemini',
                     model_name: agentData.model_name || 'gemini-2.5-flash',
                     provider_api_key: agentData.provider_api_key || '',
                     is_patient_portal_agent_active: agentData.is_patient_portal_agent_active || false,
-                    tools: agentData.tools ? {...defaultTools, ...agentData.tools} : defaultTools 
+                    tools: agentData.tools ? {...defaultTools, ...safeTools} : defaultTools 
                 });
             }
             setLoading(prev => ({ ...prev, agent: false }));
@@ -138,13 +141,17 @@ const AiAgentManagement: FC = () => {
 
     const handleToolToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, checked } = e.target;
-        setAgent(prev => ({
-            ...prev,
-            tools: {
-                ...(prev.tools || {}),
-                [name]: { enabled: checked }
-            }
-        }));
+        setAgent(prev => {
+            // FIX: Ensure prev.tools is a valid object before spreading.
+            const currentTools = (typeof prev.tools === 'object' && prev.tools && !Array.isArray(prev.tools)) ? prev.tools : {};
+            return {
+                ...prev,
+                tools: {
+                    ...currentTools,
+                    [name]: { enabled: checked }
+                }
+            };
+        });
     };
 
     const handleTestConnection = async () => {

@@ -1,3 +1,4 @@
+
 import React, { FC, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { styles } from '../../constants';
@@ -35,7 +36,8 @@ const ClinicalReferenceDetailModal: FC<ClinicalReferenceDetailModalProps> = ({ r
             }
         } else if (lastConsultation.lab_results?.[0] && item.key in lastConsultation.lab_results[0]) {
             patientValue = lastConsultation.lab_results[0][item.key as keyof typeof lastConsultation.lab_results[0]];
-        } else if (item.key in lastConsultation) {
+        // FIX: Added a check to ensure the key is not 'lab_results' to prevent assigning an array to a scalar variable.
+        } else if (item.key in lastConsultation && item.key !== 'lab_results') {
             patientValue = lastConsultation[item.key as keyof typeof lastConsultation];
         }
 

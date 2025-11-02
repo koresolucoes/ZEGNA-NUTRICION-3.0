@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 
 // This function handles POST requests to invite a user to a clinic.
@@ -34,7 +35,6 @@ export default async function handler(req: any, res: any) {
     // Use Supabase Admin API to invite a user. This sends a magic link email.
     // The `data` payload will be stored in the user's `user_metadata` upon signup,
     // which our database trigger will use to add them to the clinic.
-    // FIX: Property 'admin' does not exist on type 'SupabaseAuthClient'. Cast to any to resolve.
     const { data, error: inviteError } = await (supabaseAdmin.auth as any).admin.inviteUserByEmail(email, {
       data: {
         role: role,

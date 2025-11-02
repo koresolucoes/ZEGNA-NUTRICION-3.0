@@ -1,3 +1,4 @@
+
 import React, { FC, useState } from 'react';
 // FIX: Import the supabase client to make it available in the component.
 import { supabase } from '../../supabase';

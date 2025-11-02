@@ -1,3 +1,4 @@
+
 import React, { FC, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { styles } from '../../constants';
@@ -24,7 +25,7 @@ const LogDetailModal: FC<LogDetailModalProps> = ({ log, onClose }) => {
 
     const logTime = log.log_time;
     // FIX: Cast through `unknown` to resolve type mismatch between Supabase `Json` and `Attachment[]`.
-    const attachments = (log.attachments as unknown as Attachment[] | null) || [];
+    const attachments = (log.attachments as unknown as Attachment[]) || [];
 
     const modalContent = (
          <div style={styles.modalOverlay}>
