@@ -63,6 +63,53 @@ const ClientsPage: FC<{ isMobile: boolean; onViewDetails: (personId: string) => 
     const maxPatients = subscription?.plans?.features ? (subscription.plans.features as any).max_patients : 0;
     const isPatientLimitReached = maxPatients > 0 && clients.length >= maxPatients;
 
+    const localStyles = useMemo(() => ({
+        pageContainer: {
+            backgroundColor: 'var(--surface-color)',
+            padding: isMobile ? '1rem' : '1.5rem',
+            borderRadius: '12px',
+            marginTop: '1.5rem'
+        },
+        filterContainer: {
+            display: 'flex',
+            flexWrap: 'wrap' as 'wrap',
+            gap: '1rem',
+            padding: '1rem',
+            backgroundColor: 'var(--background-color)',
+            borderRadius: '8px',
+            marginBottom: '1.5rem',
+            alignItems: 'center',
+        },
+        th: {
+            ...styles.th,
+            textTransform: 'uppercase' as 'uppercase',
+            fontSize: '0.75rem',
+            letterSpacing: '0.05em',
+            color: 'var(--text-light)',
+        },
+        patientName: {
+            fontWeight: 600,
+            color: 'var(--text-color)',
+        },
+        patientPhone: {
+            fontSize: '0.85rem',
+            color: 'var(--text-light)',
+            marginTop: '0.25rem',
+        },
+        actionMenuItem: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            padding: '0.75rem 1rem',
+            cursor: 'pointer',
+            background: 'none',
+            border: 'none',
+            width: '100%',
+            textAlign: 'left' as const,
+            fontSize: '0.9rem',
+        },
+    }), [isMobile]);
+
     useEffect(() => {
         const handler = setTimeout(() => {
             setDebouncedSearchTerm(searchTerm);
@@ -323,53 +370,6 @@ const ClientsPage: FC<{ isMobile: boolean; onViewDetails: (personId: string) => 
             </div>
         </div>
     );
-};
-
-const localStyles: {[key: string]: React.CSSProperties} = {
-    pageContainer: {
-        backgroundColor: 'var(--surface-color)',
-        padding: isMobile ? '1rem' : '1.5rem',
-        borderRadius: '12px',
-        marginTop: '1.5rem'
-    },
-    filterContainer: {
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '1rem',
-        padding: '1rem',
-        backgroundColor: 'var(--background-color)',
-        borderRadius: '8px',
-        marginBottom: '1.5rem',
-        alignItems: 'center',
-    },
-    th: {
-        ...styles.th,
-        textTransform: 'uppercase',
-        fontSize: '0.75rem',
-        letterSpacing: '0.05em',
-        color: 'var(--text-light)',
-    },
-    patientName: {
-        fontWeight: 600,
-        color: 'var(--text-color)',
-    },
-    patientPhone: {
-        fontSize: '0.85rem',
-        color: 'var(--text-light)',
-        marginTop: '0.25rem',
-    },
-    actionMenuItem: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.75rem',
-        padding: '0.75rem 1rem',
-        cursor: 'pointer',
-        background: 'none',
-        border: 'none',
-        width: '100%',
-        textAlign: 'left',
-        fontSize: '0.9rem',
-    },
 };
 
 export default ClientsPage;
