@@ -146,10 +146,10 @@ const ClientsPage: FC<ClientsPageProps> = ({ isMobile, onViewDetails, onAddClien
     );
 
     return (
-        <div className="bg-white rounded-xl shadow-sm p-6 lg:p-8 fade-in">
+        <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)', padding: isMobile ? '1rem' : '2rem' }} className="fade-in">
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
-                <h1 className="text-2xl font-bold text-gray-800">Gerenciamento de Pacientes</h1>
+                <h1 className="text-2xl font-bold text-gray-800" style={{color: 'var(--text-color)'}}>Gerenciamento de Pacientes</h1>
                 <button onClick={onAddClient}>+ Adicionar Novo Paciente</button>
             </div>
 
@@ -186,8 +186,8 @@ const ClientsPage: FC<ClientsPageProps> = ({ isMobile, onViewDetails, onAddClien
             {/* Table */}
             {!loading && !error && (
             <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left text-gray-500">
-                    <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                <table className="w-full text-sm text-left text-gray-500" style={{color: 'var(--text-light)'}}>
+                    <thead className="text-xs text-gray-700 uppercase bg-gray-50" style={{backgroundColor: 'var(--surface-hover-color)', color: 'var(--text-light)'}}>
                         <tr>
                             <th scope="col" className="px-6 py-3">Nome Completo</th>
                             <th scope="col" className="px-6 py-3">CPF</th>
@@ -207,13 +207,13 @@ const ClientsPage: FC<ClientsPageProps> = ({ isMobile, onViewDetails, onAddClien
                             const lastConsult = lastConsultations.get(client.id);
 
                             return (
-                                <tr key={client.id} className="bg-white border-b hover:bg-gray-50">
-                                    <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
+                                <tr key={client.id} className="bg-white border-b hover:bg-gray-50" style={{backgroundColor: 'var(--surface-color)', borderBottomColor: 'var(--border-color)'}}>
+                                    <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap" style={{color: 'var(--text-color)'}}>
                                         <div className="flex items-center gap-3">
                                             <img className="w-10 h-10 rounded-full object-cover" src={client.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${client.full_name}&radius=50`} alt="Avatar" />
                                             <div>
-                                                <div className="font-semibold text-gray-800">{client.full_name}</div>
-                                                <div className="text-gray-500">{client.phone_number || client.folio}</div>
+                                                <div className="font-semibold">{client.full_name}</div>
+                                                <div style={{color: 'var(--text-light)'}}>{client.phone_number || client.folio}</div>
                                             </div>
                                         </div>
                                     </th>
@@ -226,13 +226,13 @@ const ClientsPage: FC<ClientsPageProps> = ({ isMobile, onViewDetails, onAddClien
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div ref={openMenuId === client.id ? menuRef : null} className="relative">
-                                            <button onClick={() => setOpenMenuId(openMenuId === client.id ? null : client.id)} className="p-2 rounded-full hover:bg-gray-100">
-                                                 <svg className="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>
+                                            <button onClick={() => setOpenMenuId(openMenuId === client.id ? null : client.id)} className="p-2 rounded-full hover:bg-gray-100" style={{color: 'var(--text-light)'}}>
+                                                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path></svg>
                                             </button>
                                             {openMenuId === client.id && (
-                                                <div className="absolute right-0 z-10 mt-2 w-48 bg-white rounded-md shadow-lg py-1">
-                                                    <a onClick={() => onViewDetails(client.id)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer">Ver Detalhes</a>
-                                                    <a onClick={() => onEditClient(client.id)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer">Editar</a>
+                                                <div className="absolute right-0 z-10 mt-2 w-48 rounded-md shadow-lg py-1" style={{backgroundColor: 'var(--background-color)', border: '1px solid var(--border-color)'}}>
+                                                    <a onClick={() => onViewDetails(client.id)} className="block px-4 py-2 text-sm hover:bg-gray-100 cursor-pointer" style={{color: 'var(--text-color)'}}>Ver Detalhes</a>
+                                                    <a onClick={() => onEditClient(client.id)} className="block px-4 py-2 text-sm hover:bg-gray-100 cursor-pointer" style={{color: 'var(--text-color)'}}>Editar</a>
                                                 </div>
                                             )}
                                         </div>
@@ -242,13 +242,13 @@ const ClientsPage: FC<ClientsPageProps> = ({ isMobile, onViewDetails, onAddClien
                         })}
                     </tbody>
                 </table>
-                 {paginatedClients.length === 0 && <p className="text-center p-8 text-gray-500">Nenhum paciente encontrado.</p>}
+                 {paginatedClients.length === 0 && <p className="text-center p-8" style={{color: 'var(--text-light)'}}>Nenhum paciente encontrado.</p>}
             </div>
             )}
             {/* Footer */}
             <div className="flex flex-col md:flex-row justify-between items-center mt-6 gap-4">
-                 <span className="text-sm text-gray-500">
-                    Mostrando <span className="font-semibold">{Math.min(1 + (currentPage - 1) * itemsPerPage, filteredClients.length)}</span> a <span className="font-semibold">{Math.min(currentPage * itemsPerPage, filteredClients.length)}</span> de <span className="font-semibold">{filteredClients.length}</span> resultados
+                 <span className="text-sm" style={{color: 'var(--text-light)'}}>
+                    Mostrando <span className="font-semibold" style={{color: 'var(--text-color)'}}>{Math.min(1 + (currentPage - 1) * itemsPerPage, filteredClients.length)}</span> a <span className="font-semibold" style={{color: 'var(--text-color)'}}>{Math.min(currentPage * itemsPerPage, filteredClients.length)}</span> de <span className="font-semibold" style={{color: 'var(--text-color)'}}>{filteredClients.length}</span> resultados
                 </span>
                 {totalPages > 1 && renderPagination()}
             </div>
