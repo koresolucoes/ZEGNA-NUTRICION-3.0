@@ -3,7 +3,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
 import { Clinic, NutritionistProfile, ClinicSubscription, Plan } from '../types';
 import { styles } from '../constants';
-import { applyTheme } from '../theme';
+import { useThemeManager } from './ThemeContext';
 
 interface ClinicContextType {
     clinic: Clinic | null;
@@ -23,6 +23,7 @@ export const ClinicProvider: FC<{ session: Session; children: ReactNode }> = ({ 
     const [role, setRole] = useState<string | null>(null);
     const [subscription, setSubscription] = useState<(ClinicSubscription & { plans: Plan | null }) | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const { setTheme } = useThemeManager();
 
     useEffect(() => {
         if (!session?.user) {
@@ -75,8 +76,12 @@ export const ClinicProvider: FC<{ session: Session; children: ReactNode }> = ({ 
     }, [session]);
     
     useEffect(() => {
-        applyTheme(clinic?.theme || 'default');
-    }, [clinic]);
+        if (clinic?.theme) {
+            setTheme(clinic.theme);
+        } else {
+            setTheme('default');
+        }
+    }, [clinic, setTheme]);
     
     if (isLoading) {
         return (

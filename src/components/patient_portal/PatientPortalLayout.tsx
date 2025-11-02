@@ -1,5 +1,4 @@
 import React, { FC, useState, useEffect, useCallback, useMemo } from 'react';
-// FIX: In Supabase v2, Session is exported via `import type`.
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../../supabase';
 import { ICONS } from '../../pages/AuthPage';
@@ -12,7 +11,7 @@ import MyFilesPage from '../../pages/patient_portal/MyFilesPage';
 import AppointmentsPage from '../../pages/patient_portal/AppointmentsPage';
 import ConsentModal from './ConsentModal';
 import PatientNotificationsPage from '../../pages/patient_portal/PatientNotificationsPage';
-import { applyTheme } from '../../theme';
+import { useThemeManager } from '../../contexts/ThemeContext';
 import PatientAiChatModal from './PatientAiChatModal';
 import PatientPortalFAB from './PatientPortalFAB';
 
@@ -39,6 +38,7 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
     const [error, setError] = useState<string | null>(null);
     const [showConsentModal, setShowConsentModal] = useState(false);
     const [isAiChatOpen, setIsAiChatOpen] = useState(false);
+    const { setTheme } = useThemeManager();
 
     const toggleSidebar = () => setSidebarOpen(prevState => !prevState);
 
@@ -77,14 +77,14 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
                     .eq('id', person.clinic_id)
                     .single();
                 if (clinicData) {
-                    applyTheme(clinicData.theme || 'default');
+                    setTheme(clinicData.theme || 'default');
                 }
             } else {
-                 applyTheme('default');
+                 setTheme('default');
             }
         };
         fetchClinicTheme();
-    }, [person]);
+    }, [person, setTheme]);
 
 
     const fetchData = useCallback(async (personId: string, clinicId: string) => {
@@ -186,7 +186,6 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
 
 
     const handleLogout = async () => {
-        // FIX: Correctly call signOut() from supabase.auth
         await supabase.auth.signOut({ scope: 'local' });
     };
 

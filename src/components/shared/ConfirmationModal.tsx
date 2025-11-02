@@ -5,7 +5,6 @@ import { createPortal } from 'react-dom';
 import { styles } from '../../constants';
 import { ICONS } from '../../pages/AuthPage';
 import { supabase } from '../../supabase';
-import { Database } from '../../database.types';
 
 interface ConfirmationModalProps {
     isOpen: boolean;
@@ -18,7 +17,7 @@ interface ConfirmationModalProps {
     confirmButtonClass?: 'button-danger' | 'button-primary';
     // New props for handling deletion internally
     itemToDelete?: { id: string } | null;
-    tableName?: keyof Database['public']['Tables'];
+    tableName?: string;
     onSuccess?: () => void;
 }
 
@@ -49,7 +48,6 @@ const ConfirmationModal: FC<ConfirmationModalProps> = ({
             if (onConfirm) {
                 await onConfirm();
             } else if (tableName && itemToDelete) {
-                // FIX: Changed the call to `supabase.from` to cast the generic `tableName` string to a type Supabase understands, resolving the type error with strictly typed table names.
                 const { error: dbError } = await supabase.from(tableName).delete().eq('id', itemToDelete.id);
                 if (dbError) throw dbError;
                 

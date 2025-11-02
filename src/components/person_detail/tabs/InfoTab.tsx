@@ -1,11 +1,14 @@
 import React, { FC, useRef } from 'react';
-import { Person, PatientServicePlan } from '../../../types';
+import { Person, ConsultationWithLabs, Allergy, MedicalHistory, PatientServicePlan } from '../../../types';
 import { styles } from '../../../constants';
 import PlanStatusIndicator from '../../shared/PlanStatusIndicator';
 import { ICONS } from '../../../pages/AuthPage';
 
 interface InfoTabProps {
     person: Person;
+    consultations: ConsultationWithLabs[];
+    allergies: Allergy[];
+    medicalHistory: MedicalHistory[];
     servicePlans: PatientServicePlan[];
     onRegisterConsent: () => void;
     onRevokeConsent: () => void;
@@ -17,9 +20,10 @@ interface InfoTabProps {
 }
 
 export const InfoTab: FC<InfoTabProps> = ({ 
-    person, servicePlans,
+    person, consultations, allergies, medicalHistory, servicePlans,
     onRegisterConsent, onRevokeConsent, onExportData, onUploadConsent, isUploadingConsent, openModal, onManagePlan
 }) => {
+    const latestConsultation = consultations?.[0] || null;
     const fileInputRef = useRef<HTMLInputElement>(null);
     const currentPlan = servicePlans.find(p => p.id === person.current_plan_id);
 
@@ -52,61 +56,67 @@ export const InfoTab: FC<InfoTabProps> = ({
         }
     };
 
-    const InfoBlock: FC<{title: string, value: React.ReactNode}> = ({ title, value }) => (
-        <div>
-            <p style={{...styles.detailGroupTitle, textTransform: 'uppercase'}}>{title}</p>
-            <p style={{margin: 0, fontSize: '1rem', color: 'var(--text-color)'}}>{value || '-'}</p>
-        </div>
-    );
 
     return (
-        <div className="fade-in">
+        <div style={{...styles.detailCard, marginBottom: '1rem' }} className="fade-in">
             <input type="file" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} accept=".pdf,.jpg,.jpeg,.png"/>
-            
-            <section style={{marginBottom: '2rem'}}>
-                <div className="section-header">
-                     <h2 className="section-title">Información Personal</h2>
+            <div style={styles.detailCardHeader}><h3 style={styles.detailCardTitle}>Información de la Persona</h3></div>
+            <div style={{...styles.detailCardBody, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem 2rem'}}>
+                
+                {/* Column 1: Personal & Plan */}
+                <div>
+                    <div style={styles.detailGroup}><h4 style={styles.detailGroupTitle}>Fecha de Nacimiento</h4><p style={styles.clinicalDataValue}>{person.birth_date ? new Date(person.birth_date.replace(/-/g, '/')).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No definida'}</p></div>
+                    <div style={styles.detailGroup}><h4 style={styles.detailGroupTitle}>Edad</h4><p style={styles.clinicalDataValue}>{calculateAge(person.birth_date)}</p></div>
+                    <div style={styles.detailGroup}><h4 style={styles.detailGroupTitle}>Género</h4><p style={styles.clinicalDataValue}>{person.gender === 'male' ? 'Hombre' : person.gender === 'female' ? 'Mujer' : 'No definido'}</p></div>
+                    <div style={styles.detailGroup}><h4 style={styles.detailGroupTitle}>Teléfono</h4><p style={styles.clinicalDataValue}>{person.phone_number || '-'}</p></div>
+                    <div style={styles.detailGroup}><h4 style={styles.detailGroupTitle}>Domicilio</h4><p style={styles.clinicalDataValue}>{person.address || 'No definido'}</p></div>
                 </div>
-                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1.5rem 2rem' }}>
-                    <InfoBlock title="Nombre Completo" value={person.full_name} />
-                    <InfoBlock title="Fecha de Nacimiento" value={person.birth_date ? new Date(person.birth_date.replace(/-/g, '/')).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No definida'} />
-                    <InfoBlock title="Edad" value={calculateAge(person.birth_date)} />
-                    <InfoBlock title="Género" value={person.gender === 'male' ? 'Hombre' : person.gender === 'female' ? 'Mujer' : 'No definido'} />
-                    <InfoBlock title="Teléfono" value={person.phone_number} />
-                    <InfoBlock title="Domicilio" value={person.address} />
-                    <InfoBlock title="CURP" value={person.curp} />
-                    <InfoBlock title="Folio" value={person.folio} />
-                </div>
-            </section>
-            
-            <section style={{marginBottom: '2rem'}}>
-                <div className="section-header">
-                     <h2 className="section-title">Contacto de Emergencia</h2>
-                </div>
-                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem 2rem' }}>
-                    <InfoBlock title="Nombre" value={person.emergency_contact_name} />
-                    <InfoBlock title="Teléfono" value={person.emergency_contact_phone} />
-                 </div>
-            </section>
-            
-            <section style={{marginBottom: '2rem'}}>
-                <div className="section-header">
-                    <h2 className="section-title">Suscripción</h2>
-                     <button onClick={onManagePlan} className="button-secondary">Gestionar Plan</button>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem 2rem' }}>
-                    <InfoBlock title="Plan Actual" value={currentPlan?.name || 'Sin plan asignado'} />
-                    <InfoBlock title="Estado" value={<PlanStatusIndicator planEndDate={person.subscription_end_date} />} />
-                </div>
-            </section>
 
-            <section>
-                <div className="section-header">
-                    <h2 className="section-title">Cumplimiento Legal (NOM-004 y LFPDPPP)</h2>
+                {/* Column 2: Clinical Summary & IDs */}
+                <div>
+                    <div style={styles.detailGroup}><h4 style={styles.detailGroupTitle}>Folio</h4><p style={styles.clinicalDataValue}>{person.folio || '-'}</p></div>
+                    <div style={styles.detailGroup}><h4 style={styles.detailGroupTitle}>CURP</h4><p style={styles.clinicalDataValue}>{person.curp || 'No definido'}</p></div>
+                    <div style={styles.detailGroup}><h4 style={styles.detailGroupTitle}>Último Peso</h4><p style={styles.clinicalDataValue}>{latestConsultation?.weight_kg ? `${latestConsultation.weight_kg} kg` : 'N/A'}</p></div>
+                    <div style={styles.detailGroup}><h4 style={styles.detailGroupTitle}>Último IMC</h4><p style={styles.clinicalDataValue}>{latestConsultation?.imc ? latestConsultation.imc : 'N/A'}</p></div>
                 </div>
-                <div style={{backgroundColor: 'var(--surface-hover-color)', borderRadius: '8px', padding: '1.5rem'}}>
+                
+                {/* Full-width sections */}
+                <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+                    <div style={styles.detailGroup}><h4 style={styles.detailGroupTitle}>Objetivo de Salud Principal</h4><p style={{...styles.clinicalDataValue, fontSize: '1rem'}}>{person.health_goal || 'No definido'}</p></div>
+                </div>
+
+                <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
                     <div style={styles.detailGroup}>
-                        <h4 style={styles.detailGroupTitle}>Consentimiento Informado</h4>
+                        <h4 style={styles.detailGroupTitle}>Plan de Servicio</h4>
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                            <div>
+                                <p style={{margin: 0, fontWeight: 600}}>{currentPlan?.name || 'Sin plan asignado'}</p>
+                                <PlanStatusIndicator planEndDate={person.subscription_end_date} />
+                            </div>
+                            <button onClick={onManagePlan} className="button-secondary">Gestionar Plan</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+                     <div style={styles.detailGroup}>
+                        <h4 style={styles.detailGroupTitle}>Antecedentes Heredo-familiares</h4>
+                        <p style={{...styles.clinicalDataValue, fontSize: '0.9rem', whiteSpace: 'pre-wrap', lineHeight: 1.5}}>{person.family_history || 'Sin registrar'}</p>
+                    </div>
+                </div>
+                
+                <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+                     <div style={styles.detailGroup}>
+                        <h4 style={styles.detailGroupTitle}>Contacto de Emergencia</h4>
+                        <p style={styles.clinicalDataValue}>{person.emergency_contact_name || 'No definido'}</p>
+                        <p style={{...styles.clinicalDataValue, fontSize: '1rem', color: 'var(--text-light)'}}>{person.emergency_contact_phone || ''}</p>
+                    </div>
+                </div>
+
+                {/* Compliance Section */}
+                <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--border-color)', paddingTop: '1rem', marginTop: '1rem' }}>
+                    <div style={styles.detailGroup}>
+                        <h4 style={styles.detailGroupTitle}>Consentimiento Informado (NOM-004)</h4>
                         {person.consent_given_at ? (
                             <p style={{...styles.clinicalDataValue, fontSize: '1rem', color: 'var(--primary-color)'}}>
                                 Otorgado el {new Date(person.consent_given_at).toLocaleString('es-MX', { dateStyle: 'long', timeStyle: 'short' })}
@@ -117,7 +127,7 @@ export const InfoTab: FC<InfoTabProps> = ({
                             </p>
                         )}
                         {person.consent_file_url ? (
-                            <div style={{marginTop: '1rem', padding: '1rem', backgroundColor: 'var(--background-color)', borderRadius: '8px'}}>
+                            <div style={{marginTop: '1rem', padding: '1rem', backgroundColor: 'var(--surface-hover-color)', borderRadius: '8px'}}>
                                 <p style={{margin: '0 0 0.5rem 0', fontWeight: 500}}>Documento de consentimiento firmado:</p>
                                 <div style={{display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center'}}>
                                     <a href={person.consent_file_url} target="_blank" rel="noopener noreferrer" className="button-secondary" style={{textDecoration: 'none'}}>
@@ -139,14 +149,14 @@ export const InfoTab: FC<InfoTabProps> = ({
                         )}
                     </div>
                      <div style={{...styles.detailGroup, marginTop: '1.5rem'}}>
-                        <h4 style={styles.detailGroupTitle}>Acciones de Derechos ARCO</h4>
+                        <h4 style={styles.detailGroupTitle}>Acciones de Cumplimiento (LFPDPPP)</h4>
                         <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-start'}}>
                             <button onClick={onExportData} className="button-secondary">Exportar Expediente (JSON)</button>
                             <button onClick={onRevokeConsent} className="button-danger">Revocar Consentimiento y Eliminar Datos</button>
                         </div>
                     </div>
                 </div>
-            </section>
+            </div>
         </div>
     );
 };

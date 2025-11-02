@@ -86,7 +86,7 @@ const AfiliadoLogFormPage: FC<{ logToEditId: string | null; afiliadoId: string; 
                     const { error: uploadError } = await supabase.storage.from('log_images').upload(fileName, file);
                     if (uploadError) throw uploadError;
 
-                    const { data: urlData } = supabase.storage.from('log_images').getPublicUrl(fileName);
+                    const { data: urlData } = await supabase.storage.from('log_images').getPublicUrl(fileName);
                     if (!urlData) throw new Error("Could not get public URL for file.");
                     return { name: file.name, url: urlData.publicUrl, type: file.type };
                 });

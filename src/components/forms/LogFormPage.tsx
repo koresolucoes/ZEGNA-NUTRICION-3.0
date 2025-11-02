@@ -4,7 +4,7 @@ import React, { FC, useState, useEffect, FormEvent } from 'react';
 // FIX: Import Json type to correctly cast payload for Supabase.
 import { supabase, Database, Json } from '../../supabase';
 import { styles } from '../../constants';
-import { ICONS } from '../../pages/AuthPage';
+import { ICONS } from './AuthPage';
 
 const toLocalISOString = (date: Date) => {
     const tzoffset = date.getTimezoneOffset() * 60000; //offset in milliseconds

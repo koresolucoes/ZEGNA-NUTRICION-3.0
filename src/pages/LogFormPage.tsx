@@ -1,8 +1,7 @@
 
-
 import React, { FC, useState, useEffect, FormEvent } from 'react';
 // FIX: Import Json type to correctly cast payload for Supabase.
-import { supabase, Database, Json } from '../../supabase';
+import { supabase, Database, Json } from '../supabase';
 import { styles } from '../constants';
 import { ICONS } from './AuthPage';
 

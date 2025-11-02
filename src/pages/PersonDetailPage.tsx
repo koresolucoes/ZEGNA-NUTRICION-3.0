@@ -1,24 +1,133 @@
-import React, { FC, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { FC, useState, useEffect, useCallback, useMemo, FormEvent } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
-import { Person, ConsultationWithLabs, Log, DietLog, ExerciseLog, Allergy, MedicalHistory, Medication, LifestyleHabits, DailyCheckin, File as PersonFile, NutritionistProfile, TeamMember, CareTeamMemberProfile, InternalNoteWithAuthor, DietPlanHistoryItem, AppointmentWithPerson, Clinic, PatientServicePlan, PopulatedPartnership, KnowledgeResource } from '../types';
+import { styles } from '../constants';
+import { ICONS } from './AuthPage';
+import { Person, ConsultationWithLabs, Log, DietLog, ExerciseLog, Allergy, MedicalHistory, Medication, LifestyleHabits, DailyCheckin, File as PersonFile, NutritionistProfile, TeamMember, CareTeamMemberProfile, InternalNoteWithAuthor, CareTeam, InternalNote, DietPlanHistoryItem, Appointment, AppointmentWithPerson, Clinic, PatientServicePlan, PopulatedPartnership, KnowledgeResource } from '../types';
+import { createPortal } from 'react-dom';
 
-// Import hooks and contexts
-import { useClinic } from '../contexts/ClinicContext';
-
-// Import Modals (some might be unused now but kept for potential future re-integration)
+// Shared Components
+import PlanStatusIndicator from '../components/shared/PlanStatusIndicator';
 import ConfirmationModal from '../components/shared/ConfirmationModal';
+import PatientStickyHeader from '../components/shared/PatientStickyHeader';
 import ReportModal from '../components/ReportModal';
+import ConsultingRoomModal from '../components/shared/ConsultingRoomModal';
 
-// Import placeholder for now
+// Modals
+import MealPlanGenerator from '../components/MealPlanGenerator';
+import ExercisePlanGenerator from '../components/ExercisePlanGenerator';
+import DietLogFormModal from '../components/forms/DietLogFormModal';
+import ExerciseLogFormModal from '../components/forms/ExerciseLogFormModal';
+import ConsultationDetailModal from '../components/modals/ConsultationDetailModal';
+import LogDetailModal from '../components/modals/LogDetailModal';
+import DietLogDetailModal from '../components/modals/DietLogDetailModal';
+import ExerciseLogDetailModal from '../components/modals/ExerciseLogDetailModal';
+import AllergyFormModal from '../components/forms/AllergyFormModal';
+import MedicalHistoryFormModal from '../components/forms/MedicalHistoryFormModal';
+import MedicationFormModal from '../components/forms/MedicationFormModal';
+import LifestyleFormModal from '../components/forms/LifestyleFormModal';
+import { FileUploadModal } from '../components/forms/FileUploadModal';
+import AppointmentFormModal from '../components/forms/AppointmentFormModal';
+import ReferPersonModal from '../components/person_detail/ReferPersonModal';
+import PaymentFormModal from '../components/person_detail/PaymentFormModal';
+import PlanAssignmentModal from '../components/person_detail/PlanAssignmentModal';
+
+
+// Context & Pages
+import { useClinic } from '../contexts/ClinicContext';
 import ConsultationModePage from './ConsultationModePage';
 
-const ICONS: { [key: string]: React.ReactNode } = {
-    calendar: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>,
-    print: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>,
-    addNote: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>,
-    lab: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-flask-conical"><path d="M10 2v7.31"/><path d="M14 9.31V2"/><path d="M6.6 15h10.8"/><path d="m12 9.31 5.2-2.3"/><path d="m12 9.31-5.2-2.3"/><path d="M8.2 21h7.6"/><path d="M14 21a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2"/></svg>,
-    prescription: <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pilcrow-right"><path d="M12 22v-6"/><path d="M16 16h-4"/><path d="M16 12h-4"/><path d="M16 8h-4"/><path d="M16 4h-4"/><path d="M18 22a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2Z"/></svg>,
+// Tab Components
+import { SummaryTab } from '../components/person_detail/tabs/SummaryTab';
+import { InfoTab } from '../components/person_detail/tabs/InfoTab';
+import { ClinicalHistoryTab } from '../components/person_detail/tabs/ClinicalHistoryTab';
+import { ConsultationsTab } from '../components/person_detail/tabs/ConsultationsTab';
+import { AppointmentsTab } from '../components/person_detail/tabs/AppointmentsTab';
+import { PlansTab } from '../components/person_detail/tabs/PlansTab';
+import { CalculatedPlansTab } from '../components/person_detail/tabs/CalculatedPlansTab';
+import { ProgressTab } from '../components/person_detail/tabs/ProgressTab';
+import { LogTab } from '../components/person_detail/tabs/LogTab';
+import { FilesTab } from '../components/person_detail/tabs/FilesTab';
+import { DailyTrackingTab } from '../components/person_detail/tabs/DailyTrackingTab';
+import { TeamTab } from '../components/person_detail/tabs/TeamTab';
+
+const modalRoot = document.getElementById('modal-root');
+
+// Helper to compare dates without time
+const areDatesEqual = (d1: Date, d2: Date) =>
+    d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate();
+
+// --- Invitation Modal Component ---
+const PatientInvitationModal: FC<{person: Person, clinic: Clinic, onClose: () => void}> = ({person, clinic, onClose}) => {
+    const [email, setEmail] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+    
+    const handleSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError('');
+        setSuccess('');
+
+        try {
+            const response = await fetch('/api/invite-patient', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    person_id: person.id,
+                    email: email,
+                    clinic_id: clinic.id
+                })
+            });
+
+            const result = await response.json();
+            if(!response.ok) {
+                throw new Error(result.error || 'Failed to send invitation');
+            }
+            setSuccess(result.message);
+            setTimeout(onClose, 3000); // Close modal on success after a delay
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (!modalRoot) return null;
+
+    return createPortal(
+        <div style={styles.modalOverlay}>
+            <form onSubmit={handleSubmit} style={{...styles.modalContent, maxWidth: '500px'}}>
+                <div style={styles.modalHeader}>
+                    <h2 style={styles.modalTitle}>Invitar Paciente al Portal</h2>
+                    <button type="button" onClick={onClose} style={{...styles.iconButton, border: 'none'}}>{ICONS.close}</button>
+                </div>
+                <div style={styles.modalBody}>
+                    <p>Se creará una invitación para que <strong>{person.full_name}</strong> pueda crear su cuenta y acceder a su portal personal.</p>
+                    {error && <p style={styles.error}>{error}</p>}
+                    {success && <p style={{...styles.error, backgroundColor: 'var(--primary-light)', color: 'var(--primary-dark)', borderColor: 'var(--primary-color)'}}>{success}</p>}
+                    
+                    <label htmlFor="invite-email">Correo Electrónico del Paciente*</label>
+                    <input
+                        id="invite-email"
+                        type="email"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        required
+                        disabled={!!success}
+                    />
+                </div>
+                <div style={styles.modalFooter}>
+                    <button type="button" onClick={onClose} className="button-secondary" disabled={loading}>Cancelar</button>
+                    <button type="submit" disabled={loading || !!success}>{loading ? 'Enviando...' : success ? 'Invitación Creada' : 'Crear Invitación'}</button>
+                </div>
+            </form>
+        </div>,
+        modalRoot
+    );
 };
 
 
@@ -34,48 +143,147 @@ interface PersonDetailPageProps {
     initialConsultationMode?: boolean;
 }
 
-const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, onBack, isMobile, nutritionistProfile, navigate }) => {
-    const { clinic } = useClinic();
+const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personType, onBack, isMobile, nutritionistProfile, navigate, onStartConsultation, initialConsultationMode = false }) => {
+    const { clinic, role, subscription } = useClinic();
     const [person, setPerson] = useState<Person | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     
     // Data States
+    const [activePartners, setActivePartners] = useState<PopulatedPartnership[]>([]);
     const [consultations, setConsultations] = useState<ConsultationWithLabs[]>([]);
     const [appointments, setAppointments] = useState<AppointmentWithPerson[]>([]);
     const [logs, setLogs] = useState<Log[]>([]);
+    const [allDietLogs, setAllDietLogs] = useState<DietLog[]>([]);
+    const [allExerciseLogs, setAllExerciseLogs] = useState<ExerciseLog[]>([]);
     const [allergies, setAllergies] = useState<Allergy[]>([]);
     const [medicalHistory, setMedicalHistory] = useState<MedicalHistory[]>([]);
     const [medications, setMedications] = useState<Medication[]>([]);
+    const [lifestyleHabits, setLifestyleHabits] = useState<LifestyleHabits | null>(null);
+    const [dailyCheckins, setDailyCheckins] = useState<DailyCheckin[]>([]);
+    const [files, setFiles] = useState<PersonFile[]>([]);
     const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+    const [careTeam, setCareTeam] = useState<CareTeamMemberProfile[]>([]);
+    const [internalNotes, setInternalNotes] = useState<InternalNoteWithAuthor[]>([]);
+    const [planHistory, setPlanHistory] = useState<DietPlanHistoryItem[]>([]);
+    const [servicePlans, setServicePlans] = useState<PatientServicePlan[]>([]);
+    const [persons, setPersons] = useState<Person[]>([]);
+    const [knowledgeResources, setKnowledgeResources] = useState<KnowledgeResource[]>([]);
+    
+    // UI States
+    const [activeTab, setActiveTab] = useState('resumen');
+    const [activeSubTab, setActiveSubTab] = useState('');
+    const [isConsultationMode, setConsultationMode] = useState(initialConsultationMode);
+    const [isUploadingConsent, setIsUploadingConsent] = useState(false);
+    
+    // Modal & Form States
+    const [isReferralModalOpen, setIsReferralModalOpen] = useState(false);
+    const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
+    const [editingAppointment, setEditingAppointment] = useState<AppointmentWithPerson | null>(null);
+    const [isMealPlanModalOpen, setMealPlanModalOpen] = useState(false);
+    const [isExercisePlanModalOpen, setExercisePlanModalOpen] = useState(false);
+    const [isAllergyModalOpen, setAllergyModalOpen] = useState(false);
+    const [editingAllergy, setEditingAllergy] = useState<Allergy | null>(null);
+    const [isMedicalHistoryModalOpen, setMedicalHistoryModalOpen] = useState(false);
+    const [editingMedicalHistory, setEditingMedicalHistory] = useState<MedicalHistory | null>(null);
+    const [isMedicationModalOpen, setMedicationModalOpen] = useState(false);
+    const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
+    const [isLifestyleModalOpen, setLifestyleModalOpen] = useState(false);
+    const [editingDietLog, setEditingDietLog] = useState<DietLog | null>(null);
+    const [editingExerciseLog, setEditingExerciseLog] = useState<ExerciseLog | null>(null);
+    const [isCreatingManualLog, setIsCreatingManualLog] = useState<'diet' | 'exercise' | null>(null);
+    const [isFileUploadModalOpen, setFileUploadModalOpen] = useState(false);
+    const [isReportModalOpen, setReportModalOpen] = useState(false);
+    const [modalState, setModalState] = useState<{ isOpen: boolean; action: any; idToDelete: string | null; text: string | null; fileToDeletePath?: string | null; }>({ isOpen: false, action: null, idToDelete: null, text: null, fileToDeletePath: null });
+    const [viewingConsultation, setViewingConsultation] = useState<ConsultationWithLabs | null>(null);
+    const [viewingLog, setViewingLog] = useState<Log | null>(null);
+    const [viewingDietLog, setViewingDietLog] = useState<DietLog | null>(null);
+    const [viewingExerciseLog, setViewingExerciseLog] = useState<ExerciseLog | null>(null);
+    const [isInvitationModalOpen, setIsInvitationModalOpen] = useState(false);
+    const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
+    const [appointmentToCall, setAppointmentToCall] = useState<AppointmentWithPerson | null>(null);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [isPlanModalOpen, setPlanModalOpen] = useState(false);
+
+    const hasAiFeature = useMemo(() => {
+        return subscription?.plans?.features ? (subscription.plans.features as any).ai_assistant === true : false;
+    }, [subscription]);
+
+    const memberMap = useMemo(() => new Map(teamMembers.map(m => [m.user_id, m])), [teamMembers]);
+    
+    const handleTabClick = (tab: string, defaultSubTab: string = '') => {
+        setActiveTab(tab);
+        setActiveSubTab(defaultSubTab);
+    };
 
     const fetchData = useCallback(async () => {
         if (!clinic) return;
         setLoading(true); setError(null);
         try {
-            const [ personRes, consultRes, appointmentsRes, logsRes, allergiesRes, medicalHistoryRes, medicationsRes, teamMembersRes ] = await Promise.all([
+            const [
+                personRes, consultRes, logsRes, dietRes, exerciseRes,
+                allergiesRes, medicalHistoryRes, medicationsRes, lifestyleRes, checkinsRes, filesRes,
+                teamMembersRes, careTeamRes, internalNotesRes, planHistoryRes, appointmentsRes, plansRes,
+                personsRes, partnersRes, resourcesRes
+            ] = await Promise.all([
                 supabase.from('persons').select('*').eq('id', personId).single(),
                 supabase.from('consultations').select('*, lab_results(*)').eq('person_id', personId).order('consultation_date', { ascending: false }),
-                supabase.from('appointments').select('*').eq('person_id', personId).order('start_time', { ascending: false }),
-                supabase.from('logs').select('*').eq('person_id', personId).order('created_at', { ascending: false }).limit(5),
-                supabase.from('allergies_intolerances').select('*').eq('person_id', personId),
-                supabase.from('medical_history').select('*').eq('person_id', personId),
-                supabase.from('medications').select('*').eq('person_id', personId),
-                supabase.from('team_members_with_profiles').select('*').eq('clinic_id', clinic.id)
+                supabase.from('logs').select('*').eq('person_id', personId).order('created_at', { ascending: false }),
+                supabase.from('diet_logs').select('*').eq('person_id', personId).order('log_date', { ascending: false }),
+                supabase.from('exercise_logs').select('*').eq('person_id', personId).order('log_date', { ascending: false }),
+                supabase.from('allergies_intolerances').select('*').eq('person_id', personId).order('created_at', { ascending: false }),
+                supabase.from('medical_history').select('*').eq('person_id', personId).order('created_at', { ascending: false }),
+                supabase.from('medications').select('*').eq('person_id', personId).order('created_at', { ascending: false }),
+                supabase.from('lifestyle_habits').select('*').eq('person_id', personId).single(),
+                supabase.from('daily_checkins').select('*').eq('person_id', personId).order('checkin_date', { ascending: false }),
+                supabase.from('files').select('*').eq('person_id', personId).order('created_at', { ascending: false }),
+                supabase.from('team_members_with_profiles').select('*').eq('clinic_id', clinic.id),
+                supabase.from('care_team').select('*').eq('person_id', personId),
+                supabase.from('internal_notes').select('*').eq('person_id', personId).order('created_at', { ascending: false }),
+                supabase.from('diet_plan_history').select('*').eq('person_id', personId).order('created_at', { ascending: false }),
+                supabase.from('appointments').select('*, persons(full_name, avatar_url, person_type)').eq('person_id', personId).order('start_time', { ascending: false }),
+                supabase.from('patient_service_plans').select('*').eq('clinic_id', clinic.id),
+                supabase.from('persons').select('*').eq('clinic_id', clinic.id),
+                supabase.from('clinic_ally_partnerships').select('*, allies(*)').eq('clinic_id', clinic.id).eq('status', 'active'),
+                supabase.from('knowledge_base_resources').select('title, type').eq('clinic_id', clinic.id).eq('type', 'Receta')
             ]);
-            
-            const errors = [personRes.error, consultRes.error, appointmentsRes.error, logsRes.error, allergiesRes.error, medicalHistoryRes.error, medicationsRes.error, teamMembersRes.error];
-            const firstError = errors.find(err => err && err.code !== 'PGRST116');
-            if (firstError) throw firstError;
 
+            const responses = [personRes, consultRes, logsRes, dietRes, exerciseRes, allergiesRes, medicalHistoryRes, medicationsRes, lifestyleRes, checkinsRes, filesRes, teamMembersRes, careTeamRes, internalNotesRes, planHistoryRes, appointmentsRes, plansRes, personsRes, partnersRes, resourcesRes];
+            const firstError = responses.map(res => res.error).find(err => err && err.code !== 'PGRST116'); // Ignore "no rows" for single()
+            if (firstError) throw firstError;
+            
             setPerson(personRes.data);
             setConsultations(consultRes.data || []);
-            setAppointments(appointmentsRes.data as AppointmentWithPerson[] || []);
             setLogs(logsRes.data || []);
+            setAllDietLogs(dietRes.data || []);
+            setAllExerciseLogs(exerciseRes.data || []);
             setAllergies(allergiesRes.data || []);
             setMedicalHistory(medicalHistoryRes.data || []);
             setMedications(medicationsRes.data || []);
-            setTeamMembers(teamMembersRes.data || []);
+            setLifestyleHabits(lifestyleRes.data || null);
+            setDailyCheckins(checkinsRes.data || []);
+            setFiles(filesRes.data || []);
+            setPlanHistory(planHistoryRes.data || []);
+            setAppointments(appointmentsRes.data as AppointmentWithPerson[] || []);
+            setServicePlans(plansRes.data || []);
+            setPersons(personsRes.data || []);
+            setActivePartners(partnersRes.data as PopulatedPartnership[] || []);
+            setKnowledgeResources(resourcesRes.data || []);
+            
+            const teamMembersData = teamMembersRes.data || [];
+            setTeamMembers(teamMembersData);
+            const teamMembersMap = new Map(teamMembersData.map(m => [m.user_id, m]));
+
+            const careTeamData = careTeamRes.data as CareTeam[] || [];
+            const populatedCareTeam = careTeamData.map(careMember => ({ ...careMember, team_members_with_profiles: teamMembersData.find(tm => tm.user_id === careMember.user_id) || null }));
+            setCareTeam(populatedCareTeam);
+            
+            const internalNotesData = internalNotesRes.data || [];
+            const populatedInternalNotes = internalNotesData.map(note => ({
+                ...note,
+                team_members_with_profiles: teamMembersMap.get(note.user_id) || null
+            }));
+            setInternalNotes(populatedInternalNotes as InternalNoteWithAuthor[]);
 
         } catch (err: any) {
             setError(err.message);
@@ -86,276 +294,376 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, onBack, i
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
-    if (loading) return <div className="fade-in p-8"><p>Cargando perfil del paciente...</p></div>;
-    if (error) return <div className="fade-in p-8"><p className="text-red-500 bg-red-50 p-4 rounded-md">Error: {error}</p></div>;
-    if (!person) return <div className="fade-in p-8"><p>Paciente no encontrado.</p></div>;
+    useEffect(() => {
+        if (!clinic || !personId) return;
+        const channel = supabase.channel(`person-detail-${personId}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'persons', filter: `id=eq.${personId}` }, fetchData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'consultations', filter: `person_id=eq.${personId}` }, fetchData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'logs', filter: `person_id=eq.${personId}` }, fetchData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'diet_logs', filter: `person_id=eq.${personId}` }, fetchData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'exercise_logs', filter: `person_id=eq.${personId}` }, fetchData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'allergies_intolerances', filter: `person_id=eq.${personId}` }, fetchData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'medical_history', filter: `person_id=eq.${personId}` }, fetchData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'medications', filter: `person_id=eq.${personId}` }, fetchData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'lifestyle_habits', filter: `person_id=eq.${personId}` }, fetchData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_checkins', filter: `person_id=eq.${personId}` }, fetchData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'files', filter: `person_id=eq.${personId}` }, fetchData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'care_team', filter: `person_id=eq.${personId}` }, fetchData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'internal_notes', filter: `person_id=eq.${personId}` }, fetchData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'diet_plan_history', filter: `person_id=eq.${personId}` }, fetchData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments', filter: `person_id=eq.${personId}` }, fetchData)
+            .subscribe();
+        return () => { supabase.removeChannel(channel); };
+    }, [fetchData, personId, clinic]);
 
-    return <PatientProfileView person={person} consultations={consultations} appointments={appointments} logs={logs} allergies={allergies} medicalHistory={medicalHistory} medications={medications} teamMembers={teamMembers} onBack={onBack} isMobile={isMobile} navigate={navigate} />;
-};
-
-
-// --- UI Components ---
-
-const PatientProfileView: FC<{
-    person: Person;
-    consultations: ConsultationWithLabs[];
-    appointments: AppointmentWithPerson[];
-    logs: Log[];
-    allergies: Allergy[];
-    medicalHistory: MedicalHistory[];
-    medications: Medication[];
-    teamMembers: TeamMember[];
-    onBack: () => void;
-    isMobile: boolean;
-    navigate: (page: string, context?: any) => void;
-}> = ({ person, consultations, appointments, logs, allergies, medicalHistory, medications, teamMembers, onBack, isMobile, navigate }) => {
-    
-    const [isReportModalOpen, setReportModalOpen] = useState(false);
-    
-    const latestConsultation = useMemo(() => consultations?.[0] || null, [consultations]);
-    const memberMap = useMemo(() => new Map(teamMembers.map(m => [m.user_id, m.full_name])), [teamMembers]);
-    
-    const calculateAge = (birthDate: string | null | undefined): number | null => {
-        if (!birthDate) return null;
-        const birth = new Date(birthDate);
+    const checkedInAppointmentForToday = useMemo(() => {
         const today = new Date();
-        let age = today.getFullYear() - birth.getFullYear();
-        const m = today.getMonth() - birth.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-        return age;
+        return appointments.find(a =>
+            a.status === 'checked-in' &&
+            areDatesEqual(new Date(a.start_time), today)
+        );
+    }, [appointments]);
+
+    const handleCallPatient = () => {
+        if (checkedInAppointmentForToday) {
+            setAppointmentToCall(checkedInAppointmentForToday);
+            setIsRoomModalOpen(true);
+        }
     };
-    
-    const age = calculateAge(person.birth_date);
-    
-    // --- Data for Cards ---
-    const primaryDiagnosis = medicalHistory.find(h => h.condition.toLowerCase().includes('diabetes'))?.condition || 'N/A';
-    const responsibleProfessional = latestConsultation?.nutritionist_id ? memberMap.get(latestConsultation.nutritionist_id) : 'N/A';
-    const emergencyContact = person.emergency_contact_name;
-    const emergencyPhone = person.emergency_contact_phone;
 
-    const vitals = {
-        bp: latestConsultation?.ta || 'N/A',
-        hr: '78', // Hardcoded as per design
-        glucose: latestConsultation?.lab_results?.[0]?.glucose_mg_dl || 'N/A',
-        imc: latestConsultation?.imc?.toFixed(1) || 'N/A',
+    const handleConfirmRoom = async (room: string) => {
+        if (appointmentToCall) {
+            const { error } = await supabase
+                .from('appointments')
+                .update({ status: 'called', consulting_room: room })
+                .eq('id', appointmentToCall.id);
+            if (error) {
+                setError(error.message);
+            }
+        }
+        setIsRoomModalOpen(false);
+        setAppointmentToCall(null);
     };
-    
-    const hba1cData = useMemo(() => 
-        consultations
-            .map(c => ({ date: new Date(c.consultation_date), value: c.lab_results?.[0]?.hba1c }))
-            .filter(d => d.value != null)
-            .sort((a,b) => a.date.getTime() - b.date.getTime())
-    , [consultations]);
 
-    const upcomingAppointments = useMemo(() =>
-        appointments
-            .filter(a => new Date(a.start_time) > new Date())
-            .sort((a,b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
-            .slice(0, 2)
-    , [appointments]);
-    
-    const activeMedications = useMemo(() => medications.slice(0,3), [medications]);
+    // Modal and Form Handlers
+    const handlePlanSaved = () => { setMealPlanModalOpen(false); setExercisePlanModalOpen(false); setEditingDietLog(null); setEditingExerciseLog(null); setIsCreatingManualLog(null); }
+    const handleClinicalHistorySave = () => { setAllergyModalOpen(false); setEditingAllergy(null); setMedicalHistoryModalOpen(false); setEditingMedicalHistory(null); setMedicationModalOpen(false); setEditingMedication(null); setLifestyleModalOpen(false); }
+    const handleFileUploadSuccess = () => setFileUploadModalOpen(false);
+    const openModal = (action: any, id: string, text: string, fileToDeletePath?: string) => setModalState({ isOpen: true, action, idToDelete: id, text, fileToDeletePath });
+    const closeModal = () => setModalState({ isOpen: false, action: null, idToDelete: null, text: null, fileToDeletePath: null });
 
-    return (
-        <div className="p-4 sm:p-6 lg:p-8">
-            {isReportModalOpen && <ReportModal person={person} consultations={consultations} allergies={allergies} medicalHistory={medicalHistory} onClose={() => setReportModalOpen(false)} isMobile={isMobile} clinic={null} dietLogs={[]} exerciseLogs={[]} lifestyleHabits={null} medications={medications} nutritionistProfile={null} />}
+    const handleSaveAppointment = async (formData: any) => {
+        if (!clinic) return;
+        try {
+            const payload = { clinic_id: clinic.id, user_id: formData.user_id, person_id: formData.person_id || null, title: formData.title, notes: formData.notes, status: formData.status, start_time: new Date(formData.start_time).toISOString(), end_time: new Date(formData.end_time).toISOString() };
             
-            {/* Header */}
-            <header className="mb-8">
-                <button onClick={onBack} className="button-secondary mb-4">&larr; Voltar para a lista</button>
-                <div className="flex flex-col sm:flex-row gap-6 items-start">
-                    <img src={person.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${person.full_name}`} alt="Avatar" className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md" />
-                    <div className="flex-1">
-                        <h1 className="text-3xl font-bold text-gray-800">{person.full_name}{age && `, ${age}`}</h1>
-                        <p className="text-gray-500">ID do Paciente: {person.folio || 'N/A'} &bull; {person.gender === 'female' ? 'Feminino' : 'Masculino'}</p>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                           {allergies.slice(0,1).map(allergy => <AlertBadge key={allergy.id} type="ALERTA" text={allergy.substance} />)}
-                           {medicalHistory.filter(h => h.condition.toLowerCase().includes('hipertens')).slice(0,1).map(h => <AlertBadge key={h.id} type="ALTO RISCO" text={h.condition} color="orange" />)}
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2 mt-4 sm:mt-0">
-                        <button className="button-secondary p-2 h-10 w-10">{ICONS.calendar}</button>
-                        <button onClick={() => setReportModalOpen(true)} className="button-secondary p-2 h-10 w-10">{ICONS.print}</button>
-                        <button onClick={() => navigate('log-form', { personId: person.id, personType: 'client' })}>+ Adicionar Nota</button>
-                    </div>
-                </div>
-            </header>
+            // --- GAMIFICATION LOGIC ---
+            const wasCompleted = editingAppointment?.status === 'completed';
+            const isNowCompleted = formData.status === 'completed';
+    
+            if (formData.id && !wasCompleted && isNowCompleted && formData.person_id) {
+                const { error: rpcError } = await supabase.rpc('award_points_for_consultation_attendance', {
+                    p_person_id: formData.person_id,
+                    p_appointment_id: formData.id
+                });
+                if (rpcError) console.warn('Could not award points on appointment completion:', rpcError.message);
+            }
+            // --- END GAMIFICATION ---
 
-            {/* Main Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* Main Column */}
-                <div className="lg:col-span-2 flex flex-col gap-6">
-                    <Card title="Informações Chave">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                            <InfoItem label="Diagnóstico Primário" value={primaryDiagnosis} />
-                            <InfoItem label="Médico Responsável" value={responsibleProfessional} />
-                            <InfoItem label="Contato de Emergência" value={emergencyContact} />
-                            <InfoItem label="Telefone" value={emergencyPhone} />
-                        </div>
-                    </Card>
-
-                    <Card title="Sinais Vitais e Progresso (HbA1c)">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                            <VitalSign name="Pressão Arterial" value={vitals.bp} unit="mmHg" status="Levemente alto" statusColor="orange" />
-                            <VitalSign name="Frequência Cardíaca" value={vitals.hr} unit="bpm" status="Normal" statusColor="green" />
-                            <VitalSign name="Glicemia" value={vitals.glucose} unit="mg/dL" status="Elevado" statusColor="red" />
-                            <VitalSign name="IMC" value={vitals.imc} unit="" status="Sobrepeso" statusColor="orange" />
-                        </div>
-                    </Card>
-
-                    <Card title="Progressão de HbA1c">
-                       <LineChart data={hba1cData.map(d => ({ x: d.date, y: d.value! }))} height={250} />
-                    </Card>
-                </div>
-
-                {/* Sidebar Column */}
-                <div className="flex flex-col gap-6">
-                    <Card title="Próximas Consultas">
-                        <div className="flex flex-col gap-4">
-                            {upcomingAppointments.length > 0 ? upcomingAppointments.map(appt => (
-                                <AppointmentItem key={appt.id} date={new Date(appt.start_time)} title={appt.title} doctor={teamMembers.find(m => m.user_id === appt.user_id)?.full_name || 'N/A'} />
-                            )) : <p className="text-gray-500 text-sm">Nenhuma consulta futura agendada.</p>}
-                        </div>
-                        <a href="#" className="text-blue-600 font-semibold text-sm mt-4 block text-center">Ver Todos</a>
-                    </Card>
-
-                    <Card title="Medicamentos Ativos">
-                         <div className="flex flex-col gap-3">
-                            {activeMedications.map(med => <MedicationItem key={med.id} name={med.name} dosage={med.dosage} />)}
-                        </div>
-                    </Card>
-                    
-                     <Card title="Atividade Recente">
-                        <div className="flex flex-col gap-3">
-                            {logs.map(log => <ActivityItem key={log.id} log={log} />)}
-                        </div>
-                    </Card>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-
-const Card: FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-    <div style={{backgroundColor: 'var(--surface-color)'}} className="rounded-lg shadow-sm border border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-700 p-4 border-b border-gray-200">{title}</h2>
-        <div className="p-4">{children}</div>
-    </div>
-);
-
-const AlertBadge: FC<{ type: string, text: string, color?: 'red' | 'orange' }> = ({ type, text, color = 'red' }) => {
-    const colors = {
-        red: { bg: 'bg-red-100', text: 'text-red-700', ring: 'ring-red-600/20' },
-        orange: { bg: 'bg-orange-100', text: 'text-orange-700', ring: 'ring-orange-600/20' }
+            if (formData.id) {
+                await supabase.from('appointments').update(payload).eq('id', formData.id);
+            } else {
+                const { data, error } = await supabase.from('appointments').insert(payload).select().single();
+                if (error) throw error;
+                // Award points if a new appointment is created as 'completed'
+                if (data && isNowCompleted && data.person_id) {
+                     const { error: rpcError } = await supabase.rpc('award_points_for_consultation_attendance', {
+                        p_person_id: data.person_id,
+                        p_appointment_id: data.id
+                    });
+                    if (rpcError) console.warn('Could not award points on new completed appointment:', rpcError.message);
+                }
+            }
+            setIsAppointmentModalOpen(false); setEditingAppointment(null);
+        } catch (err: any) { 
+            console.error("Error saving appointment:", err); 
+            setError(`Error al guardar cita: ${err.message}`); 
+        }
     };
-    return <span className={`inline-flex items-center gap-x-1.5 rounded-md px-2 py-1 text-xs font-medium ${colors[color].bg} ${colors[color].text} ring-1 ring-inset ${colors[color].ring}`}>
-        <svg className="h-1.5 w-1.5 fill-current" viewBox="0 0 6 6"><circle cx="3" cy="3" r="3" /></svg>
-        {type}: {text}
-    </span>
-};
+    
+    const handleDeleteAppointment = async (appointmentId: string) => {
+        try { await supabase.from('appointments').delete().eq('id', appointmentId); setIsAppointmentModalOpen(false); setEditingAppointment(null); fetchData(); } 
+        catch (err: any) { console.error("Error deleting appointment:", err); setError(`Error al eliminar cita: ${err.message}`); }
+    };
 
-const InfoItem: FC<{ label: string, value?: string | null }> = ({ label, value }) => (
-    <div>
-        <p className="text-gray-500">{label}</p>
-        <p className="font-semibold text-gray-800">{value || '-'}</p>
-    </div>
-);
+    const handleConfirm = async () => {
+        const { action, idToDelete, fileToDeletePath } = modalState;
+        if (!action || !idToDelete) return;
 
-const VitalSign: FC<{ name: string; value: string | number; unit: string; status: string; statusColor: 'green' | 'orange' | 'red' }> = ({ name, value, unit, status, statusColor }) => {
-    const colors = { green: 'text-green-600', orange: 'text-orange-500', red: 'text-red-600' };
-    return <div>
-        <p className="text-xs text-gray-500 uppercase font-semibold">{name}</p>
-        <p className="text-2xl font-bold text-gray-800">{value} <span className="text-lg font-medium text-gray-500">{unit}</span></p>
-        <p className={`text-sm font-medium ${colors[statusColor]}`}>{status}</p>
-    </div>
-};
+        if (action === 'deletePerson') {
+            const { error } = await supabase.from('persons').delete().eq('id', idToDelete);
+            if (error) {
+                setError(`Error al eliminar: ${error.message}`);
+            } else {
+                onBack(); // Go back to the list after deleting
+            }
+            closeModal();
+            return;
+        }
+        
+        if ((action === 'deleteFile' || action === 'deleteConsentFile') && fileToDeletePath) {
+            const { error: storageError } = await supabase.storage.from('files').remove([fileToDeletePath]);
+            if (storageError) { setError(`Error al eliminar el archivo del almacenamiento: ${storageError.message}`); closeModal(); return; }
+        }
 
-const AppointmentItem: FC<{ date: Date; title: string; doctor: string }> = ({ date, title, doctor }) => (
-    <div className="flex gap-4 items-center">
-        <div className="flex-shrink-0 text-center bg-blue-100 text-blue-700 font-bold p-2 rounded-lg w-16">
-            <p className="text-xl leading-none">{date.getDate()}</p>
-            <p className="text-xs uppercase">{date.toLocaleString('pt-BR', { month: 'short' })}</p>
-        </div>
-        <div>
-            <p className="font-semibold text-gray-800">{title}</p>
-            <p className="text-sm text-gray-500">{doctor} &bull; {date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
-        </div>
-    </div>
-);
-
-const MedicationItem: FC<{ name: string, dosage: string | null }> = ({ name, dosage }) => (
-    <div>
-        <p className="font-semibold text-gray-800">{name}</p>
-        <p className="text-sm text-gray-500">{dosage}</p>
-    </div>
-);
-
-const ActivityItem: FC<{ log: Log }> = ({ log }) => {
-    const timeAgo = (dateStr: string) => {
-        const date = new Date(dateStr);
-        const now = new Date();
-        const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-        let interval = seconds / 31536000;
-        if (interval > 1) return `${Math.floor(interval)} anos atrás`;
-        interval = seconds / 2592000;
-        if (interval > 1) return `${Math.floor(interval)} meses atrás`;
-        interval = seconds / 86400;
-        if (interval > 1) return `${Math.floor(interval)} dias atrás`;
-        interval = seconds / 3600;
-        if (interval > 1) return `${Math.floor(interval)} horas atrás`;
-        interval = seconds / 60;
-        if (interval > 1) return `${Math.floor(interval)} minutos atrás`;
-        return `${Math.floor(seconds)} segundos atrás`;
+        if (action === 'deleteConsentFile') {
+            const { error: dbError } = await supabase.from('persons').update({ consent_file_url: null }).eq('id', idToDelete);
+            if (dbError) setError(dbError.message);
+            closeModal();
+            return;
+        }
+        
+        const tables = { deleteLog: 'logs', deleteConsultation: 'consultations', deleteDietLog: 'diet_logs', deleteExerciseLog: 'exercise_logs', deleteAllergy: 'allergies_intolerances', deleteMedicalHistory: 'medical_history', deleteMedication: 'medications', deleteFile: 'files', deletePlanHistory: 'diet_plan_history' };
+        // @ts-ignore
+        const tableName = tables[action];
+        if (!tableName) return;
+        
+        const { error } = await supabase.from(tableName).delete().eq('id', idToDelete);
+        if (error) setError(error.message);
+        closeModal();
     }
+
+    const handleRegisterConsent = async () => {
+        if (!person) return;
+        const { error } = await supabase
+            .from('persons')
+            .update({ consent_given_at: new Date().toISOString() })
+            .eq('id', person.id);
+        if (error) {
+            setError(`Error al registrar consentimiento: ${error.message}`);
+        } else {
+            fetchData(); // Refresh data to show the new consent date
+        }
+    };
     
-    const icon = log.log_type.includes('laboratório') ? ICONS.lab : log.log_type.includes('prescrição') ? ICONS.prescription : ICONS.addNote;
+    const handleConsentFileUpload = async (file: File) => {
+        if (!person) return;
+        setIsUploadingConsent(true);
+        setError(null);
+        try {
+            const fileExt = file.name.split('.').pop();
+            const filePath = `consent-forms/${person.id}/consentimiento_firmado.${fileExt}`;
+
+            const { error: uploadError } = await supabase.storage.from('files').upload(filePath, file, { upsert: true });
+            if (uploadError) throw uploadError;
+
+            const { data: urlData } = supabase.storage.from('files').getPublicUrl(filePath);
+            const newUrl = `${urlData.publicUrl}?t=${new Date().getTime()}`;
+
+            const { error: dbError } = await supabase.from('persons').update({ consent_file_url: newUrl }).eq('id', person.id);
+            if (dbError) throw dbError;
+
+            fetchData();
+        } catch(err: any) {
+            setError(`Error al subir el documento: ${err.message}`);
+        } finally {
+            setIsUploadingConsent(false);
+        }
+    };
+
+
+    const handleRevokeConsent = () => {
+        if (!person) return;
+        openModal(
+            'deletePerson', 
+            person.id, 
+            `¿Estás seguro de que quieres revocar el consentimiento y eliminar permanentemente todos los datos de ${person.full_name}? Esta acción es irreversible y cumple con la solicitud de Cancelación de datos del paciente.`
+        );
+    };
+
+    const handleExportData = async () => {
+        if (!person) return;
+        const exportData = {
+            person,
+            consultations,
+            logs,
+            dietLogs: allDietLogs,
+            exerciseLogs: allExerciseLogs,
+            allergies,
+            medicalHistory,
+            medications,
+            lifestyleHabits,
+            dailyCheckins,
+            files,
+            careTeam,
+            internalNotes,
+            planHistory,
+            appointments,
+        };
+
+        const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
+            JSON.stringify(exportData, null, 2)
+        )}`;
+        const link = document.createElement("a");
+        link.href = jsonString;
+        link.download = `Expediente_${person.full_name.replace(/\s/g, '_')}.json`;
+        link.click();
+    };
+
+
+    const handleFinishConsultation = async () => {
+        const now = new Date();
+        const currentAppointment = appointments.find(a => 
+            ['in-consultation', 'called'].includes(a.status) &&
+            areDatesEqual(new Date(a.start_time), now)
+        );
+
+        if (currentAppointment) {
+            const { error: updateError } = await supabase
+                .from('appointments')
+                .update({ status: 'completed' })
+                .eq('id', currentAppointment.id);
+            
+            if (updateError) {
+                setError(`Error al finalizar la consulta: ${updateError.message}`);
+            } else {
+                // Award points only if the update was successful
+                if (currentAppointment.person_id) {
+                    const { error: rpcError } = await supabase.rpc('award_points_for_consultation_attendance', {
+                        p_person_id: currentAppointment.person_id,
+                        p_appointment_id: currentAppointment.id
+                    });
+
+                    if (rpcError) {
+                        console.warn('Could not award points for consultation attendance:', rpcError);
+                    }
+                }
+            }
+        } else {
+            console.warn("Se salió del modo consulta sin una cita activa para completar.");
+        }
+        
+        setConsultationMode(false);
+    };
+
+    if (loading) return <div className="fade-in"><p>Cargando datos...</p></div>;
+    if (error) return <div className="fade-in"><p style={styles.error}>Error: {error}</p></div>;
+    if (!person || !clinic) return <div className="fade-in"><p>Persona no encontrada.</p></div>;
+
+    const handleOpenClinicalHistoryModal = (type: 'allergy' | 'medical' | 'medication', item: any | null) => {
+        if (type === 'allergy') { setEditingAllergy(item); setAllergyModalOpen(true); }
+        if (type === 'medical') { setEditingMedicalHistory(item); setMedicalHistoryModalOpen(true); }
+        if (type === 'medication') { setEditingMedication(item); setMedicationModalOpen(true); }
+    };
+
+    const renderActiveTab = () => {
+        switch(activeTab) {
+            case 'resumen':
+                return <SummaryTab person={person} consultations={consultations} allergies={allergies} medicalHistory={medicalHistory} dietLogs={allDietLogs} exerciseLogs={allExerciseLogs} appointments={appointments} isMobile={isMobile} onRegisterPayment={() => setIsPaymentModalOpen(true)} />;
+            case 'expediente':
+                return (
+                    <section className="fade-in">
+                        <nav className="sub-tabs">
+                            <button className={`sub-tab-button ${activeSubTab === 'clinical_history' ? 'active' : ''}`} onClick={() => setActiveSubTab('clinical_history')}>H. Clínico</button>
+                            <button className={`sub-tab-button ${activeSubTab === 'consultations' ? 'active' : ''}`} onClick={() => setActiveSubTab('consultations')}>Consultas</button>
+                            <button className={`sub-tab-button ${activeSubTab === 'progress' ? 'active' : ''}`} onClick={() => setActiveSubTab('progress')}>Progreso</button>
+                        </nav>
+                        {activeSubTab === 'clinical_history' && <ClinicalHistoryTab allergies={allergies} medicalHistory={medicalHistory} medications={medications} lifestyleHabits={lifestyleHabits} memberMap={memberMap} onEditAllergy={(a) => handleOpenClinicalHistoryModal('allergy', a)} onEditMedicalHistory={(h) => handleOpenClinicalHistoryModal('medical', h)} onEditMedication={(m) => handleOpenClinicalHistoryModal('medication', m)} onEditLifestyle={() => setLifestyleModalOpen(true)} openModal={openModal} />}
+                        {activeSubTab === 'consultations' && <ConsultationsTab consultations={consultations} memberMap={memberMap} onAdd={() => navigate('consultation-form', { personId: person.id, personType })} onEdit={(id) => navigate('consultation-form', { personId: person.id, personType, consultationId: id })} onView={setViewingConsultation} openModal={openModal} />}
+                        {activeSubTab === 'progress' && <ProgressTab consultations={consultations} isMobile={isMobile} />}
+                    </section>
+                );
+            case 'planes':
+                 return (
+                    <section className="fade-in">
+                        <nav className="sub-tabs">
+                            <button className={`sub-tab-button ${activeSubTab === 'current_plans' ? 'active' : ''}`} onClick={() => setActiveSubTab('current_plans')}>Planes Actuales</button>
+                            <button className={`sub-tab-button ${activeSubTab === 'calculated_plans' ? 'active' : ''}`} onClick={() => setActiveSubTab('calculated_plans')}>Planes Calculados</button>
+                            <button className={`sub-tab-button ${activeSubTab === 'log_files' ? 'active' : ''}`} onClick={() => setActiveSubTab('log_files')}>Bitácora y Archivos</button>
+                            <button className={`sub-tab-button ${activeSubTab === 'daily_tracking' ? 'active' : ''}`} onClick={() => setActiveSubTab('daily_tracking')}>Auto-Registro</button>
+                        </nav>
+                        {activeSubTab === 'current_plans' && <PlansTab allDietLogs={allDietLogs} allExerciseLogs={allExerciseLogs} onGenerateMeal={() => setMealPlanModalOpen(true)} onGenerateExercise={() => setExercisePlanModalOpen(true)} onAddManualDiet={() => setIsCreatingManualLog('diet')} onAddManualExercise={() => setIsCreatingManualLog('exercise')} onEditDietLog={setEditingDietLog} onViewDietLog={setViewingDietLog} onEditExerciseLog={setEditingExerciseLog} onViewExerciseLog={setViewingExerciseLog} openModal={openModal} hasAiFeature={hasAiFeature} />}
+                        {activeSubTab === 'calculated_plans' && <CalculatedPlansTab planHistory={planHistory} navigate={navigate} openModal={openModal} />}
+                        {activeSubTab === 'log_files' && (
+                            <div>
+                                <LogTab logs={logs} memberMap={memberMap} onAdd={() => navigate('log-form', { personId: person.id, personType })} onEdit={(id) => navigate('log-form', { personId: person.id, personType, logId: id })} onView={setViewingLog} openModal={openModal} />
+                                <div style={{marginTop: '2rem'}}><FilesTab files={files} memberMap={memberMap} onAdd={() => setFileUploadModalOpen(true)} onDelete={(file) => openModal('deleteFile', file.id, `¿Eliminar el archivo "${file.file_name}"?`, file.file_path)} /></div>
+                            </div>
+                        )}
+                        {activeSubTab === 'daily_tracking' && <DailyTrackingTab checkins={dailyCheckins} />}
+                    </section>
+                 );
+            case 'gestion':
+                return (
+                    <section className="fade-in">
+                        <nav className="sub-tabs">
+                            <button className={`sub-tab-button ${activeSubTab === 'appointments' ? 'active' : ''}`} onClick={() => setActiveSubTab('appointments')}>Citas</button>
+                            <button className={`sub-tab-button ${activeSubTab === 'team' ? 'active' : ''}`} onClick={() => setActiveSubTab('team')}>Equipo y Notas</button>
+                            <button className={`sub-tab-button ${activeSubTab === 'info' ? 'active' : ''}`} onClick={() => setActiveSubTab('info')}>Información</button>
+                        </nav>
+                        {activeSubTab === 'appointments' && <AppointmentsTab appointments={appointments} memberMap={memberMap} onAdd={() => setIsAppointmentModalOpen(true)} onEdit={(a) => {setEditingAppointment(a); setIsAppointmentModalOpen(true);}} />}
+                        {activeSubTab === 'team' && <TeamTab careTeam={careTeam} allTeamMembers={teamMembers} personId={personId} isAdmin={role === 'admin'} onTeamUpdate={fetchData} internalNotes={internalNotes} user={user} />}
+                        {activeSubTab === 'info' && <InfoTab person={person} consultations={consultations} allergies={allergies} medicalHistory={medicalHistory} onRegisterConsent={handleRegisterConsent} onRevokeConsent={handleRevokeConsent} onExportData={handleExportData} onUploadConsent={handleConsentFileUpload} isUploadingConsent={isUploadingConsent} openModal={openModal} onManagePlan={() => setPlanModalOpen(true)} servicePlans={servicePlans} />}
+                    </section>
+                );
+            default: return null;
+        }
+    };
 
     return (
-        <div className="flex gap-3">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">{icon}</div>
-            <div>
-                <p className="text-sm font-medium text-gray-800">{log.description}</p>
-                <p className="text-xs text-gray-400">{timeAgo(log.created_at)}</p>
-            </div>
-        </div>
+        <>
+            {isInvitationModalOpen && <PatientInvitationModal person={person} clinic={clinic!} onClose={() => setIsInvitationModalOpen(false)} />}
+            {isPaymentModalOpen && <PaymentFormModal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} onSave={() => { setIsPaymentModalOpen(false); fetchData(); }} person={person} servicePlans={servicePlans} />}
+            {isPlanModalOpen && <PlanAssignmentModal isOpen={isPlanModalOpen} onClose={() => setPlanModalOpen(false)} onSave={() => { setPlanModalOpen(false); fetchData(); }} person={person} servicePlans={servicePlans} />}
+            {isReferralModalOpen && <ReferPersonModal isOpen={isReferralModalOpen} onClose={() => setIsReferralModalOpen(false)} person={person} lastConsultation={consultations[0] || null} activePartners={activePartners} onSuccess={() => setIsReferralModalOpen(false)} />}
+            {isAppointmentModalOpen && <AppointmentFormModal isOpen={isAppointmentModalOpen} onClose={() => { setIsAppointmentModalOpen(false); setEditingAppointment(null); }} onSave={handleSaveAppointment} onDelete={handleDeleteAppointment} appointmentToEdit={editingAppointment} personId={personId} currentUser={user} teamMembers={teamMembers} isCurrentUserAdmin={role === 'admin'} servicePlans={servicePlans} personsList={persons} />}
+            <ConfirmationModal isOpen={modalState.isOpen} onClose={closeModal} onConfirm={handleConfirm} title={`Confirmar Eliminación`} message={<p>{modalState.text}</p>} confirmText="Sí, eliminar"/>
+            {isMealPlanModalOpen && <MealPlanGenerator person={person} lastConsultation={consultations[0] || null} onClose={() => setMealPlanModalOpen(false)} onPlanSaved={()=>{handlePlanSaved();fetchData()}} knowledgeResources={knowledgeResources} />}
+            {isExercisePlanModalOpen && <ExercisePlanGenerator person={person} lastConsultation={consultations[0] || null} onClose={() => setExercisePlanModalOpen(false)} onPlanSaved={()=>{handlePlanSaved();fetchData()}} />}
+            {(editingDietLog || isCreatingManualLog === 'diet') && <DietLogFormModal logToEdit={editingDietLog} personId={personId} onClose={()=>{handlePlanSaved();fetchData()}} />}
+            {(editingExerciseLog || isCreatingManualLog === 'exercise') && <ExerciseLogFormModal logToEdit={editingExerciseLog} personId={personId} onClose={()=>{handlePlanSaved();fetchData()}} />}
+            {isAllergyModalOpen && <AllergyFormModal isOpen={isAllergyModalOpen} onClose={()=>{handleClinicalHistorySave();fetchData()}} personId={personId} allergyToEdit={editingAllergy} />}
+            {isMedicalHistoryModalOpen && <MedicalHistoryFormModal isOpen={isMedicalHistoryModalOpen} onClose={()=>{handleClinicalHistorySave();fetchData()}} personId={personId} historyToEdit={editingMedicalHistory} />}
+            {isMedicationModalOpen && <MedicationFormModal isOpen={isMedicationModalOpen} onClose={()=>{handleClinicalHistorySave();fetchData()}} personId={personId} medicationToEdit={editingMedication} />}
+            {isLifestyleModalOpen && <LifestyleFormModal isOpen={isLifestyleModalOpen} onClose={()=>{handleClinicalHistorySave();fetchData()}} personId={personId} habitsToEdit={lifestyleHabits} />}
+            {isFileUploadModalOpen && <FileUploadModal isOpen={isFileUploadModalOpen} onClose={()=>{handleFileUploadSuccess();fetchData()}} personId={personId} />}
+            {isReportModalOpen && <ReportModal person={person} consultations={consultations} dietLogs={allDietLogs} exerciseLogs={allExerciseLogs} allergies={allergies} medicalHistory={medicalHistory} medications={medications} lifestyleHabits={lifestyleHabits} onClose={() => setReportModalOpen(false)} isMobile={isMobile} nutritionistProfile={nutritionistProfile} clinic={clinic} />}
+            {viewingConsultation && <ConsultationDetailModal consultation={viewingConsultation} onClose={() => setViewingConsultation(null)} />}
+            {viewingLog && <LogDetailModal log={viewingLog} onClose={() => setViewingLog(null)} />}
+            {viewingDietLog && <DietLogDetailModal log={viewingDietLog} onClose={() => setViewingDietLog(null)} />}
+            {viewingExerciseLog && <ExerciseLogDetailModal log={viewingExerciseLog} onClose={() => setViewingExerciseLog(null)} />}
+            {isRoomModalOpen && appointmentToCall && <ConsultingRoomModal isOpen={isRoomModalOpen} onClose={() => { setIsRoomModalOpen(false); setAppointmentToCall(null); }} onConfirm={handleConfirmRoom} patientName={appointmentToCall.persons?.full_name || appointmentToCall.title} /> }
+
+            {isConsultationMode ? (
+                <ConsultationModePage person={person} personType={personType} consultations={consultations} logs={logs} dietLogs={allDietLogs} exerciseLogs={allExerciseLogs} planHistory={planHistory} appointments={appointments} allergies={allergies} medicalHistory={medicalHistory} medications={medications} lifestyleHabits={lifestyleHabits} internalNotes={internalNotes} onDataRefresh={fetchData} onExit={handleFinishConsultation} isMobile={isMobile} setViewingConsultation={setViewingConsultation} setViewingLog={setViewingLog} setViewingDietLog={setViewingDietLog} setViewingExerciseLog={setViewingExerciseLog} clinic={clinic} subscription={subscription} />
+            ) : (
+                <div className="fade-in">
+                    <PatientStickyHeader person={person} allergies={allergies} medicalHistory={medicalHistory} consultations={consultations} logs={logs} />
+                    <div style={{...styles.pageHeader, borderBottom: 'none', paddingTop: 0}}>
+                        <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap'}}>
+                            <button onClick={() => { onStartConsultation(); setConsultationMode(true); }}>Iniciar Consulta</button>
+                            {checkedInAppointmentForToday && (
+                                <button onClick={handleCallPatient} className="button-secondary">{ICONS.send} Llamar a Consulta</button>
+                            )}
+                             <button onClick={() => setIsReferralModalOpen(true)} className="button-secondary">{ICONS.send} Referir</button>
+                            {!person.user_id && personType === 'client' && (
+                                <button onClick={() => setIsInvitationModalOpen(true)} className="button-secondary">{ICONS.send} Invitar al Portal</button>
+                            )}
+                            <button onClick={() => setReportModalOpen(true)} className="button-secondary">{ICONS.print} Generar Reporte</button>
+                            <button onClick={onBack} className="button-secondary">{ICONS.back} Volver</button>
+                        </div>
+                    </div>
+                    <nav className="tabs">
+                        <button className={`tab-button ${activeTab === 'resumen' ? 'active' : ''}`} onClick={() => handleTabClick('resumen')}>Resumen</button>
+                        <button className={`tab-button ${activeTab === 'expediente' ? 'active' : ''}`} onClick={() => handleTabClick('expediente', 'clinical_history')}>Expediente Clínico</button>
+                        <button className={`tab-button ${activeTab === 'planes' ? 'active' : ''}`} onClick={() => handleTabClick('planes', 'current_plans')}>Planes y Seguimiento</button>
+                        <button className={`tab-button ${activeTab === 'gestion' ? 'active' : ''}`} onClick={() => handleTabClick('gestion', 'appointments')}>Gestión y Admin.</button>
+                    </nav>
+                    <div>{renderActiveTab()}</div>
+                </div>
+            )}
+        </>
     );
-};
-
-const LineChart: FC<{ data: {x: Date, y: number}[], height: number }> = ({ data, height }) => {
-    if (data.length < 2) return <div style={{height}} className="flex items-center justify-center text-gray-500">Dados insuficientes para o gráfico.</div>;
-
-    const width = 500;
-    const padding = { top: 20, right: 20, bottom: 30, left: 30 };
-    const chartWidth = width - padding.left - padding.right;
-    const chartHeight = height - padding.top - padding.bottom;
-
-    const values = data.map(d => d.y);
-    const dates = data.map(d => d.x.getTime());
-    const minY = Math.min(...values);
-    const maxY = Math.max(...values);
-    const minX = Math.min(...dates);
-    const maxX = Math.max(...dates);
-
-    const xScale = (date: Date) => (date.getTime() - minX) / (maxX - minX) * chartWidth;
-    const yScale = (value: number) => chartHeight - ((value - minY) / (maxY - minY)) * chartHeight;
-
-    const path = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xScale(d.x)} ${yScale(d.y)}`).join(' ');
-
-    return <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto">
-        <g transform={`translate(${padding.left}, ${padding.top})`}>
-            {/* Y-axis */}
-            <text x={-5} y={yScale(maxY)} dy="0.3em" textAnchor="end" className="text-xs fill-current text-gray-500">{maxY.toFixed(1)}</text>
-            <text x={-5} y={yScale(minY)} dy="0.3em" textAnchor="end" className="text-xs fill-current text-gray-500">{minY.toFixed(1)}</text>
-            {/* X-axis */}
-            <text x={xScale(data[0].x)} y={chartHeight + 20} textAnchor="start" className="text-xs fill-current text-gray-500">{data[0].x.toLocaleDateString('pt-BR')}</text>
-            <text x={xScale(data[data.length - 1].x)} y={chartHeight + 20} textAnchor="end" className="text-xs fill-current text-gray-500">{data[data.length-1].x.toLocaleDateString('pt-BR')}</text>
-            
-            <path d={path} fill="none" stroke="#3b82f6" strokeWidth="2" />
-             {data.map((d, i) => <circle key={i} cx={xScale(d.x)} cy={yScale(d.y)} r="3" fill="#3b82f6" />)}
-        </g>
-    </svg>
 };
 
 export default PersonDetailPage;

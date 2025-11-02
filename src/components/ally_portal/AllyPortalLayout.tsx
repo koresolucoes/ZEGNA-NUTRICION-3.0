@@ -1,5 +1,4 @@
 import React, { useState, FC, useEffect, useCallback } from 'react';
-// FIX: In Supabase v2, Session is exported via `import type`.
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../../supabase';
 import { styles } from '../../constants';
@@ -11,7 +10,7 @@ import AllyProfileEditPage from '../../pages/ally_portal/AllyProfileEditPage';
 import AllyClinicDirectoryPage from '../../pages/ally_portal/AllyClinicDirectoryPage';
 import AllyNotificationsPage from '../../pages/ally_portal/AllyNotificationsPage';
 import AllyDirectoryPage from '../../pages/ally_portal/AllyDirectoryPage';
-import { applyTheme } from '../../theme';
+import { useThemeManager } from '../../contexts/ThemeContext';
 import AffiliatesPage from '../../pages/AffiliatesPage';
 
 const AllyPortalLayout: FC<{ session: Session }> = ({ session }) => {
@@ -20,6 +19,7 @@ const AllyPortalLayout: FC<{ session: Session }> = ({ session }) => {
     const [isSidebarOpen, setSidebarOpen] = useState(!isMobile);
     const [allyProfile, setAllyProfile] = useState<Ally | null>(null);
     const [openCategory, setOpenCategory] = useState<string | null>(null);
+    const { setTheme } = useThemeManager();
 
     const fetchProfile = useCallback(async () => {
         const { data } = await supabase.from('allies').select('*').eq('user_id', session.user.id).single();
@@ -32,11 +32,11 @@ const AllyPortalLayout: FC<{ session: Session }> = ({ session }) => {
     
     useEffect(() => {
         if (allyProfile?.theme) {
-            applyTheme(allyProfile.theme);
+            setTheme(allyProfile.theme);
         } else {
-            applyTheme('default');
+            setTheme('default');
         }
-    }, [allyProfile]);
+    }, [allyProfile, setTheme]);
 
 
     useEffect(() => {
