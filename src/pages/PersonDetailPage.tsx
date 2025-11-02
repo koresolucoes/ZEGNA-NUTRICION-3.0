@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useEffect, useCallback, useMemo, FormEvent } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
@@ -47,6 +48,7 @@ import { LogTab } from '../components/person_detail/tabs/LogTab';
 import { FilesTab } from '../components/person_detail/tabs/FilesTab';
 import { DailyTrackingTab } from '../components/person_detail/tabs/DailyTrackingTab';
 import { TeamTab } from '../components/person_detail/tabs/TeamTab';
+import { SummaryTab } from '../components/person_detail/tabs/SummaryTab';
 
 const modalRoot = document.getElementById('modal-root');
 
@@ -556,7 +558,21 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
     const renderActiveTab = () => {
         switch(activeTab) {
             case 'resumen':
-                return <SummaryTab person={person} consultations={consultations} allergies={allergies} medicalHistory={medicalHistory} dietLogs={allDietLogs} exerciseLogs={allExerciseLogs} appointments={appointments} isMobile={isMobile} onRegisterPayment={() => setIsPaymentModalOpen(true)} />;
+                return <SummaryTab 
+                            person={person} 
+                            consultations={consultations} 
+                            allergies={allergies} 
+                            medicalHistory={medicalHistory} 
+                            appointments={appointments} 
+                            medications={medications}
+                            servicePlans={servicePlans}
+                            isMobile={isMobile} 
+                            onRegisterPayment={() => setIsPaymentModalOpen(true)} 
+                            onAddAppointment={() => setIsAppointmentModalOpen(true)}
+                            onAddLog={() => navigate('log-form', { personId: person.id, personType })}
+                            onPrescribe={() => handleTabClick('planes', 'current_plans')}
+                            onViewDetailed={() => handleTabClick('expediente', 'clinical_history')}
+                        />;
             case 'expediente':
                 return (
                     <section className="fade-in">
