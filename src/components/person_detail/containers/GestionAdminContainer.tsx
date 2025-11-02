@@ -1,5 +1,7 @@
 import React, { FC, useState } from 'react';
-import { Person, AppointmentWithPerson, CareTeamMemberProfile, TeamMember, InternalNoteWithAuthor, File as PersonFile, PatientServicePlan, User } from '../../../types';
+// FIX: Added `import type { User } from '@supabase/supabase-js'` to resolve the error where the 'User' type was not found in the module.
+import type { User } from '@supabase/supabase-js';
+import { Person, AppointmentWithPerson, CareTeamMemberProfile, TeamMember, InternalNoteWithAuthor, File as PersonFile, PatientServicePlan } from '../../../types';
 import { AppointmentsTab } from '../tabs/AppointmentsTab';
 import { TeamTab } from '../tabs/TeamTab';
 import { FilesTab } from '../tabs/FilesTab';

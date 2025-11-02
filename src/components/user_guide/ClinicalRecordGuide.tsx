@@ -133,7 +133,8 @@ const ClinicalRecordGuide: React.FC = () => {
                     </div>
                     <div style={headerItemStyle} title="Estado del Plan de Servicio: Indica si el plan del paciente está activo o vencido.">
                         <span style={headerLabelStyle}>Plan</span>
-                        <span style={headerValueStyle} style={{color: 'var(--primary-color)'}}>Activo</span>
+                        {/* FIX: Merged duplicate `style` attributes on a `<span>` element into a single attribute to resolve the JSX error. */}
+                        <span style={{...headerValueStyle, color: 'var(--primary-color)'}}>Activo</span>
                     </div>
                 </div>
 

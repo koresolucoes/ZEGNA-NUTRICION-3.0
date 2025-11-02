@@ -1,4 +1,5 @@
 
+
 import React, { FC, useState, useEffect, FormEvent, useMemo } from 'react';
 import { supabase } from '../../supabase';
 import { styles } from '../../constants';
@@ -138,13 +139,17 @@ const AiAgentManagement: FC = () => {
 
     const handleToolToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, checked } = e.target;
-        setAgent(prev => ({
-            ...prev,
-            tools: {
-                ...(prev.tools || {}),
-                [name]: { enabled: checked }
-            }
-        }));
+        setAgent(prev => {
+            // FIX: Added a type guard to ensure `prev.tools` is a valid object before using the spread operator, resolving a potential type error with Supabase's `Json` type.
+            const currentTools = (typeof prev.tools === 'object' && prev.tools && !Array.isArray(prev.tools)) ? prev.tools : {};
+            return {
+                ...prev,
+                tools: {
+                    ...currentTools,
+                    [name]: { enabled: checked }
+                }
+            };
+        });
     };
 
     const handleTestConnection = async () => {

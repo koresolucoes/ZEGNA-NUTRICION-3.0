@@ -1,3 +1,4 @@
+
 import React, { FC, useState, FormEvent, useEffect, useMemo } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
@@ -117,51 +118,67 @@ const SettingsPage: FC<SettingsPageProps> = ({ user, initialTab }) => {
     };
 
     const renderAccountSettings = () => (
-        <div style={{ maxWidth: '600px', marginTop: '1.5rem' }}>
-            <section style={{ marginBottom: '2.5rem' }}>
-                <h2>Cambiar Correo Electrónico</h2>
-                <p style={{color: 'var(--text-light)'}}>Correo actual: <strong>{user.email}</strong></p>
-                <form onSubmit={handleEmailUpdate}>
-                    {emailError && <p style={styles.error}>{emailError}</p>}
-                    {emailSuccess && <p style={successMessageStyle}>{emailSuccess}</p>}
-                    <label htmlFor="new-email">Nuevo Correo Electrónico</label>
-                    <input id="new-email" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} required />
-                    <button type="submit" disabled={emailLoading} style={{marginTop: '0.5rem'}}>
-                        {emailLoading ? 'Actualizando...' : 'Actualizar Correo'}
-                    </button>
-                </form>
-            </section>
-            <section style={{ marginBottom: '2.5rem' }}>
-                <h2>Cambiar Contraseña</h2>
-                <form onSubmit={handlePasswordUpdate}>
-                    {passwordError && <p style={styles.error}>{passwordError}</p>}
-                    {passwordSuccess && <p style={successMessageStyle}>{passwordSuccess}</p>}
-                    <label htmlFor="current-password">Contraseña Actual</label>
-                    <input id="current-password" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required />
-                    <label htmlFor="new-password">Nueva Contraseña</label>
-                    <input id="new-password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} required />
-                    <label htmlFor="confirm-password">Confirmar Nueva Contraseña</label>
-                    <input id="confirm-password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} minLength={6} required />
-                    <button type="submit" disabled={passwordLoading} style={{marginTop: '0.5rem'}}>
-                        {passwordLoading ? 'Cambiando...' : 'Cambiar Contraseña'}
-                    </button>
-                </form>
-            </section>
-            <hr style={{border: 'none', borderTop: '1px solid var(--border-color)', margin: '2.5rem 0'}} />
-            <section>
-                <h2>Cerrar Sesión</h2>
-                <p style={{color: 'var(--text-light)'}}>Cierra la sesión en el dispositivo actual.</p>
-                <button onClick={handleLogout} className="button-danger">{ICONS.logout} Cerrar Sesión</button>
-            </section>
+        <div style={{ maxWidth: '700px', marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <div style={styles.detailCard}>
+                <div style={styles.detailCardHeader}><h3 style={styles.detailCardTitle}>Cambiar Correo Electrónico</h3></div>
+                <div style={styles.detailCardBody}>
+                    <p style={{ marginTop: 0, color: 'var(--text-light)' }}>Tu correo actual es <strong>{user.email}</strong>. Al cambiarlo, se enviarán enlaces de confirmación a ambas direcciones.</p>
+                    <form onSubmit={handleEmailUpdate}>
+                        {emailError && <p style={styles.error}>{emailError}</p>}
+                        {emailSuccess && <p style={successMessageStyle}>{emailSuccess}</p>}
+                        <label htmlFor="new-email">Nuevo Correo Electrónico</label>
+                        <input id="new-email" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} required />
+                        <button type="submit" disabled={emailLoading} style={{ marginTop: '0.5rem', width: '100%' }}>
+                            {emailLoading ? 'Actualizando...' : 'Actualizar Correo'}
+                        </button>
+                    </form>
+                </div>
+            </div>
+    
+            <div style={styles.detailCard}>
+                <div style={styles.detailCardHeader}><h3 style={styles.detailCardTitle}>Cambiar Contraseña</h3></div>
+                <div style={styles.detailCardBody}>
+                    <form onSubmit={handlePasswordUpdate}>
+                        {passwordError && <p style={styles.error}>{passwordError}</p>}
+                        {passwordSuccess && <p style={successMessageStyle}>{passwordSuccess}</p>}
+                        <label htmlFor="current-password">Contraseña Actual</label>
+                        <input id="current-password" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required />
+                        
+                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                            <div>
+                                <label htmlFor="new-password">Nueva Contraseña</label>
+                                <input id="new-password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} required />
+                            </div>
+                            <div>
+                                <label htmlFor="confirm-password">Confirmar Nueva Contraseña</label>
+                                <input id="confirm-password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} minLength={6} required />
+                            </div>
+                        </div>
+                        
+                        <button type="submit" disabled={passwordLoading} style={{ marginTop: '1rem', width: '100%' }}>
+                            {passwordLoading ? 'Cambiando...' : 'Cambiar Contraseña'}
+                        </button>
+                    </form>
+                </div>
+            </div>
+    
+            <div style={{...styles.detailCard, borderColor: 'var(--error-color)', marginTop: '1rem'}}>
+                <div style={{...styles.detailCardHeader, backgroundColor: 'var(--error-bg)'}}><h3 style={{...styles.detailCardTitle, color: 'var(--error-color)'}}>Zona de Peligro</h3></div>
+                <div style={styles.detailCardBody}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                        <div>
+                            <h4 style={{margin: 0, color: 'var(--text-color)'}}>Cerrar Sesión</h4>
+                            <p style={{margin: '0.25rem 0 0 0', color: 'var(--text-light)'}}>Cierra la sesión en el dispositivo actual.</p>
+                        </div>
+                        <button onClick={handleLogout} className="button-danger">{ICONS.logout} Cerrar Sesión</button>
+                    </div>
+                </div>
+            </div>
         </div>
     );
     
     const renderNotificationsSettings = () => (
         <div style={{ maxWidth: '700px', marginTop: '1.5rem' }}>
-            <h2>Gestión de Notificaciones Push</h2>
-            <p style={{color: 'var(--text-light)'}}>
-                Activa las notificaciones para recibir alertas importantes en este dispositivo, como nuevas solicitudes de citas o mensajes de pacientes.
-            </p>
             <PushNotificationManager />
         </div>
     );

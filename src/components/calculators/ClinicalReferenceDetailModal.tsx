@@ -35,7 +35,8 @@ const ClinicalReferenceDetailModal: FC<ClinicalReferenceDetailModalProps> = ({ r
             }
         } else if (lastConsultation.lab_results?.[0] && item.key in lastConsultation.lab_results[0]) {
             patientValue = lastConsultation.lab_results[0][item.key as keyof typeof lastConsultation.lab_results[0]];
-        } else if (item.key in lastConsultation) {
+        // FIX: The property `lab_results` is an array. Added a check to ensure `patientValue` is not assigned an array, which was causing a type error.
+        } else if (item.key in lastConsultation && item.key !== 'lab_results') {
             patientValue = lastConsultation[item.key as keyof typeof lastConsultation];
         }
 

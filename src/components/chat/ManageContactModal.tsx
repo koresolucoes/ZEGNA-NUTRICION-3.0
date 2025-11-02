@@ -17,7 +17,8 @@ interface ManageContactModalProps {
 const modalRoot = document.getElementById('modal-root');
 
 const ManageContactModal: FC<ManageContactModalProps> = ({ isOpen, onClose, onSuccess, contact, clinicId, onDelete }) => {
-    const [persons, setPersons] = useState<Person[]>([]);
+    // FIX: Changed the state type for `persons` to `Pick<Person, 'id' | 'full_name'>[]` to match the data being selected from Supabase, resolving the type mismatch.
+    const [persons, setPersons] = useState<Pick<Person, 'id' | 'full_name'>[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
