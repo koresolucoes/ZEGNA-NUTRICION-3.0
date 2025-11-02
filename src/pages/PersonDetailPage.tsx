@@ -7,9 +7,7 @@ import { Person, ConsultationWithLabs, Log, DietLog, ExerciseLog, Allergy, Medic
 import { createPortal } from 'react-dom';
 
 // Shared Components
-import PlanStatusIndicator from '../components/shared/PlanStatusIndicator';
 import ConfirmationModal from '../components/shared/ConfirmationModal';
-import PatientStickyHeader from '../components/shared/PatientStickyHeader';
 import ReportModal from '../components/ReportModal';
 import ConsultingRoomModal from '../components/shared/ConsultingRoomModal';
 
@@ -38,7 +36,6 @@ import { useClinic } from '../contexts/ClinicContext';
 import ConsultationModePage from './ConsultationModePage';
 
 // Tab Components
-import { SummaryTab } from '../components/person_detail/tabs/SummaryTab';
 import { InfoTab } from '../components/person_detail/tabs/InfoTab';
 import { ClinicalHistoryTab } from '../components/person_detail/tabs/ClinicalHistoryTab';
 import { ConsultationsTab } from '../components/person_detail/tabs/ConsultationsTab';
@@ -381,7 +378,7 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
                         p_person_id: data.person_id,
                         p_appointment_id: data.id
                     });
-                    if (rpcError) console.warn('Could not award points on new completed appointment:', rpcError.message);
+                    if (rpcError) console.warn('Could not award points on new completed appointment:', rpcError);
                 }
             }
             setIsAppointmentModalOpen(false); setEditingAppointment(null);
@@ -610,6 +607,25 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
         }
     };
 
+    if (isConsultationMode) {
+        return (
+            <ConsultationModePage 
+                person={person} personType={personType} consultations={consultations} 
+                logs={logs} dietLogs={allDietLogs} exerciseLogs={allExerciseLogs} planHistory={planHistory}
+                appointments={appointments} allergies={allergies} medicalHistory={medicalHistory} 
+                medications={medications} lifestyleHabits={lifestyleHabits} internalNotes={internalNotes} 
+                onDataRefresh={fetchData} onExit={handleFinishConsultation} isMobile={isMobile}
+                setViewingConsultation={setViewingConsultation}
+                setViewingLog={setViewingLog}
+                setViewingDietLog={setViewingDietLog}
+                setViewingExerciseLog={setViewingExerciseLog}
+                clinic={clinic}
+                subscription={subscription}
+            />
+        );
+    }
+    
+    // Default view (non-consultation mode)
     return (
         <>
             {isInvitationModalOpen && <PatientInvitationModal person={person} clinic={clinic!} onClose={() => setIsInvitationModalOpen(false)} />}
@@ -634,36 +650,21 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
             {viewingExerciseLog && <ExerciseLogDetailModal log={viewingExerciseLog} onClose={() => setViewingExerciseLog(null)} />}
             {isRoomModalOpen && appointmentToCall && <ConsultingRoomModal isOpen={isRoomModalOpen} onClose={() => { setIsRoomModalOpen(false); setAppointmentToCall(null); }} onConfirm={handleConfirmRoom} patientName={appointmentToCall.persons?.full_name || appointmentToCall.title} /> }
 
-            {isConsultationMode ? (
-                <ConsultationModePage person={person} personType={personType} consultations={consultations} logs={logs} dietLogs={allDietLogs} exerciseLogs={allExerciseLogs} planHistory={planHistory} appointments={appointments} allergies={allergies} medicalHistory={medicalHistory} medications={medications} lifestyleHabits={lifestyleHabits} internalNotes={internalNotes} onDataRefresh={fetchData} onExit={handleFinishConsultation} isMobile={isMobile} setViewingConsultation={setViewingConsultation} setViewingLog={setViewingLog} setViewingDietLog={setViewingDietLog} setViewingExerciseLog={setViewingExerciseLog} clinic={clinic} subscription={subscription} />
-            ) : (
-                <div className="fade-in">
-                    <PatientStickyHeader person={person} allergies={allergies} medicalHistory={medicalHistory} consultations={consultations} logs={logs} />
-                    <div style={{...styles.pageHeader, borderBottom: 'none', paddingTop: 0}}>
-                        <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap'}}>
-                            <button onClick={() => { onStartConsultation(); setConsultationMode(true); }}>Iniciar Consulta</button>
-                            {checkedInAppointmentForToday && (
-                                <button onClick={handleCallPatient} className="button-secondary">{ICONS.send} Llamar a Consulta</button>
-                            )}
-                             <button onClick={() => setIsReferralModalOpen(true)} className="button-secondary">{ICONS.send} Referir</button>
-                            {!person.user_id && personType === 'client' && (
-                                <button onClick={() => setIsInvitationModalOpen(true)} className="button-secondary">{ICONS.send} Invitar al Portal</button>
-                            )}
-                            <button onClick={() => setReportModalOpen(true)} className="button-secondary">{ICONS.print} Generar Reporte</button>
-                            <button onClick={onBack} className="button-secondary">{ICONS.back} Volver</button>
-                        </div>
-                    </div>
-                    <nav className="tabs">
-                        <button className={`tab-button ${activeTab === 'resumen' ? 'active' : ''}`} onClick={() => handleTabClick('resumen')}>Resumen</button>
-                        <button className={`tab-button ${activeTab === 'expediente' ? 'active' : ''}`} onClick={() => handleTabClick('expediente', 'clinical_history')}>Expediente Clínico</button>
-                        <button className={`tab-button ${activeTab === 'planes' ? 'active' : ''}`} onClick={() => handleTabClick('planes', 'current_plans')}>Planes y Seguimiento</button>
-                        <button className={`tab-button ${activeTab === 'gestion' ? 'active' : ''}`} onClick={() => handleTabClick('gestion', 'appointments')}>Gestión y Admin.</button>
-                    </nav>
-                    <div>{renderActiveTab()}</div>
+            <div className="fade-in">
+                <div style={{...styles.pageHeader, borderBottom: 'none', paddingTop: 0}}>
+                    {/* Header buttons are now inside the Summary Tab */}
                 </div>
-            )}
+                <nav className="tabs">
+                    <button className={`tab-button ${activeTab === 'resumen' ? 'active' : ''}`} onClick={() => handleTabClick('resumen')}>Resumen</button>
+                    <button className={`tab-button ${activeTab === 'expediente' ? 'active' : ''}`} onClick={() => handleTabClick('expediente', 'clinical_history')}>Expediente Clínico</button>
+                    <button className={`tab-button ${activeTab === 'planes' ? 'active' : ''}`} onClick={() => handleTabClick('planes', 'current_plans')}>Planes y Seguimiento</button>
+                    <button className={`tab-button ${activeTab === 'gestion' ? 'active' : ''}`} onClick={() => handleTabClick('gestion', 'appointments')}>Gestión y Admin.</button>
+                </nav>
+                <div>{renderActiveTab()}</div>
+            </div>
         </>
     );
 };
 
 export default PersonDetailPage;
+```
