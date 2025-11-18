@@ -90,13 +90,16 @@ const AiAgentManagement: FC = () => {
                     get_available_slots: { enabled: false },
                     book_appointment: { enabled: false },
                 };
+                // FIX: Cast agentData.tools to Record<string, any> to allow spreading
+                const existingTools = (agentData.tools as unknown as Record<string, any>) || {};
+                
                 setAgent({ 
                     ...agentData, 
                     model_provider: agentData.model_provider || 'gemini',
                     model_name: agentData.model_name || 'gemini-2.5-flash',
                     provider_api_key: agentData.provider_api_key || '',
                     is_patient_portal_agent_active: agentData.is_patient_portal_agent_active || false,
-                    tools: agentData.tools ? {...defaultTools, ...agentData.tools} : defaultTools 
+                    tools: { ...defaultTools, ...existingTools }
                 });
             }
             setLoading(prev => ({ ...prev, agent: false }));
@@ -141,7 +144,7 @@ const AiAgentManagement: FC = () => {
         setAgent(prev => ({
             ...prev,
             tools: {
-                ...(prev.tools || {}),
+                ...(prev.tools as unknown as Record<string, any> || {}),
                 [name]: { enabled: checked }
             }
         }));

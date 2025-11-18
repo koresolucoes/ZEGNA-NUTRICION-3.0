@@ -1,10 +1,10 @@
-
 import React, { FC, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../supabase';
 import { styles } from '../../constants';
 import { ICONS } from '../AuthPage';
 import { Person, PopulatedReferral } from '../../types';
 import ConfirmationModal from '../../components/shared/ConfirmationModal';
+import SkeletonLoader from '../../components/shared/SkeletonLoader';
 
 const calculateAge = (birthDate: string | null | undefined): string => {
     if (!birthDate) return 'N/A';
@@ -111,7 +111,7 @@ const AllyReferralsPage: FC = () => {
     const filteredReferrals = referrals.filter(r => r.status === activeStatusTab);
     
     const renderReferralsList = (referralsToRender: PopulatedReferral[]) => {
-        if (loading) return <p>Cargando referidos...</p>;
+        if (loading) return <SkeletonLoader type="card" count={4} />;
         if (error) return <p style={styles.error}>{error}</p>;
         if (referralsToRender.length === 0) return <p>No hay referidos en esta categoría.</p>;
 

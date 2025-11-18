@@ -88,11 +88,12 @@ const PushNotificationManager: FC = () => {
             if (!user) throw new Error('Usuario no autenticado.');
 
             // Use upsert to handle new subscriptions or updates for the same device
+            // FIX: Cast sub.toJSON() to any to avoid PushSubscriptionJSON vs Json type mismatch
             const { error: dbError } = await supabase
                 .from('push_subscriptions')
                 .upsert({
                     user_id: user.id,
-                    subscription_object: sub.toJSON(),
+                    subscription_object: sub.toJSON() as any,
                     endpoint: sub.endpoint,
                 }, { onConflict: 'endpoint' });
 

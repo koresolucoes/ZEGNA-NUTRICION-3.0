@@ -1,3 +1,5 @@
+
+
 export type Json =
   | string
   | number
@@ -39,6 +41,125 @@ export type Database = {
   }
   public: {
     Tables: {
+      affiliate_events: {
+        Row: {
+          affiliate_link_id: string
+          commission_amount: number | null
+          created_at: string
+          id: string
+          referred_clinic_id: string
+          referred_user_id: string
+          status: string
+          subscription_payment_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          affiliate_link_id: string
+          commission_amount?: number | null
+          created_at?: string
+          id?: string
+          referred_clinic_id: string
+          referred_user_id: string
+          status?: string
+          subscription_payment_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          affiliate_link_id?: string
+          commission_amount?: number | null
+          created_at?: string
+          id?: string
+          referred_clinic_id?: string
+          referred_user_id?: string
+          status?: string
+          subscription_payment_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_events_affiliate_link_id_fkey"
+            columns: ["affiliate_link_id"]
+            isOneToOne: false
+            referencedRelation: "affiliate_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_events_referred_clinic_id_fkey"
+            columns: ["referred_clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliate_links: {
+        Row: {
+          clicks: number
+          code: string
+          created_at: string
+          id: string
+          program_id: string
+          user_id: string
+        }
+        Insert: {
+          clicks?: number
+          code: string
+          created_at?: string
+          id?: string
+          program_id: string
+          user_id: string
+        }
+        Update: {
+          clicks?: number
+          code?: string
+          created_at?: string
+          id?: string
+          program_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_links_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "affiliate_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliate_programs: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_days: number | null
+          id: string
+          is_active: boolean
+          name: string
+          reward_type: string
+          reward_value: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_days?: number | null
+          id?: string
+          is_active?: boolean
+          name: string
+          reward_type: string
+          reward_value: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_days?: number | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          reward_type?: string
+          reward_value?: number
+        }
+        Relationships: []
+      }
       ai_agents: {
         Row: {
           api_key: string | null
@@ -288,6 +409,44 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "persons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      beta_feedback: {
+        Row: {
+          clinic_id: string | null
+          contact_allowed: boolean
+          created_at: string
+          feedback_type: string
+          id: string
+          message: string
+          user_id: string
+        }
+        Insert: {
+          clinic_id?: string | null
+          contact_allowed?: boolean
+          created_at?: string
+          feedback_type: string
+          id?: string
+          message: string
+          user_id: string
+        }
+        Update: {
+          clinic_id?: string | null
+          contact_allowed?: boolean
+          created_at?: string
+          feedback_type?: string
+          id?: string
+          message?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beta_feedback_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
             referencedColumns: ["id"]
           },
         ]
@@ -582,6 +741,7 @@ export type Database = {
           operating_schedule: Json | null
           owner_id: string
           phone_number: string | null
+          referred_by_code: string | null
           rfc: string | null
           theme: string | null
           website: string | null
@@ -600,6 +760,7 @@ export type Database = {
           operating_schedule?: Json | null
           owner_id: string
           phone_number?: string | null
+          referred_by_code?: string | null
           rfc?: string | null
           theme?: string | null
           website?: string | null
@@ -618,6 +779,7 @@ export type Database = {
           operating_schedule?: Json | null
           owner_id?: string
           phone_number?: string | null
+          referred_by_code?: string | null
           rfc?: string | null
           theme?: string | null
           website?: string | null
@@ -1495,6 +1657,35 @@ export type Database = {
         }
         Relationships: []
       }
+      patient_groups: {
+        Row: {
+          clinic_id: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          clinic_id: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          clinic_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_groups_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_invitations: {
         Row: {
           clinic_id: string
@@ -1691,6 +1882,7 @@ export type Database = {
           normalized_name: string | null
           normalized_phone_number: string | null
           notes: string | null
+          patient_group_id: string | null
           person_type: string
           phone_number: string | null
           rfc: string | null
@@ -1724,6 +1916,7 @@ export type Database = {
           normalized_name?: string | null
           normalized_phone_number?: string | null
           notes?: string | null
+          patient_group_id?: string | null
           person_type: string
           phone_number?: string | null
           rfc?: string | null
@@ -1757,6 +1950,7 @@ export type Database = {
           normalized_name?: string | null
           normalized_phone_number?: string | null
           notes?: string | null
+          patient_group_id?: string | null
           person_type?: string
           phone_number?: string | null
           rfc?: string | null
@@ -1777,6 +1971,13 @@ export type Database = {
             columns: ["current_plan_id"]
             isOneToOne: false
             referencedRelation: "patient_service_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "persons_patient_group_id_fkey"
+            columns: ["patient_group_id"]
+            isOneToOne: false
+            referencedRelation: "patient_groups"
             referencedColumns: ["id"]
           },
         ]
@@ -2104,6 +2305,51 @@ export type Database = {
           },
         ]
       }
+      shared_subscriptions: {
+        Row: {
+          created_at: string
+          end_date: string
+          group_id: string
+          id: string
+          plan_id: string
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          group_id: string
+          id?: string
+          plan_id: string
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          group_id?: string
+          id?: string
+          plan_id?: string
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_subscriptions_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: true
+            referencedRelation: "patient_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shared_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "patient_service_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_connections: {
         Row: {
           clinic_id: string
@@ -2358,6 +2604,12 @@ export type Database = {
           website: string | null
         }
       }
+      create_user_affiliate_link: {
+        Args: {
+          p_program_id: string
+        }
+        Returns: Json
+      }
       from_binary: {
         Args: { "": string } | { "": unknown }
         Returns: string
@@ -2432,6 +2684,10 @@ export type Database = {
       max_inner_product: {
         Args: { "": string } | { "": unknown }
         Returns: number
+      }
+      process_affiliate_commission: {
+        Args: Record<PropertyKey, never>
+        Returns: unknown
       }
       reject_referral_request: {
         Args: { p_request_id: string }
@@ -2557,12 +2813,12 @@ export type Tables<
     | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
     | { schema: keyof Database },
   TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-        Database[PublicTableNameOrOptions["schema"]]["Views"])
+    ? keyof ((Database[PublicTableNameOrOptions["schema"]] extends { "Tables": infer T } ? T : never) &
+        (Database[PublicTableNameOrOptions["schema"]] extends { "Views": infer V } ? V : never))
     : never = never,
 > = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+  ? ((Database[PublicTableNameOrOptions["schema"]] extends { "Tables": infer T } ? T : never) &
+      (Database[PublicTableNameOrOptions["schema"]] extends { "Views": infer V } ? V : never))[TableName] extends {
       Row: infer R
     }
     ? R
@@ -2582,10 +2838,10 @@ export type TablesInsert<
     | keyof PublicSchema["Tables"]
     | { schema: keyof Database },
   TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    ? keyof (Database[PublicTableNameOrOptions["schema"]] extends { "Tables": infer T } ? T : never)
     : never = never,
 > = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+  ? (Database[PublicTableNameOrOptions["schema"]] extends { "Tables": infer T } ? T : never)[TableName] extends {
       Insert: infer I
     }
     ? I
@@ -2603,10 +2859,10 @@ export type TablesUpdate<
     | keyof PublicSchema["Tables"]
     | { schema: keyof Database },
   TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    ? keyof (Database[PublicTableNameOrOptions["schema"]] extends { "Tables": infer T } ? T : never)
     : never = never,
 > = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+  ? (Database[PublicTableNameOrOptions["schema"]] extends { "Tables": infer T } ? T : never)[TableName] extends {
       Update: infer U
     }
     ? U
@@ -2624,10 +2880,10 @@ export type Enums<
     | keyof PublicSchema["Enums"]
     | { schema: keyof Database },
   EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof (Database[PublicEnumNameOrOptions["schema"]] extends { "Enums": infer E } ? E : never)
     : never = never,
 > = PublicEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  ? (Database[PublicEnumNameOrOptions["schema"]] extends { "Enums": infer E } ? E : never)[EnumName]
   : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
     ? PublicSchema["Enums"][PublicEnumNameOrOptions]
     : never

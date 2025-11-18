@@ -1,5 +1,4 @@
 
-
 import React, { FC, useState, useEffect, useMemo, useRef, FormEvent, ReactNode } from 'react';
 import { supabase } from '../supabase';
 import { styles } from '../constants';
@@ -101,8 +100,8 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
         const findFirstLabValue = (key: 'glucose_mg_dl' | 'cholesterol_mg_dl' | 'triglycerides_mg_dl' | 'hba1c') => {
             for (const c of consultations) {
                 const lab_results = c.lab_results;
-                if (lab_results && lab_results.length > 0 && lab_results[0][key] != null) {
-                    return lab_results[0][key];
+                if (lab_results && lab_results.length > 0 && (lab_results[0] as any)[key] != null) {
+                    return (lab_results[0] as any)[key];
                 }
             }
             return null;
@@ -231,13 +230,33 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
             if (searchLower) {
                 let contentToSearch = '';
                 switch (item.type) {
-                    case 'consultation': contentToSearch = `consulta ${item.notes || ''} ${item.weight_kg || ''}`; break;
-                    case 'log': contentToSearch = `${item.log_type || ''} ${item.description || ''}`; break;
-                    case 'diet': contentToSearch = `plan alimenticio ${item.desayuno || ''} ${item.comida || ''} ${item.cena || ''}`; break;
-                    case 'exercise':
-                        const exercises = (item.ejercicios as any[] || []).map(e => e.nombre).join(' ');
-                        contentToSearch = `rutina ${item.enfoque || ''} ${exercises}`; break;
-                    case 'diet_plan_history': contentToSearch = `plan calculado ${(item as DietPlanHistoryItem).person_name || ''}`; break;
+                    case 'consultation': {
+                        const c = item as unknown as ConsultationWithLabs;
+                        contentToSearch = `consulta ${c.notes || ''} ${c.weight_kg || ''}`; 
+                        break;
+                    }
+                    case 'log': {
+                         const l = item as unknown as Log;
+                         contentToSearch = `${l.log_type || ''} ${l.description || ''}`; 
+                         break;
+                    }
+                    case 'diet': {
+                        const d = item as unknown as DietLog;
+                        contentToSearch = `plan alimenticio ${d.desayuno || ''} ${d.comida || ''} ${d.cena || ''}`; 
+                        break;
+                    }
+                    case 'exercise': {
+                        const e = item as unknown as ExerciseLog;
+                        // Safe cast for exercises array
+                        const exercises = (e.ejercicios as any[] || []).map(ex => ex.nombre).join(' ');
+                        contentToSearch = `rutina ${e.enfoque || ''} ${exercises}`; 
+                        break;
+                    }
+                    case 'diet_plan_history': {
+                        const p = item as unknown as DietPlanHistoryItem;
+                        contentToSearch = `plan calculado ${p.person_name || ''}`; 
+                        break;
+                    }
                 }
                 if (!contentToSearch.toLowerCase().includes(searchLower)) {
                     return false;
@@ -336,7 +355,9 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                 break;
             case 'diet':
                  displayText = `Dieta ${formatDate(item.date)}`;
-                fullText = `Plan Alimenticio (${formatDate(item.date)}): ${['desayuno', 'comida', 'cena'].map(m => item[m] ? `${m.charAt(0).toUpperCase()}${m.slice(1)}: ${item[m]}` : '').filter(Boolean).join('. ')}`;
+                // FIX: Type assertion for DietLog keys access
+                 const dietLog = item as DietLog;
+                fullText = `Plan Alimenticio (${formatDate(item.date)}): ${['desayuno', 'comida', 'cena'].map(m => (dietLog as any)[m] ? `${m.charAt(0).toUpperCase()}${m.slice(1)}: ${(dietLog as any)[m]}` : '').filter(Boolean).join('. ')}`;
                 break;
             case 'exercise':
                 displayText = `Rutina ${formatDate(item.date)}`;
@@ -419,8 +440,6 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
             </div>
         </div>
     );
-
-    // FIX: Remove unused and erroneous handleFinishConsultation function. The onExit prop from the parent component handles this logic correctly.
 
     return (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'var(--background-color)', zIndex: 1000, display: 'flex', flexDirection: 'column' }}>

@@ -1,5 +1,4 @@
 
-
 import React, { FC, useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { useClinic } from '../contexts/ClinicContext';
@@ -115,11 +114,11 @@ const FinanzasPage: FC<{ isMobile: boolean; navigate: (page: string, context?: a
             return acc;
         }, {} as Record<string, number>);
 
-        const servicesDistribution = paidPayments.reduce((acc, p) => {
+        const servicesDistribution = paidPayments.reduce((acc: Record<string, number>, p: any) => {
              const serviceName = p.services?.name || 'Otros';
-             // FIX: Explicitly cast `p.amount` to a number using `Number()` to prevent
-             // a TypeError during the arithmetic operation, as its type can be string or number.
-             acc[serviceName] = (acc[serviceName] || 0) + Number(p.amount);
+             const currentVal = acc[serviceName] || 0;
+             // FIX: Explicitly cast `p.amount` to a number using `Number()` and ensure arithmetic operands are numbers
+             acc[serviceName] = currentVal + Number(p.amount);
              return acc;
         }, {} as Record<string, number>);
 

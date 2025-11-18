@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useEffect, useCallback, FormEvent } from 'react';
 import { supabase } from '../../supabase';
 import { styles } from '../../constants';
@@ -23,7 +24,10 @@ const PatientGroupFormModal: FC<{
     useEffect(() => {
         if (groupToEdit) {
             setName(groupToEdit.name);
-            setSelectedPersonIds(new Set(groupToEdit.persons.map(p => p.id)));
+            // Explicitly cast mapped IDs to string[] to satisfy Set constructor
+            const persons = (groupToEdit.persons || []) as any[];
+            const ids = persons.map(p => String(p.id));
+            setSelectedPersonIds(new Set(ids));
         } else {
             setName('');
             setSelectedPersonIds(new Set());
@@ -57,11 +61,21 @@ const PatientGroupFormModal: FC<{
             if (groupError) throw groupError;
 
             // 2. Determine who to add and who to remove
-            const originalMemberIds = new Set(groupToEdit?.persons.map(p => p.id) || []);
-            const newMemberIds = selectedPersonIds;
+            // FIX: Use Array.from on Set to avoid type errors and cast to any to access properties
+            const currentGroupPersons = (groupToEdit?.persons || []) as any[];
+            const originalMemberIds = new Set(currentGroupPersons.map(p => String(p.id)));
             
-            const idsToAdd = Array.from(newMemberIds).filter(id => !originalMemberIds.has(id));
-            const idsToRemove = Array.from(originalMemberIds).filter(id => !newMemberIds.has(id));
+            // Calculate additions and removals
+            const idsToAdd: string[] = [];
+            const idsToRemove: string[] = [];
+
+            selectedPersonIds.forEach(id => {
+                if (!originalMemberIds.has(id)) idsToAdd.push(id);
+            });
+            
+            originalMemberIds.forEach(id => {
+                if (!selectedPersonIds.has(id)) idsToRemove.push(id);
+            });
 
             // 3. Update persons table
             if (idsToRemove.length > 0) {
@@ -221,7 +235,7 @@ const PatientGroupsManagement: FC = () => {
             if (personsRes.error) throw personsRes.error;
             if (plansRes.error) throw plansRes.error;
 
-            setGroups(groupsRes.data as PopulatedPatientGroup[] || []);
+            setGroups(groupsRes.data as unknown as PopulatedPatientGroup[] || []);
             setAllPersons(personsRes.data || []);
             setServicePlans(plansRes.data || []);
         } catch (err: any) {

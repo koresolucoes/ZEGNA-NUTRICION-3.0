@@ -6,6 +6,7 @@ import { PopulatedPartnership, PopulatedReferral, Ally, Person } from '../types'
 import ConfirmationModal from '../components/shared/ConfirmationModal';
 import { useClinic } from '../contexts/ClinicContext';
 import AllyDetailsModal from '../components/collaborators/AllyDetailsModal';
+import SkeletonLoader from '../components/shared/SkeletonLoader';
 
 // --- MODAL PARA ENVIAR REFERIDO ---
 const SendReferralModal: FC<{
@@ -260,7 +261,7 @@ const CollaboratorsPage: FC<{ isMobile: boolean; onAddCollaborator: () => void; 
             const errors = [partnershipsRes.error, receivedRes.error, sentRes.error, personsRes.error].filter(Boolean);
             if (errors.length > 0) throw errors[0];
             
-            setPersons(personsRes.data || []);
+            setPersons(personsRes.data as unknown as Person[] || []);
             const currentPartnerships: PopulatedPartnership[] = partnershipsRes.data || [];
             setPartnerships(currentPartnerships);
             
@@ -548,7 +549,7 @@ const CollaboratorsPage: FC<{ isMobile: boolean; onAddCollaborator: () => void; 
             </nav>
             
             <div className="fade-in" style={{marginTop: '1.5rem'}}>
-                {loading && <p>Cargando datos...</p>}
+                {loading && <SkeletonLoader type={isMobile ? 'card' : 'table'} count={6} />}
                 {error && <p style={styles.error}>{error}</p>}
                 {!loading && !error && (
                     <>

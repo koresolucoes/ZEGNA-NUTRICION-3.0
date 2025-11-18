@@ -1,3 +1,4 @@
+
 import React, { FC, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { styles } from '../../constants';
@@ -34,9 +35,14 @@ const ClinicalReferenceDetailModal: FC<ClinicalReferenceDetailModalProps> = ({ r
                 }
             }
         } else if (lastConsultation.lab_results?.[0] && item.key in lastConsultation.lab_results[0]) {
-            patientValue = lastConsultation.lab_results[0][item.key as keyof typeof lastConsultation.lab_results[0]];
+            // Safe access with type assertion or keyof check
+             const labResults = lastConsultation.lab_results[0] as any;
+             patientValue = labResults[item.key];
         } else if (item.key in lastConsultation) {
-            patientValue = lastConsultation[item.key as keyof typeof lastConsultation];
+            const val = (lastConsultation as any)[item.key];
+            if (typeof val === 'string' || typeof val === 'number') {
+                patientValue = val;
+            }
         }
 
         if (patientValue === null || patientValue === undefined) return { value: null, isOutOfRange: false };

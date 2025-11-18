@@ -4,6 +4,7 @@ import { styles } from '../../constants';
 import { ICONS } from '../AuthPage';
 import { Clinic } from '../../types';
 import ClinicDetailsModal from '../../components/ally_portal/ClinicDetailsModal';
+import SkeletonLoader from '../../components/shared/SkeletonLoader';
 
 // Define a type for partnership status for easier mapping
 type PartnershipStatusMap = { [clinicId: string]: 'pending' | 'active' | 'revoked' | 'none' };
@@ -36,7 +37,7 @@ const AllyClinicDirectoryPage: FC = () => {
             if (clinicsRes.error) throw clinicsRes.error;
             if (partnershipsRes.error) throw partnershipsRes.error;
 
-            setClinics(clinicsRes.data || []);
+            setClinics(clinicsRes.data as unknown as Clinic[] || []);
 
             // Step 3: Create a map of partnership statuses for quick lookup
             const statusMap: PartnershipStatusMap = {};
@@ -148,7 +149,7 @@ const AllyClinicDirectoryPage: FC = () => {
                 </div>
             </div>
 
-            {loading && <p>Cargando clínicas...</p>}
+            {loading && <SkeletonLoader type="card" count={6} />}
             {error && <p style={styles.error}>{error}</p>}
             {!loading && (
                 <div className="info-grid" style={{marginTop: '1.5rem'}}>

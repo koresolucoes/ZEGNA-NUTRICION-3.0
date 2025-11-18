@@ -56,106 +56,127 @@ export const InfoTab: FC<InfoTabProps> = ({
         }
     };
 
+    const InfoCard: FC<{ title: string; icon?: React.ReactNode; children: React.ReactNode }> = ({ title, icon, children }) => (
+        <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: '12px', padding: '1.5rem', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem', marginBottom: '0.5rem' }}>
+                {icon && <span style={{ color: 'var(--primary-color)', fontSize: '1.2rem' }}>{icon}</span>}
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-color)' }}>{title}</h3>
+            </div>
+            {children}
+        </div>
+    );
+
+    const DataRow: FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>{label}</span>
+            <span style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--text-color)' }}>{value || '-'}</span>
+        </div>
+    );
 
     return (
-        <div style={{...styles.detailCard, marginBottom: '1rem' }} className="fade-in">
+        <div className="fade-in">
             <input type="file" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} accept=".pdf,.jpg,.jpeg,.png"/>
-            <div style={styles.detailCardHeader}><h3 style={styles.detailCardTitle}>Información de la Persona</h3></div>
-            <div style={{...styles.detailCardBody, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem 2rem'}}>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
                 
-                {/* Column 1: Personal & Plan */}
-                <div>
-                    <div style={styles.detailGroup}><h4 style={styles.detailGroupTitle}>Fecha de Nacimiento</h4><p style={styles.clinicalDataValue}>{person.birth_date ? new Date(person.birth_date.replace(/-/g, '/')).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No definida'}</p></div>
-                    <div style={styles.detailGroup}><h4 style={styles.detailGroupTitle}>Edad</h4><p style={styles.clinicalDataValue}>{calculateAge(person.birth_date)}</p></div>
-                    <div style={styles.detailGroup}><h4 style={styles.detailGroupTitle}>Género</h4><p style={styles.clinicalDataValue}>{person.gender === 'male' ? 'Hombre' : person.gender === 'female' ? 'Mujer' : 'No definido'}</p></div>
-                    <div style={styles.detailGroup}><h4 style={styles.detailGroupTitle}>Teléfono</h4><p style={styles.clinicalDataValue}>{person.phone_number || '-'}</p></div>
-                    <div style={styles.detailGroup}><h4 style={styles.detailGroupTitle}>Domicilio</h4><p style={styles.clinicalDataValue}>{person.address || 'No definido'}</p></div>
-                </div>
+                {/* 1. Identidad y Contacto */}
+                <InfoCard title="Identidad y Contacto" icon={ICONS.user}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                        <DataRow label="Fecha de Nacimiento" value={person.birth_date ? new Date(person.birth_date.replace(/-/g, '/')).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No definida'} />
+                        <DataRow label="Edad" value={calculateAge(person.birth_date)} />
+                        <DataRow label="Género" value={person.gender === 'male' ? 'Hombre' : person.gender === 'female' ? 'Mujer' : 'No definido'} />
+                        <DataRow label="Teléfono" value={person.phone_number} />
+                    </div>
+                    <DataRow label="Domicilio" value={person.address} />
+                    <div style={{ marginTop: '0.5rem', padding: '1rem', backgroundColor: 'var(--surface-hover-color)', borderRadius: '8px' }}>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem'}}>
+                            <span style={{color: 'var(--error-color)'}}>{ICONS.phone}</span>
+                            <span style={{fontWeight: 600, fontSize: '0.9rem'}}>Contacto de Emergencia</span>
+                        </div>
+                        <p style={{ margin: 0, fontSize: '0.95rem' }}>{person.emergency_contact_name || 'No definido'}</p>
+                        <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-light)' }}>{person.emergency_contact_phone}</p>
+                    </div>
+                </InfoCard>
 
-                {/* Column 2: Clinical Summary & IDs */}
-                <div>
-                    <div style={styles.detailGroup}><h4 style={styles.detailGroupTitle}>Folio</h4><p style={styles.clinicalDataValue}>{person.folio || '-'}</p></div>
-                    <div style={styles.detailGroup}><h4 style={styles.detailGroupTitle}>CURP</h4><p style={styles.clinicalDataValue}>{person.curp || 'No definido'}</p></div>
-                    <div style={styles.detailGroup}><h4 style={styles.detailGroupTitle}>Último Peso</h4><p style={styles.clinicalDataValue}>{latestConsultation?.weight_kg ? `${latestConsultation.weight_kg} kg` : 'N/A'}</p></div>
-                    <div style={styles.detailGroup}><h4 style={styles.detailGroupTitle}>Último IMC</h4><p style={styles.clinicalDataValue}>{latestConsultation?.imc ? latestConsultation.imc : 'N/A'}</p></div>
-                </div>
-                
-                {/* Full-width sections */}
-                <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
-                    <div style={styles.detailGroup}><h4 style={styles.detailGroupTitle}>Objetivo de Salud Principal</h4><p style={{...styles.clinicalDataValue, fontSize: '1rem'}}>{person.health_goal || 'No definido'}</p></div>
-                </div>
-
-                <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
-                    <div style={styles.detailGroup}>
-                        <h4 style={styles.detailGroupTitle}>Plan de Servicio</h4>
-                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                            <div>
-                                <p style={{margin: 0, fontWeight: 600}}>{currentPlan?.name || 'Sin plan asignado'}</p>
+                {/* 2. Datos Administrativos */}
+                <InfoCard title="Datos Administrativos" icon={ICONS.briefcase}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                        <DataRow label="Folio Interno" value={<code style={{ backgroundColor: 'var(--surface-hover-color)', padding: '2px 6px', borderRadius: '4px' }}>{person.folio}</code>} />
+                        <DataRow label="CURP" value={person.curp} />
+                    </div>
+                    
+                    <div style={{ marginTop: '0.5rem' }}>
+                         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem'}}>
+                             <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Plan de Servicio</span>
+                             <button onClick={onManagePlan} style={{...styles.iconButton, color: 'var(--primary-color)', padding: '4px'}} title="Gestionar">{ICONS.edit}</button>
+                         </div>
+                         <div style={{ padding: '1rem', border: '1px solid var(--border-color)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                <span style={{fontWeight: 600, fontSize: '1.1rem'}}>{currentPlan?.name || 'Sin plan asignado'}</span>
                                 <PlanStatusIndicator planEndDate={person.subscription_end_date} />
                             </div>
-                            <button onClick={onManagePlan} className="button-secondary">Gestionar Plan</button>
-                        </div>
+                            {person.subscription_end_date && (
+                                <span style={{fontSize: '0.85rem', color: 'var(--text-light)'}}>
+                                    Vence el {new Date(person.subscription_end_date.replace(/-/g, '/')).toLocaleDateString('es-MX')}
+                                </span>
+                            )}
+                         </div>
                     </div>
-                </div>
+                </InfoCard>
                 
-                <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
-                     <div style={styles.detailGroup}>
-                        <h4 style={styles.detailGroupTitle}>Antecedentes Heredo-familiares</h4>
-                        <p style={{...styles.clinicalDataValue, fontSize: '0.9rem', whiteSpace: 'pre-wrap', lineHeight: 1.5}}>{person.family_history || 'Sin registrar'}</p>
+                {/* 3. Resumen Clínico */}
+                <InfoCard title="Resumen Clínico Inicial" icon={ICONS.activity}>
+                     <DataRow label="Objetivo de Salud" value={person.health_goal} />
+                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                        <DataRow label="Último Peso" value={latestConsultation?.weight_kg ? `${latestConsultation.weight_kg} kg` : 'N/A'} />
+                        <DataRow label="Último IMC" value={latestConsultation?.imc ? latestConsultation.imc : 'N/A'} />
                     </div>
-                </div>
-                
-                <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
-                     <div style={styles.detailGroup}>
-                        <h4 style={styles.detailGroupTitle}>Contacto de Emergencia</h4>
-                        <p style={styles.clinicalDataValue}>{person.emergency_contact_name || 'No definido'}</p>
-                        <p style={{...styles.clinicalDataValue, fontSize: '1rem', color: 'var(--text-light)'}}>{person.emergency_contact_phone || ''}</p>
-                    </div>
-                </div>
+                     <DataRow label="Antecedentes Heredo-familiares" value={<span style={{fontSize: '0.9rem', lineHeight: 1.5}}>{person.family_history}</span>} />
+                </InfoCard>
 
-                {/* Compliance Section */}
-                <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--border-color)', paddingTop: '1rem', marginTop: '1rem' }}>
-                    <div style={styles.detailGroup}>
-                        <h4 style={styles.detailGroupTitle}>Consentimiento Informado (NOM-004)</h4>
-                        {person.consent_given_at ? (
-                            <p style={{...styles.clinicalDataValue, fontSize: '1rem', color: 'var(--primary-color)'}}>
-                                Otorgado el {new Date(person.consent_given_at).toLocaleString('es-MX', { dateStyle: 'long', timeStyle: 'short' })}
-                            </p>
-                        ) : (
-                            <p style={{...styles.clinicalDataValue, color: 'var(--error-color)', fontSize: '1rem'}}>
-                                Pendiente de registro
-                            </p>
-                        )}
-                        {person.consent_file_url ? (
-                            <div style={{marginTop: '1rem', padding: '1rem', backgroundColor: 'var(--surface-hover-color)', borderRadius: '8px'}}>
-                                <p style={{margin: '0 0 0.5rem 0', fontWeight: 500}}>Documento de consentimiento firmado:</p>
-                                <div style={{display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center'}}>
-                                    <a href={person.consent_file_url} target="_blank" rel="noopener noreferrer" className="button-secondary" style={{textDecoration: 'none'}}>
-                                        {ICONS.file} Ver Documento
-                                    </a>
-                                    <button onClick={() => fileInputRef.current?.click()} disabled={isUploadingConsent} className="button-secondary">{isUploadingConsent ? '...' : 'Reemplazar'}</button>
-                                    <button onClick={handleDeleteFile} className="button-danger">Eliminar</button>
-                                </div>
-                            </div>
-                        ) : (
-                            <div style={{marginTop: '1rem'}}>
-                                {!person.consent_given_at && (
-                                    <button onClick={onRegisterConsent}>Registrar Consentimiento</button>
-                                )}
-                                <button onClick={() => fileInputRef.current?.click()} disabled={isUploadingConsent} className="button-secondary" style={{marginLeft: '1rem'}}>
-                                    {isUploadingConsent ? 'Subiendo...' : 'Subir Documento Firmado'}
-                                </button>
-                            </div>
-                        )}
+                {/* 4. Cumplimiento y Legal */}
+                <InfoCard title="Cumplimiento Normativo (NOM-004)" icon={ICONS.check}>
+                    <div>
+                         <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Consentimiento Informado</span>
+                         <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            {person.consent_given_at ? (
+                                <span style={{ color: 'var(--primary-color)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                    {ICONS.check} Otorgado el {new Date(person.consent_given_at).toLocaleDateString('es-MX')}
+                                </span>
+                            ) : (
+                                <span style={{ color: 'var(--error-color)', fontWeight: 600 }}>Pendiente de firma</span>
+                            )}
+                         </div>
                     </div>
-                     <div style={{...styles.detailGroup, marginTop: '1.5rem'}}>
-                        <h4 style={styles.detailGroupTitle}>Acciones de Cumplimiento (LFPDPPP)</h4>
-                        <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-start'}}>
-                            <button onClick={onExportData} className="button-secondary">Exportar Expediente (JSON)</button>
-                            <button onClick={onRevokeConsent} className="button-danger">Revocar Consentimiento y Eliminar Datos</button>
+
+                    {person.consent_file_url ? (
+                        <div style={{ padding: '0.75rem', backgroundColor: 'var(--surface-hover-color)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <a href={person.consent_file_url} target="_blank" rel="noopener noreferrer" style={{...styles.link, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                                {ICONS.file} Ver Documento
+                            </a>
+                            <div style={{display: 'flex', gap: '0.5rem'}}>
+                                <button onClick={() => fileInputRef.current?.click()} disabled={isUploadingConsent} style={styles.iconButton} title="Reemplazar">{ICONS.edit}</button>
+                                <button onClick={handleDeleteFile} style={{...styles.iconButton, color: 'var(--error-color)'}} title="Eliminar">{ICONS.delete}</button>
+                            </div>
                         </div>
+                    ) : (
+                        <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap'}}>
+                            {!person.consent_given_at && <button onClick={onRegisterConsent} style={{fontSize: '0.85rem', padding: '0.5rem 1rem'}}>Registrar Firma Digital</button>}
+                            <button onClick={() => fileInputRef.current?.click()} disabled={isUploadingConsent} className="button-secondary" style={{fontSize: '0.85rem', padding: '0.5rem 1rem'}}>
+                                {isUploadingConsent ? 'Subiendo...' : 'Subir PDF Firmado'}
+                            </button>
+                        </div>
+                    )}
+                    
+                    <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem', marginTop: '0.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                         <button onClick={onExportData} className="button-secondary" style={{fontSize: '0.8rem', padding: '0.4rem 0.8rem'}}>
+                            {ICONS.download} Exportar Datos (JSON)
+                         </button>
+                         <button onClick={onRevokeConsent} style={{fontSize: '0.8rem', padding: '0.4rem 0.8rem', backgroundColor: 'var(--error-bg)', color: 'var(--error-color)', border: 'none'}}>
+                            Revocar y Eliminar
+                         </button>
                     </div>
-                </div>
+                </InfoCard>
             </div>
         </div>
     );

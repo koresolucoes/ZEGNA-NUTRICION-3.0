@@ -59,31 +59,66 @@ export const PlansTab: FC<PlansTabProps> = ({
     const historicalExerciseLogs = useMemo(() => allExerciseLogs.slice(7), [allExerciseLogs]);
     const groupedExerciseHistory = useMemo(() => groupLogsByWeek(historicalExerciseLogs), [historicalExerciseLogs]);
 
+    // Enhanced button style for AI actions
+    const aiButtonStyle: React.CSSProperties = {
+        background: 'linear-gradient(135deg, var(--primary-color), var(--accent-color))',
+        color: 'white',
+        border: 'none',
+        padding: '0.6rem 1.2rem',
+        fontWeight: 600,
+        boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem',
+        transition: 'transform 0.2s, box-shadow 0.2s'
+    };
+
+    const manualButtonStyle: React.CSSProperties = {
+        backgroundColor: 'var(--surface-color)',
+        color: 'var(--text-color)',
+        border: '1px solid var(--border-color)',
+        padding: '0.6rem 1.2rem',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem',
+    };
+
 
     return (
         <section className="fade-in">
-            <nav className="sub-tabs">
+            <nav className="sub-tabs" style={{marginBottom: '2rem'}}>
                 <button className={`sub-tab-button ${activePlanTab === 'food' ? 'active' : ''}`} onClick={() => setActivePlanTab('food')}>Plan Alimentar</button>
                 <button className={`sub-tab-button ${activePlanTab === 'exercise' ? 'active' : ''}`} onClick={() => setActivePlanTab('exercise')}>Rutina de Ejercicio</button>
             </nav>
 
             {activePlanTab === 'food' && (
                 <div className="fade-in">
-                    <div style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                        <button
-                            onClick={onGenerateMeal}
-                            disabled={!hasAiFeature}
-                            title={!hasAiFeature ? "Esta función no está incluida en tu plan actual." : "Generar un plan de comidas usando IA"}
-                        >
-                            {ICONS.sparkles} Generar Plan con IA
-                        </button>
-                        <button onClick={onAddManualDiet} className="button-secondary">{ICONS.edit} Agregar Día Manualmente</button>
+                    <div style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', padding: '1rem', backgroundColor: 'var(--surface-color)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                        <div style={{flex: 1, minWidth: '200px'}}>
+                            <h3 style={{margin: 0, fontSize: '1rem'}}>Acciones del Plan</h3>
+                            <p style={{margin: 0, fontSize: '0.85rem', color: 'var(--text-light)'}}>Crea o edita el menú semanal.</p>
+                        </div>
+                        <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap'}}>
+                            <button
+                                onClick={onGenerateMeal}
+                                disabled={!hasAiFeature}
+                                style={aiButtonStyle}
+                                title={!hasAiFeature ? "Esta función no está incluida en tu plan actual." : "Generar un plan de comidas usando IA"}
+                                className="button-primary" // fallback class
+                            >
+                                {ICONS.sparkles} Generar con IA
+                            </button>
+                            <button onClick={onAddManualDiet} style={manualButtonStyle} className="button-secondary">
+                                {ICONS.edit} Agregar Manualmente
+                            </button>
+                        </div>
                     </div>
+
                     <section>
                         <div style={{...styles.pageHeader, paddingBottom: '0.5rem', marginBottom: '1.5rem', borderBottom: 'none'}}>
-                          <h2 style={{margin:0}}>Plan Alimenticio Reciente</h2>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <span style={{color: 'var(--text-light)', fontSize: '0.9rem'}}>Agrupar por semana</span>
+                          <h2 style={{margin:0}}>Plan Reciente</h2>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', backgroundColor: 'var(--surface-hover-color)', padding: '0.5rem 1rem', borderRadius: '20px' }}>
+                              <span style={{color: 'var(--text-color)', fontSize: '0.85rem', fontWeight: 500}}>Agrupar por semana</span>
                               <label className="switch">
                                 <input type="checkbox" checked={isGrouped} onChange={() => setIsGrouped(!isGrouped)} />
                                 <span className="slider round"></span>
@@ -92,48 +127,66 @@ export const PlansTab: FC<PlansTabProps> = ({
                         </div>
                         {isGrouped ? (
                             Object.keys(groupedRecentDietLogs).length > 0 ? Object.keys(groupedRecentDietLogs).sort((a,b) => new Date(b).getTime() - new Date(a).getTime()).map(weekStart => (
-                                <div key={weekStart} style={{marginBottom: '1.5rem'}}>
-                                    <h3 style={{color: 'var(--primary-color)'}}>Semana del {new Date(weekStart).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', timeZone: 'UTC' })}</h3>
+                                <div key={weekStart} style={{marginBottom: '2rem'}}>
+                                    <h4 style={{color: 'var(--primary-color)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem'}}>
+                                        Semana del {new Date(weekStart).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', timeZone: 'UTC' })}
+                                    </h4>
                                     <DietPlanViewer dietLogs={groupedRecentDietLogs[weekStart].sort((a,b) => new Date(a.log_date).getTime() - new Date(b.log_date).getTime())} onEdit={onEditDietLog} onViewDetails={onViewDietLog} onDelete={(id) => openModal('deleteDietLog', id, '¿Eliminar este día del plan alimenticio?')} />
                                 </div>
-                            )) : <p>No hay planes alimenticios disponibles.</p>
+                            )) : <p style={{textAlign: 'center', padding: '2rem', color: 'var(--text-light)'}}>No hay planes alimenticios recientes.</p>
                         ) : (
                             <DietPlanViewer dietLogs={recentDietLogs.sort((a,b) => new Date(a.log_date).getTime() - new Date(b.log_date).getTime())} onEdit={onEditDietLog} onViewDetails={onViewDietLog} onDelete={(id) => openModal('deleteDietLog', id, '¿Eliminar este día del plan alimenticio?')} />
                         )}
                     </section>
-                    <section style={{marginTop: '2rem'}}>
-                        <button onClick={() => setShowDietHistory(!showDietHistory)} className="button-secondary">{showDietHistory ? 'Ocultar' : 'Ver'} Historial</button>
-                        {showDietHistory && (
-                            <div style={{marginTop: '1.5rem'}}>
-                            {Object.keys(groupedDietHistory).length > 0 ? Object.keys(groupedDietHistory).sort((a,b) => new Date(b).getTime() - new Date(a).getTime()).map(weekStart => (
-                                <div key={weekStart}>
-                                    <h3 style={{color: 'var(--primary-color)'}}>Semana del {new Date(weekStart).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', timeZone: 'UTC' })}</h3>
-                                    <DietPlanViewer dietLogs={groupedDietHistory[weekStart].sort((a,b) => new Date(a.log_date).getTime() - new Date(b.log_date).getTime())} onEdit={onEditDietLog} onViewDetails={onViewDietLog} onDelete={(id) => openModal('deleteDietLog', id, '¿Eliminar este día del plan alimenticio?')}/>
-                                </div>
-                            )) : <p style={{marginTop: '1rem'}}>No hay planes más antiguos en el historial.</p>}
+                    
+                    {Object.keys(groupedDietHistory).length > 0 && (
+                        <section style={{marginTop: '3rem', borderTop: '1px solid var(--border-color)', paddingTop: '2rem'}}>
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem'}}>
+                                <h3 style={{margin: 0, fontSize: '1.2rem'}}>Historial Antiguo</h3>
+                                <button onClick={() => setShowDietHistory(!showDietHistory)} className="button-secondary">{showDietHistory ? 'Ocultar' : 'Mostrar'}</button>
                             </div>
-                        )}
-                    </section>
+                            {showDietHistory && (
+                                <div style={{marginTop: '1.5rem'}}>
+                                {Object.keys(groupedDietHistory).sort((a,b) => new Date(b).getTime() - new Date(a).getTime()).map(weekStart => (
+                                    <div key={weekStart} style={{marginBottom: '2rem'}}>
+                                        <h4 style={{color: 'var(--text-light)', fontSize: '1rem'}}>Semana del {new Date(weekStart).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', timeZone: 'UTC' })}</h4>
+                                        <DietPlanViewer dietLogs={groupedDietHistory[weekStart].sort((a,b) => new Date(a.log_date).getTime() - new Date(b.log_date).getTime())} onEdit={onEditDietLog} onViewDetails={onViewDietLog} onDelete={(id) => openModal('deleteDietLog', id, '¿Eliminar este día del plan alimenticio?')}/>
+                                    </div>
+                                ))}
+                                </div>
+                            )}
+                        </section>
+                    )}
                 </div>
             )}
 
             {activePlanTab === 'exercise' && (
                 <div className="fade-in">
-                    <div style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                        <button
-                            onClick={onGenerateExercise}
-                            disabled={!hasAiFeature}
-                            title={!hasAiFeature ? "Esta función no está incluida en tu plan actual." : "Generar una rutina de ejercicio usando IA"}
-                        >
-                            {ICONS.sparkles} Generar Rutina con IA
-                        </button>
-                        <button onClick={onAddManualExercise} className="button-secondary">{ICONS.edit} Agregar Día Manualmente</button>
+                     <div style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', padding: '1rem', backgroundColor: 'var(--surface-color)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                        <div style={{flex: 1, minWidth: '200px'}}>
+                            <h3 style={{margin: 0, fontSize: '1rem'}}>Acciones de Rutina</h3>
+                            <p style={{margin: 0, fontSize: '0.85rem', color: 'var(--text-light)'}}>Diseña el entrenamiento semanal.</p>
+                        </div>
+                        <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap'}}>
+                            <button
+                                onClick={onGenerateExercise}
+                                disabled={!hasAiFeature}
+                                style={aiButtonStyle}
+                                title={!hasAiFeature ? "Esta función no está incluida en tu plan actual." : "Generar una rutina de ejercicio usando IA"}
+                            >
+                                {ICONS.sparkles} Generar con IA
+                            </button>
+                            <button onClick={onAddManualExercise} style={manualButtonStyle} className="button-secondary">
+                                {ICONS.edit} Agregar Manualmente
+                            </button>
+                        </div>
                     </div>
+
                     <section>
                          <div style={{...styles.pageHeader, paddingBottom: '0.5rem', marginBottom: '1.5rem', borderBottom: 'none'}}>
-                          <h2 style={{margin:0}}>Rutina de Ejercicio Reciente</h2>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <span style={{color: 'var(--text-light)', fontSize: '0.9rem'}}>Agrupar por semana</span>
+                          <h2 style={{margin:0}}>Rutina Reciente</h2>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', backgroundColor: 'var(--surface-hover-color)', padding: '0.5rem 1rem', borderRadius: '20px' }}>
+                              <span style={{color: 'var(--text-color)', fontSize: '0.85rem', fontWeight: 500}}>Agrupar por semana</span>
                               <label className="switch">
                                 <input type="checkbox" checked={isGrouped} onChange={() => setIsGrouped(!isGrouped)} />
                                 <span className="slider round"></span>
@@ -142,28 +195,36 @@ export const PlansTab: FC<PlansTabProps> = ({
                         </div>
                         {isGrouped ? (
                             Object.keys(groupedRecentExerciseLogs).length > 0 ? Object.keys(groupedRecentExerciseLogs).sort((a,b) => new Date(b).getTime() - new Date(a).getTime()).map(weekStart => (
-                                <div key={weekStart} style={{marginBottom: '1.5rem'}}>
-                                    <h3 style={{color: 'var(--primary-color)'}}>Semana del {new Date(weekStart).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', timeZone: 'UTC' })}</h3>
+                                <div key={weekStart} style={{marginBottom: '2rem'}}>
+                                    <h4 style={{color: 'var(--primary-color)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem'}}>
+                                        Semana del {new Date(weekStart).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', timeZone: 'UTC' })}
+                                    </h4>
                                     <ExercisePlanViewer exerciseLogs={groupedRecentExerciseLogs[weekStart].sort((a,b) => new Date(a.log_date).getTime() - new Date(b.log_date).getTime())} onEdit={onEditExerciseLog} onViewDetails={onViewExerciseLog} onDelete={(id) => openModal('deleteExerciseLog', id, '¿Eliminar este día de la rutina?')} />
                                 </div>
-                            )) : <p>No hay rutinas de ejercicio disponibles.</p>
+                            )) : <p style={{textAlign: 'center', padding: '2rem', color: 'var(--text-light)'}}>No hay rutinas de ejercicio recientes.</p>
                         ) : (
                             <ExercisePlanViewer exerciseLogs={recentExerciseLogs.sort((a,b) => new Date(a.log_date).getTime() - new Date(b.log_date).getTime())} onEdit={onEditExerciseLog} onViewDetails={onViewExerciseLog} onDelete={(id) => openModal('deleteExerciseLog', id, '¿Eliminar este día de la rutina?')} />
                         )}
                     </section>
-                    <section style={{marginTop: '2rem'}}>
-                        <button onClick={() => setShowExerciseHistory(!showExerciseHistory)} className="button-secondary">{showExerciseHistory ? 'Ocultar' : 'Ver'} Historial</button>
-                        {showExerciseHistory && (
-                            <div style={{marginTop: '1.5rem'}}>
-                            {Object.keys(groupedExerciseHistory).length > 0 ? Object.keys(groupedExerciseHistory).sort((a,b) => new Date(b).getTime() - new Date(a).getTime()).map(weekStart => (
-                                <div key={weekStart}>
-                                    <h3 style={{color: 'var(--primary-color)'}}>Semana del {new Date(weekStart).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', timeZone: 'UTC' })}</h3>
-                                    <ExercisePlanViewer exerciseLogs={groupedExerciseHistory[weekStart].sort((a,b) => new Date(a.log_date).getTime() - new Date(b.log_date).getTime())} onEdit={onEditExerciseLog} onViewDetails={onViewExerciseLog} onDelete={(id) => openModal('deleteExerciseLog', id, '¿Eliminar este día de la rutina?')}/>
-                                </div>
-                            )) : <p style={{marginTop: '1rem'}}>No hay rutinas más antiguas en el historial.</p>}
+                    
+                    {Object.keys(groupedExerciseHistory).length > 0 && (
+                        <section style={{marginTop: '3rem', borderTop: '1px solid var(--border-color)', paddingTop: '2rem'}}>
+                             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem'}}>
+                                <h3 style={{margin: 0, fontSize: '1.2rem'}}>Historial Antiguo</h3>
+                                <button onClick={() => setShowExerciseHistory(!showExerciseHistory)} className="button-secondary">{showExerciseHistory ? 'Ocultar' : 'Mostrar'}</button>
                             </div>
-                        )}
-                    </section>
+                            {showExerciseHistory && (
+                                <div style={{marginTop: '1.5rem'}}>
+                                {Object.keys(groupedExerciseHistory).sort((a,b) => new Date(b).getTime() - new Date(a).getTime()).map(weekStart => (
+                                    <div key={weekStart} style={{marginBottom: '2rem'}}>
+                                        <h4 style={{color: 'var(--text-light)', fontSize: '1rem'}}>Semana del {new Date(weekStart).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', timeZone: 'UTC' })}</h4>
+                                        <ExercisePlanViewer exerciseLogs={groupedExerciseHistory[weekStart].sort((a,b) => new Date(a.log_date).getTime() - new Date(b.log_date).getTime())} onEdit={onEditExerciseLog} onViewDetails={onViewExerciseLog} onDelete={(id) => openModal('deleteExerciseLog', id, '¿Eliminar este día de la rutina?')}/>
+                                    </div>
+                                ))}
+                                </div>
+                            )}
+                        </section>
+                    )}
                 </div>
             )}
         </section>

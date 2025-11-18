@@ -30,7 +30,7 @@ const ConfirmationModal: FC<ConfirmationModalProps> = ({
     title, 
     message, 
     confirmText = 'Confirmar', 
-    cancelText = 'Cancelar',
+    cancelText = 'Cancelar', 
     confirmButtonClass = 'button-danger',
     itemToDelete,
     tableName,
@@ -48,7 +48,8 @@ const ConfirmationModal: FC<ConfirmationModalProps> = ({
             if (onConfirm) {
                 await onConfirm();
             } else if (tableName && itemToDelete) {
-                const { error: dbError } = await supabase.from(tableName).delete().eq('id', itemToDelete.id);
+                // FIX: Cast tableName to any to bypass complex type inference issues with string literals vs union types
+                const { error: dbError } = await supabase.from(tableName as any).delete().eq('id', itemToDelete.id);
                 if (dbError) throw dbError;
                 
                 if (onSuccess) onSuccess(); // Callback on success

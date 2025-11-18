@@ -59,7 +59,7 @@ const CalculatorsPage: FC<CalculatorsPageProps> = ({ isMobile, initialPlanToLoad
 
             setEquivalents(equivalentsRes.data || []);
             setPlanHistory(historyRes.data || []);
-            setPersons(personsRes.data || []);
+            setPersons(personsRes.data as unknown as Person[] || []);
             setClinicalReferences(referencesRes.data as ClinicalReference[] || []);
             setKnowledgeResources(resourcesRes.data || []);
 

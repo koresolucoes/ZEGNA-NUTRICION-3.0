@@ -1,3 +1,4 @@
+
 import React, { FC, useMemo, useState } from 'react';
 
 interface ServicesChartProps {
@@ -12,7 +13,7 @@ const ServicesChart: FC<ServicesChartProps> = ({ data }) => {
     const chartData = useMemo(() => {
         // FIX: Explicitly cast values to Number for safe arithmetic operations.
         // Object.values can return `unknown[]`, so casting to Number prevents type errors during reduction.
-        const total = Object.values(data).reduce((sum, v) => sum + Number(v), 0);
+        const total: number = Object.values(data).reduce((sum: number, v: any) => sum + Number(v), 0);
         if (total === 0) return [];
         return Object.entries(data)
             .map(([name, value], index) => ({
@@ -20,7 +21,7 @@ const ServicesChart: FC<ServicesChartProps> = ({ data }) => {
                 // FIX: Ensure value is treated as a number for calculations.
                 value: Number(value),
                 // FIX: Ensure value is a number before performing division.
-                percentage: (Number(value) / total) * 100,
+                percentage: total > 0 ? (Number(value) / total) * 100 : 0,
                 color: colors[index % colors.length]
             }))
             .sort((a, b) => b.value - a.value);

@@ -25,7 +25,7 @@ const ServicePlansManagement: FC = () => {
                 .from('patient_service_plans')
                 .select('*')
                 .eq('clinic_id', clinic.id)
-                .order('name');
+                .order('price', { ascending: true }); // Order by price typically makes sense for plans
             if (error) throw error;
             setPlans(data || []);
         } catch (err: any) {
@@ -61,8 +61,23 @@ const ServicePlansManagement: FC = () => {
         setDeletingPlan(null);
     };
 
+    const FeatureItem: FC<{ label: string; included: boolean }> = ({ label, included }) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+            <span style={{ 
+                color: included ? 'var(--primary-color)' : 'var(--text-light)', 
+                fontSize: '1.1rem', 
+                opacity: included ? 1 : 0.5 
+            }}>
+                {included ? '✓' : '×'}
+            </span>
+            <span style={{ color: included ? 'var(--text-color)' : 'var(--text-light)', textDecoration: included ? 'none' : 'line-through' }}>
+                {label}
+            </span>
+        </div>
+    );
+
     return (
-        <div className="fade-in" style={{ maxWidth: '900px' }}>
+        <div className="fade-in" style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '2rem' }}>
             {isModalOpen && (
                 <ServicePlanFormModal
                     isOpen={isModalOpen}
@@ -81,66 +96,84 @@ const ServicePlansManagement: FC = () => {
                 />
             )}
 
-            <section>
-                <h2>Gestionar Planes de Servicio para Pacientes</h2>
-                <p style={{color: 'var(--text-light)', maxWidth: '800px'}}>
-                    Los Planes de Servicio te permiten definir paquetes para tus pacientes. Al asignar un plan a un paciente, puedes controlar la duración de su acceso, el número de consultas incluidas y qué funcionalidades del Portal del Paciente estarán activas.
+            <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+                <h2 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: '1rem' }}>Planes de Servicio</h2>
+                <p style={{ color: 'var(--text-light)', maxWidth: '600px', margin: '0 auto', lineHeight: 1.6 }}>
+                    Diseña paquetes atractivos para tus pacientes. Configura la duración, límites de consultas y acceso a funcionalidades exclusivas de la app.
                 </p>
-
-                <button onClick={() => { setEditingPlan(null); setIsModalOpen(true); }} style={{margin: '1.5rem 0'}}>
-                    {ICONS.add} Nuevo Plan de Servicio
+                <button onClick={() => { setEditingPlan(null); setIsModalOpen(true); }} className="button-primary" style={{ marginTop: '2rem' }}>
+                    {ICONS.add} Crear Nuevo Plan
                 </button>
+            </div>
 
-                {loading && <p>Cargando planes...</p>}
-                {error && <p style={styles.error}>{error}</p>}
-                
-                {!loading && plans.length > 0 && (
-                    <div className="info-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
-                        {plans.map(plan => {
-                            const features = (plan.features as any) || {};
-                            return (
-                                <div key={plan.id} className="info-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
-                                    <div style={{flex: 1}}>
-                                        <h4 style={{margin: '0 0 0.5rem 0', color: 'var(--primary-color)'}}>{plan.name}</h4>
-                                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '0 0 1rem 0'}}>
-                                            <p style={{margin: 0, fontSize: '1.1rem', fontWeight: 600}}>{plan.duration_days} días</p>
-                                            <p style={{margin: 0, fontSize: '1.5rem', fontWeight: 700, color: 'var(--primary-color)'}}>${(plan.price || 0).toFixed(2)}</p>
-                                        </div>
-                                        <p style={{margin: '0 0 1rem 0', fontSize: '0.9rem', color: 'var(--text-light)', minHeight: '2.5em'}}>{plan.description || 'Sin descripción.'}</p>
-
-                                        <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.9rem' }}>
-                                            <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-                                                {ICONS.check}
-                                                <span>{plan.max_consultations ? `${plan.max_consultations} consultas` : 'Consultas ilimitadas'}</span>
-                                            </div>
-                                            <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', color: features.patient_portal_ai_enabled !== false ? 'var(--text-color)' : 'var(--text-light)' }}>
-                                                {features.patient_portal_ai_enabled !== false ? ICONS.sparkles : ICONS.close}
-                                                <span>Asistente IA del Portal</span>
-                                            </div>
-                                             <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', color: features.gamification_enabled !== false ? 'var(--text-color)' : 'var(--text-light)' }}>
-                                                {features.gamification_enabled !== false ? '🏆' : ICONS.close}
-                                                <span>Sistema de Puntos</span>
-                                            </div>
-                                            <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-                                                {ICONS.file}
-                                                <span>{features.file_storage_limit_mb || 100} MB de almacenamiento</span>
-                                            </div>
-                                        </div>
-
+            {loading && <div style={{textAlign: 'center', padding: '2rem', color: 'var(--text-light)'}}>Cargando planes...</div>}
+            {error && <p style={styles.error}>{error}</p>}
+            
+            {!loading && (
+                <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+                    gap: '2rem',
+                    alignItems: 'stretch'
+                }}>
+                    {plans.map(plan => {
+                        const features = (plan.features as any) || {};
+                        return (
+                            <div key={plan.id} style={{ 
+                                backgroundColor: 'var(--surface-color)', 
+                                borderRadius: '16px', 
+                                border: '1px solid var(--border-color)',
+                                display: 'flex', 
+                                flexDirection: 'column', 
+                                transition: 'transform 0.2s, box-shadow 0.2s',
+                                position: 'relative',
+                                overflow: 'hidden'
+                            }} className="card-hover">
+                                <div style={{ padding: '2rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-color)' }}>{plan.name}</h3>
+                                    <p style={{ margin: 0, color: 'var(--text-light)', fontSize: '0.9rem', minHeight: '3em' }}>{plan.description || 'Sin descripción'}</p>
+                                    
+                                    <div style={{ margin: '2rem 0', display: 'flex', alignItems: 'baseline' }}>
+                                        <span style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--primary-color)' }}>
+                                            ${(plan.price || 0).toFixed(0)}
+                                        </span>
+                                        <span style={{ color: 'var(--text-light)', marginLeft: '0.5rem' }}>/ {plan.duration_days} días</span>
                                     </div>
-                                    <div className="card-actions" style={{opacity: 1, justifyContent: 'flex-end', paddingTop: '1rem', marginTop: '1rem', borderTop: '1px solid var(--border-color)'}}>
-                                        <button onClick={() => handleEdit(plan)} style={styles.iconButton} title="Editar">{ICONS.edit}</button>
-                                        <button onClick={() => setDeletingPlan(plan)} style={{...styles.iconButton, color: 'var(--error-color)'}} title="Eliminar">{ICONS.delete}</button>
+
+                                    <div style={{ flex: 1 }}>
+                                        <p style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-light)', fontWeight: 600, marginBottom: '1rem' }}>INCLUYE</p>
+                                        <FeatureItem label={plan.max_consultations ? `${plan.max_consultations} consultas incluidas` : 'Consultas ilimitadas'} included={true} />
+                                        <FeatureItem label="Asistente IA en Portal" included={features.patient_portal_ai_enabled !== false} />
+                                        <FeatureItem label="Sistema de Puntos (Gamificación)" included={features.gamification_enabled !== false} />
+                                        <FeatureItem label={`${features.file_storage_limit_mb || 100} MB Almacenamiento`} included={true} />
                                     </div>
                                 </div>
-                            )
-                        })}
-                    </div>
-                )}
-                {!loading && plans.length === 0 && (
-                    <p>No has creado ningún plan de servicio.</p>
-                )}
-            </section>
+                                
+                                <div style={{ 
+                                    padding: '1.25rem 2rem', 
+                                    backgroundColor: 'var(--surface-hover-color)', 
+                                    borderTop: '1px solid var(--border-color)',
+                                    display: 'flex',
+                                    gap: '1rem'
+                                }}>
+                                    <button onClick={() => handleEdit(plan)} style={{ flex: 1, justifyContent: 'center' }} className="button-secondary">
+                                        Editar
+                                    </button>
+                                    <button onClick={() => setDeletingPlan(plan)} style={{ padding: '0.6rem', color: 'var(--error-color)', border: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)' }} className="button-secondary">
+                                        {ICONS.delete}
+                                    </button>
+                                </div>
+                            </div>
+                        )
+                    })}
+                    
+                    {!loading && plans.length === 0 && (
+                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '4rem', border: '2px dashed var(--border-color)', borderRadius: '16px', color: 'var(--text-light)' }}>
+                            <p>No has creado ningún plan de servicio. ¡Crea el primero para fidelizar a tus pacientes!</p>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 };

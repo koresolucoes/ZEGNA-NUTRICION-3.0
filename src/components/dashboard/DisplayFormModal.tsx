@@ -88,44 +88,57 @@ const DisplayFormModal: FC<DisplayFormModalProps> = ({ isOpen, onClose, onSave, 
 
     return createPortal(
         <div style={styles.modalOverlay}>
-            <form onSubmit={handleSubmit} style={{...styles.modalContent, maxWidth: '500px'}} className="fade-in">
-                <div style={styles.modalHeader}>
-                    <h2 style={styles.modalTitle}>{displayToEdit ? 'Editar Pantalla' : 'Nueva Pantalla'}</h2>
-                    <button type="button" onClick={onClose} style={{...styles.iconButton, border: 'none'}}>{ICONS.close}</button>
+            <form onSubmit={handleSubmit} style={{...styles.modalContent, maxWidth: '500px', borderRadius: '16px', padding: 0}} className="fade-in">
+                <div style={{...styles.modalHeader, borderBottom: 'none', paddingBottom: 0}}>
+                    <h2 style={{...styles.modalTitle, fontSize: '1.5rem'}}>{displayToEdit ? 'Editar Pantalla' : 'Nueva Pantalla'}</h2>
+                    <button type="button" onClick={onClose} style={{...styles.iconButton, border: 'none', backgroundColor: 'var(--surface-hover-color)'}}>{ICONS.close}</button>
                 </div>
-                <div style={styles.modalBody}>
-                    {error && <p style={styles.error}>{error}</p>}
-                    <label htmlFor="display-name">Nombre de la Pantalla*</label>
-                    <input
-                        id="display-name"
-                        name="name"
-                        type="text"
-                        value={formData.name}
-                        onChange={handleChange}
-                        placeholder="Ej: Pantalla Sala Principal"
-                        required
-                    />
-                    <label htmlFor="calling-label">Texto de Llamada (ej: Consultorio, Box)*</label>
-                    <input
-                        id="calling-label"
-                        name="calling_label"
-                        type="text"
-                        value={formData.calling_label}
-                        onChange={handleChange}
-                        placeholder="Consultorio"
-                        required
-                    />
+                <div style={{...styles.modalBody, paddingTop: '1.5rem'}}>
+                    {error && <div style={{...styles.error, marginBottom: '1.5rem'}}>{error}</div>}
+                    
+                    <div style={{marginBottom: '1.5rem'}}>
+                        <label htmlFor="display-name" style={styles.label}>Nombre de la Pantalla *</label>
+                        <input
+                            id="display-name"
+                            name="name"
+                            type="text"
+                            value={formData.name}
+                            onChange={handleChange}
+                            placeholder="Ej: TV Recepción Principal"
+                            required
+                            style={{...styles.input, fontSize: '1.1rem', padding: '1rem'}}
+                        />
+                    </div>
+                    
+                    <div style={{marginBottom: '1.5rem'}}>
+                        <label htmlFor="calling-label" style={styles.label}>Texto de Ubicación (Ej: Consultorio, Box, Puerta) *</label>
+                        <input
+                            id="calling-label"
+                            name="calling_label"
+                            type="text"
+                            value={formData.calling_label}
+                            onChange={handleChange}
+                            placeholder="Consultorio"
+                            required
+                            style={styles.input}
+                        />
+                        <small style={{color: 'var(--text-light)', display: 'block', marginTop: '0.5rem'}}>
+                            Este texto aparecerá antes del número de sala. Ej: "Consultorio 1".
+                        </small>
+                    </div>
 
                     {displayToEdit && (
-                         <div>
-                            <label>Código de Vinculación</label>
-                            <input type="text" value={displayToEdit.display_code} readOnly style={{ backgroundColor: 'var(--background-color)', cursor: 'not-allowed', letterSpacing: '2px', fontFamily: 'monospace' }} />
+                         <div style={{padding: '1rem', backgroundColor: 'var(--surface-hover-color)', borderRadius: '8px'}}>
+                            <label style={{fontSize: '0.8rem', color: 'var(--text-light)'}}>CÓDIGO DE VINCULACIÓN</label>
+                            <p style={{margin: 0, fontFamily: 'monospace', fontSize: '1.5rem', fontWeight: 700, letterSpacing: '2px', color: 'var(--primary-color)'}}>
+                                {displayToEdit.display_code}
+                            </p>
                         </div>
                     )}
                 </div>
-                <div style={styles.modalFooter}>
+                <div style={{...styles.modalFooter, backgroundColor: 'transparent', borderTop: 'none', paddingTop: 0, paddingBottom: '2rem'}}>
                     <button type="button" onClick={onClose} className="button-secondary" disabled={loading}>Cancelar</button>
-                    <button type="submit" disabled={loading}>{loading ? 'Guardando...' : 'Guardar'}</button>
+                    <button type="submit" disabled={loading} style={{minWidth: '120px'}}>{loading ? 'Guardando...' : 'Guardar'}</button>
                 </div>
             </form>
         </div>,

@@ -8,6 +8,7 @@ import { useClinic } from '../contexts/ClinicContext';
 import { createPortal } from 'react-dom';
 import AppointmentFormModal from '../components/forms/AppointmentFormModal';
 import DayAppointmentsModal from '../components/agenda/DayAppointmentsModal';
+import SkeletonLoader from '../components/shared/SkeletonLoader';
 
 const modalRoot = document.getElementById('modal-root');
 
@@ -265,7 +266,7 @@ const AgendaPage: FC<{ user: User; isMobile: boolean }> = ({ user, isMobile }) =
                 <button onClick={() => handleOpenModal(null, { start: new Date(), end: new Date(new Date().getTime() + 60 * 60000) })}>{ICONS.add} Nueva Cita</button>
             </div>
             <Header />
-            {loading && <p>Cargando agenda...</p>}
+            {loading && <SkeletonLoader type="card" count={1} />}
             {error && <p style={styles.error}>{error}</p>}
             {!loading && !error && (
                 viewMode === 'month' 

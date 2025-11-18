@@ -9,6 +9,7 @@ import { styles } from '../../constants';
 import MealImageAnalyzer from '../../components/patient_portal/MealImageAnalyzer';
 import DailyCheckinForm from '../../components/patient_portal/DailyCheckinForm';
 import ConsentRequestModal from '../../components/patient_portal/ConsentRequestModal';
+import SkeletonLoader from '../../components/shared/SkeletonLoader';
 
 const getLocalDateString = (date: Date) => {
     const offset = date.getTimezoneOffset();
@@ -204,6 +205,9 @@ const PatientHomePage: FC<{
         };
     }, [person.gamification_points, person.gamification_rank]);
 
+    // Simulate loading if data isn't ready, though PatientPortalLayout handles initial load.
+    const isLoading = !person;
+
     return (
         <div className="fade-in">
              {editingCheckin && <DailyCheckinFormModal isOpen={!!editingCheckin} onClose={() => setEditingCheckin(null)} onSave={() => { setEditingCheckin(null); onDataRefresh(); }} checkinToEdit={editingCheckin} />}
@@ -240,32 +244,36 @@ const PatientHomePage: FC<{
                             </span>
                         </div>
                         <div className="widget-body">
-                            {completionError && <p style={{...styles.error, marginTop: '-1rem', marginBottom: '1rem'}}>{completionError}</p>}
-                            <h3 style={{fontSize: '1rem', color: 'var(--primary-color)', marginBottom: '0.5rem'}}>Plan Alimenticio</h3>
-                            {dietLogToShow ? (
-                                <div style={{border: '1px solid var(--border-color)', padding: '1rem', borderRadius: '8px'}}>
-                                    <p style={{margin: '0 0 0.5rem 0'}}><strong>Desayuno:</strong> {dietLogToShow.desayuno || 'N/A'}</p>
-                                    <p style={{margin: '0 0 0.5rem 0'}}><strong>Comida:</strong> {dietLogToShow.comida || 'N/A'}</p>
-                                    <p style={{margin: '0'}}><strong>Cena:</strong> {dietLogToShow.cena || 'N/A'}</p>
-                                    {dietLogToShow.log_date === todayStr && !dietLogToShow.completed && (
-                                         <button onClick={() => handleMarkComplete(dietLogToShow)} disabled={updatingCompletion === dietLogToShow.id} style={{ width: '100%', marginTop: '1rem', backgroundColor: 'var(--accent-color)'}}>
-                                            {updatingCompletion === dietLogToShow.id ? '...' : '✅ Completado'}
-                                        </button>
-                                    )}
-                                </div>
-                            ) : <p>No hay plan asignado.</p>}
-                            
-                            <h3 style={{fontSize: '1rem', color: 'var(--primary-color)', margin: '1.5rem 0 0.5rem 0'}}>Rutina de Ejercicio</h3>
-                            {exerciseLogToShow ? (
-                                <div style={{border: '1px solid var(--border-color)', padding: '1rem', borderRadius: '8px'}}>
-                                    <p style={{margin: 0}}><strong>Enfoque:</strong> {exerciseLogToShow.enfoque || 'General'}</p>
-                                    {exerciseLogToShow.log_date === todayStr && !exerciseLogToShow.completed && (
-                                         <button onClick={() => handleMarkComplete(exerciseLogToShow)} disabled={updatingCompletion === exerciseLogToShow.id} style={{ width: '100%', marginTop: '1rem', backgroundColor: 'var(--accent-color)'}}>
-                                            {updatingCompletion === exerciseLogToShow.id ? '...' : '✅ Completado'}
-                                        </button>
-                                    )}
-                                </div>
-                            ) : <p>No hay rutina asignada.</p>}
+                            {isLoading ? <SkeletonLoader type="list" count={3} /> : (
+                                <>
+                                    {completionError && <p style={{...styles.error, marginTop: '-1rem', marginBottom: '1rem'}}>{completionError}</p>}
+                                    <h3 style={{fontSize: '1rem', color: 'var(--primary-color)', marginBottom: '0.5rem'}}>Plan Alimenticio</h3>
+                                    {dietLogToShow ? (
+                                        <div style={{border: '1px solid var(--border-color)', padding: '1rem', borderRadius: '8px'}}>
+                                            <p style={{margin: '0 0 0.5rem 0'}}><strong>Desayuno:</strong> {dietLogToShow.desayuno || 'N/A'}</p>
+                                            <p style={{margin: '0 0 0.5rem 0'}}><strong>Comida:</strong> {dietLogToShow.comida || 'N/A'}</p>
+                                            <p style={{margin: '0'}}><strong>Cena:</strong> {dietLogToShow.cena || 'N/A'}</p>
+                                            {dietLogToShow.log_date === todayStr && !dietLogToShow.completed && (
+                                                 <button onClick={() => handleMarkComplete(dietLogToShow)} disabled={updatingCompletion === dietLogToShow.id} style={{ width: '100%', marginTop: '1rem', backgroundColor: 'var(--accent-color)'}}>
+                                                    {updatingCompletion === dietLogToShow.id ? '...' : '✅ Completado'}
+                                                </button>
+                                            )}
+                                        </div>
+                                    ) : <p>No hay plan asignado.</p>}
+                                    
+                                    <h3 style={{fontSize: '1rem', color: 'var(--primary-color)', margin: '1.5rem 0 0.5rem 0'}}>Rutina de Ejercicio</h3>
+                                    {exerciseLogToShow ? (
+                                        <div style={{border: '1px solid var(--border-color)', padding: '1rem', borderRadius: '8px'}}>
+                                            <p style={{margin: 0}}><strong>Enfoque:</strong> {exerciseLogToShow.enfoque || 'General'}</p>
+                                            {exerciseLogToShow.log_date === todayStr && !exerciseLogToShow.completed && (
+                                                 <button onClick={() => handleMarkComplete(exerciseLogToShow)} disabled={updatingCompletion === exerciseLogToShow.id} style={{ width: '100%', marginTop: '1rem', backgroundColor: 'var(--accent-color)'}}>
+                                                    {updatingCompletion === exerciseLogToShow.id ? '...' : '✅ Completado'}
+                                                </button>
+                                            )}
+                                        </div>
+                                    ) : <p>No hay rutina asignada.</p>}
+                                </>
+                            )}
                         </div>
                     </div>
                     <div className="widget-card">
@@ -275,7 +283,7 @@ const PatientHomePage: FC<{
                                 <MealImageAnalyzer todaysDietLog={todaysDietLog || null} />
                             ) : (
                                 <div style={{textAlign: 'center', padding: '1rem'}}>
-                                    <p style={{color: 'var(--text-light)'}}>Esta función no está disponible en tu plan actual.</p>
+                                    <p style={{color: 'var(--text-light)'}}>Esta função não está disponível no seu plano atual.</p>
                                 </div>
                             )}
                         </div>
@@ -287,23 +295,25 @@ const PatientHomePage: FC<{
                     <div className="widget-card">
                          <div className="widget-header"><h2 className="widget-title">Tu Progreso</h2></div>
                          <div className="widget-body">
-                             <div style={{textAlign: 'center', padding: '1rem 0'}}>
-                                <p style={{fontSize: '3rem', margin: '0'}}>{person.gamification_rank === 'Oro' ? '🥇' : person.gamification_rank === 'Plata' ? '🥈' : '🥉'}</p>
-                                <h3 style={{margin: 0, color: 'var(--text-light)', fontSize: '1.5rem', fontWeight: 600}}>{person.gamification_rank || 'Novato'}</h3>
-                                <p style={{margin: '0.25rem 0 1rem 0', fontWeight: 700, fontSize: '2.5rem'}}>{person.gamification_points || 0} <span style={{fontSize: '1rem', color: 'var(--text-light)'}}>puntos</span></p>
-                                
-                                <div className="progress-bar-bg">
-                                    <div className="progress-bar-fill" style={{width: `${progressPercent}%`}}></div>
-                                </div>
-                                <p style={{margin: '0.5rem 0 0 0', fontSize: '0.9rem', color: 'var(--text-light)'}}>
-                                     {pointsToNextLevel > 0 ? `Te faltan ${pointsToNextLevel} puntos para el siguiente nivel.` : '¡Has alcanzado el máximo nivel!'}
-                                </p>
-                                {streakMessage && (
-                                    <p style={{ margin: '1rem 0 0 0', fontSize: '0.9rem', fontWeight: 500, color: streakMessage.color || 'var(--text-color)' }}>
-                                        {streakMessage.icon} {streakMessage.text}
+                             {isLoading ? <SkeletonLoader type="widget" count={1} /> : (
+                                 <div style={{textAlign: 'center', padding: '1rem 0'}}>
+                                    <p style={{fontSize: '3rem', margin: '0'}}>{person.gamification_rank === 'Oro' ? '🥇' : person.gamification_rank === 'Plata' ? '🥈' : '🥉'}</p>
+                                    <h3 style={{margin: 0, color: 'var(--text-light)', fontSize: '1.5rem', fontWeight: 600}}>{person.gamification_rank || 'Novato'}</h3>
+                                    <p style={{margin: '0.25rem 0 1rem 0', fontWeight: 700, fontSize: '2.5rem'}}>{person.gamification_points || 0} <span style={{fontSize: '1rem', color: 'var(--text-light)'}}>puntos</span></p>
+                                    
+                                    <div className="progress-bar-bg">
+                                        <div className="progress-bar-fill" style={{width: `${progressPercent}%`}}></div>
+                                    </div>
+                                    <p style={{margin: '0.5rem 0 0 0', fontSize: '0.9rem', color: 'var(--text-light)'}}>
+                                         {pointsToNextLevel > 0 ? `Te faltan ${pointsToNextLevel} pontos para o próximo nível.` : 'Você alcançou o nível máximo!'}
                                     </p>
-                                )}
-                             </div>
+                                    {streakMessage && (
+                                        <p style={{ margin: '1rem 0 0 0', fontSize: '0.9rem', fontWeight: 500, color: streakMessage.color || 'var(--text-color)' }}>
+                                            {streakMessage.icon} {streakMessage.text}
+                                        </p>
+                                    )}
+                                 </div>
+                             )}
                          </div>
                     </div>
                      <div className="widget-card">
@@ -327,18 +337,22 @@ const PatientHomePage: FC<{
                     <div className="widget-card">
                         <div className="widget-header"><h2 className="widget-title">Estado de tu Plan</h2></div>
                         <div className="widget-body" style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
-                             <div>
-                                <h4 style={{fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 500, margin: '0 0 0.25rem 0'}}>Plan Actual</h4>
-                                <p style={{margin: 0, fontWeight: 600}}>{servicePlans.find(p => p.id === person.current_plan_id)?.name || 'Sin plan'}</p>
-                            </div>
-                            <div>
-                                <h4 style={{fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 500, margin: '0 0 0.25rem 0'}}>Vence el</h4>
-                                <p style={{margin: 0, fontWeight: 600}}>{person.subscription_end_date ? new Date(person.subscription_end_date.replace(/-/g, '/')).toLocaleDateString('es-MX', {dateStyle: 'long'}) : 'N/A'}</p>
-                            </div>
-                            <div>
-                                <h4 style={{fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 500, margin: '0 0 0.25rem 0'}}>Consultas Usadas</h4>
-                                <p style={{margin: 0, fontWeight: 600}}>{usedConsultations} de {maxConsultations !== null ? maxConsultations : '∞'}</p>
-                            </div>
+                             {isLoading ? <SkeletonLoader type="list" count={3} /> : (
+                                <>
+                                     <div>
+                                        <h4 style={{fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 500, margin: '0 0 0.25rem 0'}}>Plan Actual</h4>
+                                        <p style={{margin: 0, fontWeight: 600}}>{servicePlans.find(p => p.id === person.current_plan_id)?.name || 'Sin plan'}</p>
+                                    </div>
+                                    <div>
+                                        <h4 style={{fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 500, margin: '0 0 0.25rem 0'}}>Vence el</h4>
+                                        <p style={{margin: 0, fontWeight: 600}}>{person.subscription_end_date ? new Date(person.subscription_end_date.replace(/-/g, '/')).toLocaleDateString('es-MX', {dateStyle: 'long'}) : 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <h4 style={{fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 500, margin: '0 0 0.25rem 0'}}>Consultas Usadas</h4>
+                                        <p style={{margin: 0, fontWeight: 600}}>{usedConsultations} de {maxConsultations !== null ? maxConsultations : '∞'}</p>
+                                    </div>
+                                </>
+                             )}
                         </div>
                     </div>
                      <div className="widget-card">

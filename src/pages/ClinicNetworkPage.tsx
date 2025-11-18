@@ -7,6 +7,7 @@ import { useClinic } from '../contexts/ClinicContext';
 import ConfirmationModal from '../components/shared/ConfirmationModal';
 import ClinicDetailsModal from '../components/ally_portal/ClinicDetailsModal';
 import SendReferralToClinicModal from '../components/clinic_network/SendReferralToClinicModal';
+import SkeletonLoader from '../components/shared/SkeletonLoader';
 
 const calculateAge = (birthDate: string | null | undefined): string => {
     if (!birthDate) return 'N/A';
@@ -70,8 +71,8 @@ const ClinicNetworkPage: FC<{ navigate: (page: string, context?: any) => void; }
             const errors = [clinicsRes.error, personsRes.error, partnershipsRes.error, receivedRes.error, sentRes.error].filter(Boolean);
             if (errors.length > 0) throw errors[0];
             
-            setAllClinics(clinicsRes.data || []);
-            setPersons(personsRes.data || []);
+            setAllClinics(clinicsRes.data as unknown as Clinic[] || []);
+            setPersons(personsRes.data as unknown as Person[] || []);
             setPartnerships(partnershipsRes.data as any || []);
             setReceivedReferrals(receivedRes.data as any || []);
             setSentReferrals(sentRes.data as any || []);
@@ -283,7 +284,7 @@ const ClinicNetworkPage: FC<{ navigate: (page: string, context?: any) => void; }
             </nav>
             
             <div style={{marginTop: '1.5rem'}}>
-                {loading && <p>Cargando...</p>}
+                {loading && <SkeletonLoader type="card" count={6} />}
                 {error && <p style={styles.error}>{error}</p>}
                 {!loading && !error && (
                     <>

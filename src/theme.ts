@@ -1,564 +1,326 @@
 import { createGlobalStyle } from 'styled-components';
 
-export const themes = {
-    default: {
-        primaryColor: '#2563EB', // Darker blue for better contrast with white text
-        primaryLight: 'rgba(37, 99, 235, 0.1)',
-        primaryDark: '#1D4ED8', // Even darker blue
-        accentColor: '#F59E0B', // Switched to amber for better contrast as text
-        textColor: '#E5E7EB',
-        textLight: '#9CA3AF',
-        backgroundColor: '#1F2937',
-        surfaceColor: '#374151',
-        surfaceHoverColor: '#4B5563',
-        white: '#fff',
-        borderColor: '#4B5563',
-        errorColor: '#EF4444',
-        errorBg: 'rgba(239, 68, 68, 0.1)',
+// Definición de Tipos para el Tema
+export interface ThemeType {
+    primaryColor: string;
+    primaryLight: string;
+    primaryDark: string;
+    accentColor: string;
+    backgroundColor: string;
+    surfaceColor: string;
+    surfaceHoverColor: string;
+    surfaceActive: string;
+    textColor: string;
+    textLight: string;
+    borderColor: string;
+    errorColor: string;
+    errorBg: string;
+    shadow: string;
+    shadowHover: string;
+    white: string;
+}
+
+export const themes: { [key: string]: ThemeType } = {
+    default: { 
+        // "Zegna Azul (Dark Mode)" - El default original
+        primaryColor: '#38BDF8', 
+        primaryLight: 'rgba(56, 189, 248, 0.1)',
+        primaryDark: '#0EA5E9', 
+        accentColor: '#2DD4BF', 
+        
+        backgroundColor: '#0F172A', 
+        surfaceColor: '#1E293B', 
+        surfaceHoverColor: '#334155', 
+        surfaceActive: '#475569', 
+        
+        textColor: '#F1F5F9', 
+        textLight: '#94A3B8', 
+        
+        borderColor: '#334155', 
+        
+        errorColor: '#F87171', 
+        errorBg: 'rgba(248, 113, 113, 0.1)',
+        
+        shadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+        shadowHover: '0 10px 15px -3px rgba(0, 0, 0, 0.4)',
+        
+        white: '#FFFFFF',
+    },
+    light: { 
+        // "Zegna Azul (Light Mode)"
+        primaryColor: '#0284C7', 
+        primaryLight: '#E0F2FE', 
+        primaryDark: '#0C4A6E', 
+        accentColor: '#0F766E', 
+        
+        backgroundColor: '#F8FAFC', 
+        surfaceColor: '#FFFFFF', 
+        surfaceHoverColor: '#F1F5F9', 
+        surfaceActive: '#E2E8F0', 
+        
+        textColor: '#0F172A', 
+        textLight: '#64748B', 
+        
+        borderColor: '#E2E8F0', 
+        
+        errorColor: '#EF4444', 
+        errorBg: '#FEF2F2', 
+        
+        shadow: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)', 
+        shadowHover: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -1px rgb(0 0 0 / 0.1)', 
+        
+        white: '#FFFFFF',
     },
     natural: {
-        primaryColor: '#2E7D32', // Darker green for accessible buttons
-        primaryLight: 'rgba(46, 125, 50, 0.15)',
-        primaryDark: '#1B5E20',
-        accentColor: '#F4A261',
-        backgroundColor: '#242b24',
-        surfaceColor: '#3a423a',
-        surfaceHoverColor: '#4c564c',
-        borderColor: '#4c564c',
-        textColor: '#F8F9FA',
-        textLight: '#CED4DA',
-        white: '#fff',
-        errorColor: '#EF4444',
-        errorBg: 'rgba(239, 68, 68, 0.1)',
+        // "Salud y Frescura" - Verdes y Tierras
+        primaryColor: '#16A34A', // Green 600
+        primaryLight: '#DCFCE7', // Green 100
+        primaryDark: '#14532D', // Green 900
+        accentColor: '#D97706', // Amber 600
+        
+        backgroundColor: '#FAFAF9', // Stone 50
+        surfaceColor: '#FFFFFF',
+        surfaceHoverColor: '#F5F5F4', // Stone 100
+        surfaceActive: '#E7E5E4', // Stone 200
+        
+        textColor: '#1C1917', // Stone 900
+        textLight: '#78716C', // Stone 500
+        
+        borderColor: '#E7E5E4', // Stone 200
+        
+        errorColor: '#DC2626',
+        errorBg: '#FEF2F2',
+        
+        shadow: '0 1px 3px 0 rgba(0,0,0,0.1)',
+        shadowHover: '0 4px 6px -1px rgba(0,0,0,0.1)',
+        
+        white: '#FFFFFF',
     },
     clinical: {
-        primaryColor: '#546E7A', // Darker blue-gray for accessible buttons
-        primaryLight: 'rgba(84, 110, 122, 0.15)',
-        primaryDark: '#455A64',
-        accentColor: '#C5A169',
-        backgroundColor: '#272d31',
-        surfaceColor: '#383f45',
-        surfaceHoverColor: '#4a535b',
-        borderColor: '#4a535b',
-        textColor: '#F8F9FA',
-        textLight: '#CED4DA',
-        white: '#fff',
-        errorColor: '#EF4444',
-        errorBg: 'rgba(239, 68, 68, 0.1)',
+        // "Serenidad Clínica" - Azules grisáceos y dorados apagados
+        primaryColor: '#475569', // Slate 600
+        primaryLight: '#F1F5F9', // Slate 100
+        primaryDark: '#0F172A', // Slate 900
+        accentColor: '#0891B2', // Cyan 600
+        
+        backgroundColor: '#FFFFFF',
+        surfaceColor: '#F8FAFC', // Slate 50
+        surfaceHoverColor: '#E2E8F0', // Slate 200
+        surfaceActive: '#CBD5E1', // Slate 300
+        
+        textColor: '#334155', // Slate 700
+        textLight: '#94A3B8', // Slate 400
+        
+        borderColor: '#CBD5E1',
+        
+        errorColor: '#BE123C', // Rose 700
+        errorBg: '#FFF1F2',
+        
+        shadow: 'none',
+        shadowHover: '0 1px 2px 0 rgba(0,0,0,0.05)',
+        
+        white: '#FFFFFF',
     },
     vitality: {
-        primaryColor: '#D84315', // Darker orange for accessible buttons
-        primaryLight: 'rgba(216, 67, 21, 0.15)',
-        primaryDark: '#BF360C',
-        accentColor: '#26A69A', // Brighter teal for better contrast
-        backgroundColor: '#2c2826',
-        surfaceColor: '#443d3a',
-        surfaceHoverColor: '#59504c',
-        borderColor: '#59504c',
-        textColor: '#F8F9FA',
-        textLight: '#CED4DA',
-        white: '#fff',
+        // "Energía y Vitalidad" - Naranjas y Grises oscuros
+        primaryColor: '#EA580C', // Orange 600
+        primaryLight: '#FFEDD5', // Orange 100
+        primaryDark: '#9A3412', // Orange 800
+        accentColor: '#0D9488', // Teal 600
+        
+        backgroundColor: '#171717', // Neutral 900
+        surfaceColor: '#262626', // Neutral 800
+        surfaceHoverColor: '#404040', // Neutral 700
+        surfaceActive: '#525252', // Neutral 600
+        
+        textColor: '#FAFAFA', // Neutral 50
+        textLight: '#A3A3A3', // Neutral 400
+        
+        borderColor: '#404040',
+        
         errorColor: '#EF4444',
         errorBg: 'rgba(239, 68, 68, 0.1)',
-    },
-    light: {
-        primaryColor: '#2563EB', // Darker blue for accessible buttons
-        primaryLight: 'rgba(37, 99, 235, 0.1)',
-        primaryDark: '#1D4ED8',
-        accentColor: '#50E3C2',
-        backgroundColor: '#F4F6F8',
-        surfaceColor: '#FFFFFF',
-        surfaceHoverColor: '#E9ECEF',
-        borderColor: '#DEE2E6',
-        textColor: '#212529',
-        textLight: '#6C757D',
-        white: '#fff',
-        errorColor: '#EF4444',
-        errorBg: 'rgba(239, 68, 68, 0.1)',
+        
+        shadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5)',
+        shadowHover: '0 10px 15px -3px rgba(0, 0, 0, 0.5)',
+        
+        white: '#FFFFFF',
     }
 };
 
-type Theme = typeof themes.default;
+export const GlobalStyle = createGlobalStyle<{ theme: ThemeType }>`
+    :root {
+        --primary-color: ${({ theme }) => theme.primaryColor};
+        --primary-light: ${({ theme }) => theme.primaryLight};
+        --primary-dark: ${({ theme }) => theme.primaryDark};
+        --accent-color: ${({ theme }) => theme.accentColor};
+        
+        --text-color: ${({ theme }) => theme.textColor};
+        --text-light: ${({ theme }) => theme.textLight};
+        
+        --background-color: ${({ theme }) => theme.backgroundColor};
+        --surface-color: ${({ theme }) => theme.surfaceColor};
+        --surface-hover-color: ${({ theme }) => theme.surfaceHoverColor};
+        --surface-active: ${({ theme }) => theme.surfaceActive};
+        
+        --border-color: ${({ theme }) => theme.borderColor};
+        
+        --error-color: ${({ theme }) => theme.errorColor};
+        --error-bg: ${({ theme }) => theme.errorBg};
+        
+        --shadow: ${({ theme }) => theme.shadow};
+        --shadow-hover: ${({ theme }) => theme.shadowHover};
+        --white: ${({ theme }) => theme.white};
+        
+        --radius-sm: 6px;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        
+        /* Typography Scale */
+        --font-xs: 0.75rem;
+        --font-sm: 0.875rem;
+        --font-base: 1rem;
+        --font-lg: 1.125rem;
+        --font-xl: 1.25rem;
+        --font-2xl: 1.5rem;
+    }
 
-export const GlobalStyle = createGlobalStyle<{ theme: Theme }>`
-    /* General styles */
-    body * {
+    * {
         box-sizing: border-box;
         margin: 0;
         padding: 0;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
     }
 
-    html {
+    html, body {
         height: 100%;
-    }
-
-    body {
-        font-family: 'Inter', sans-serif;
-        background-color: ${({ theme }) => theme.backgroundColor};
-        color: ${({ theme }) => theme.textColor};
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        background-color: var(--background-color);
+        color: var(--text-color);
         line-height: 1.5;
-        min-height: 100vh;
-        overflow-x: hidden;
+        font-size: 15px; 
     }
 
     #root {
-        width: 100%;
         height: 100%;
-    }
-    
-    .patient-portal-grid {
-        display: grid;
-        grid-template-columns: 2fr 1fr;
-        gap: 1.5rem;
+        display: flex;
+        flex-direction: column;
     }
 
-    @media (max-width: 960px) {
-        .patient-portal-grid {
-            grid-template-columns: 1fr;
+    h1, h2, h3, h4, h5, h6 {
+        font-weight: 600;
+        letter-spacing: -0.025em;
+        margin-bottom: 0.5em;
+        color: var(--text-color);
+    }
+
+    /* Modern Inputs */
+    input, textarea, select {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        margin-bottom: 1.25rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        font-size: var(--font-base);
+        background-color: var(--surface-color);
+        color: var(--text-color);
+        transition: var(--transition);
+        
+        &:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px var(--primary-light);
+        }
+        
+        &::placeholder {
+            color: var(--text-light);
+            opacity: 0.7;
+        }
+        
+        &:disabled {
+            background-color: var(--surface-hover-color);
+            cursor: not-allowed;
+            opacity: 0.7;
         }
     }
-    
-    .widget-card {
-        background-color: ${({ theme }) => theme.surfaceColor};
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
 
-    .widget-header {
-        padding: 1rem 1.25rem;
-        border-bottom: 1px solid ${({ theme }) => theme.borderColor};
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .widget-title {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: ${({ theme }) => theme.textColor};
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    
-    .widget-body {
-        padding: 1.25rem;
-    }
-    
-    .progress-bar-bg {
-        background-color: ${({ theme }) => theme.backgroundColor};
-        border-radius: 8px;
-        height: 12px;
-        overflow: hidden;
-    }
-
-    .progress-bar-fill {
-        height: 100%;
-        background: linear-gradient(90deg, ${({ theme }) => theme.primaryDark}, ${({ theme }) => theme.primaryColor});
-        border-radius: 8px;
-        transition: width 0.5s ease-in-out;
-    }
-
-    body input, body textarea, body select {
-        width: 100%;
-        padding: 12px 15px;
-        margin-bottom: 1rem;
-        border: 1px solid ${({ theme }) => theme.borderColor};
-        border-radius: 8px;
-        font-size: 1rem;
-        font-family: 'Inter', sans-serif;
-        transition: border-color 0.2s, box-shadow 0.2s;
-        background-color: ${({ theme }) => theme.surfaceColor};
-        color: ${({ theme }) => theme.textColor};
-    }
-    
-    body input[type=number]::-webkit-inner-spin-button,
-    body input[type=number]::-webkit-outer-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-    }
-    body input[type=number] {
-        -moz-appearance: textfield;
-    }
-    
-    body input::placeholder, body textarea::placeholder {
-        color: ${({ theme }) => theme.textLight};
-        opacity: 1;
-    }
-
-    body input:focus, body textarea:focus, body select:focus {
-        outline: none;
-        border-color: ${({ theme }) => theme.primaryColor};
-        box-shadow: 0 0 0 3px ${({ theme }) => theme.primaryColor}4D;
-    }
-    
-    body label {
+    label {
         display: block;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.375rem;
         font-weight: 500;
-        color: ${({ theme }) => theme.textLight};
-        font-size: 0.9rem;
+        font-size: var(--font-sm);
+        color: var(--text-color);
     }
-    
-    body button {
+
+    /* Buttons */
+    button {
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 0.5rem;
-        padding: 12px 20px;
+        padding: 0.625rem 1.25rem;
         border: none;
-        border-radius: 8px;
-        background-color: ${({ theme }) => theme.primaryColor};
-        color: ${({ theme }) => theme.white};
-        font-size: 1rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    }
-
-    body button:hover {
-        background-color: ${({ theme }) => theme.primaryDark};
-        box-shadow: 0 4px 8px rgba(0,0,0,0.25);
-    }
-
-    body button:active {
-        transform: scale(0.98);
-    }
-
-    body button:disabled {
-        background-color: #555;
-        color: #999;
-        cursor: not-allowed;
-        box-shadow: none;
-    }
-
-    body button.button-secondary {
-        background-color: ${({ theme }) => theme.surfaceHoverColor};
-        color: ${({ theme }) => theme.textColor};
-        border: 1px solid ${({ theme }) => theme.borderColor};
-    }
-
-    body button.button-secondary:hover {
-        background-color: ${({ theme }) => theme.borderColor};
-    }
-    
-    body button.button-danger {
-        background-color: ${({ theme }) => theme.errorBg};
-        color: ${({ theme }) => theme.errorColor};
-        border: 1px solid ${({ theme }) => theme.errorColor};
-    }
-    
-    body button.button-danger:hover {
-        background-color: ${({ theme }) => theme.errorColor};
-        color: ${({ theme }) => theme.white};
-    }
-
-    .sr-only {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        padding: 0;
-        margin: -1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
-        white-space: nowrap;
-        border-width: 0;
-    }
-
-    .fade-in {
-        animation: fadeIn 0.4s ease-in-out;
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-
-    @keyframes spin { 
-        0% { transform: rotate(0deg); } 
-        100% { transform: rotate(360deg); } 
-    }
-    
-    .nav-item-hover:hover {
-        background-color: ${({ theme }) => theme.primaryLight} !important;
-        color: ${({ theme }) => theme.primaryColor} !important;
-    }
-    
-    .table-row-hover:hover {
-         background-color: ${({ theme }) => theme.surfaceHoverColor};
-    }
-
-    .card-hover:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 20px rgba(0,0,0,0.25);
-    }
-
-    .dashboard-grid {
-        grid-template-columns: repeat(4, 1fr);
-    }
-    @media (max-width: 1200px) {
-        .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-    @media (max-width: 600px) {
-        .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-    
-    .summary-card-value {
-        transition: color 0.2s;
-    }
-    .card-hover:hover .summary-card-value {
-         color: ${({ theme }) => theme.primaryColor};
-    }
-    
-    .tabs {
-        display: flex;
-        overflow-x: auto;
-        border-bottom: 2px solid ${({ theme }) => theme.borderColor};
-        margin-bottom: 1.5rem;
-        scrollbar-width: thin;
-        scrollbar-color: ${({ theme }) => theme.primaryColor} ${({ theme }) => theme.backgroundColor};
-    }
-    
-    .tabs::-webkit-scrollbar,
-    .sub-tabs::-webkit-scrollbar,
-    .hide-scrollbar::-webkit-scrollbar {
-        display: none;
-    }
-    
-    .tabs,
-    .sub-tabs,
-    .hide-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-    }
-
-    .tab-button {
-        padding: 0.8rem 1.2rem;
-        border: none;
-        border-bottom: 3px solid transparent;
-        background-color: transparent;
-        color: ${({ theme }) => theme.textLight};
-        cursor: pointer;
-        font-size: 1rem;
+        border-radius: var(--radius-sm);
+        background-color: var(--primary-color);
+        color: #ffffff;
         font-weight: 500;
-        transition: all 0.2s ease-in-out;
-        white-space: nowrap;
-    }
-
-    .tab-button:hover {
-        background-color: ${({ theme }) => theme.primaryLight};
-        color: ${({ theme }) => theme.primaryColor};
-    }
-
-    .tab-button.active {
-        color: ${({ theme }) => theme.primaryColor};
-        border-bottom-color: ${({ theme }) => theme.primaryColor};
-        font-weight: 600;
-    }
-    
-    .sub-tabs {
-        display: flex;
-        overflow-x: auto;
-        border-bottom: 1px solid ${({ theme }) => theme.borderColor};
-        margin-bottom: 1.5rem;
-    }
-
-    .sub-tab-button {
-        padding: 0.6rem 1rem;
-        border: none;
-        border-bottom: 2px solid transparent;
-        background-color: transparent;
-        color: ${({ theme }) => theme.textLight};
+        font-size: var(--font-sm);
         cursor: pointer;
-        font-size: 0.95rem;
-        font-weight: 500;
-        transition: all 0.2s ease-in-out;
-        white-space: nowrap;
-    }
+        transition: var(--transition);
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 
-    .sub-tab-button:hover {
-        background-color: ${({ theme }) => theme.surfaceHoverColor};
-        color: ${({ theme }) => theme.primaryColor};
-    }
-
-    .sub-tab-button.active {
-        color: ${({ theme }) => theme.primaryColor};
-        border-bottom-color: ${({ theme }) => theme.primaryColor};
-        font-weight: 600;
-    }
-    
-    .info-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 1rem;
-    }
-    
-    .info-card {
-        background-color: ${({ theme }) => theme.surfaceColor};
-        border-radius: 8px;
-        padding: 1rem;
-        border: 1px solid ${({ theme }) => theme.borderColor};
-        transition: box-shadow 0.2s, border-color 0.2s;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    
-    .info-card-clickable {
-        cursor: pointer;
-    }
-
-    .info-card-clickable:hover {
-        border-color: ${({ theme }) => theme.primaryColor};
-        box-shadow: 0 4px 12px ${({ theme }) => theme.primaryColor}1A;
-    }
-    
-    .card-actions {
-        display: flex;
-        gap: 0.25rem;
-        opacity: 0;
-        transition: opacity 0.2s;
-    }
-
-    .info-card:hover .card-actions {
-        opacity: 1;
-    }
-    
-    @media (max-width: 768px) {
-        .patient-portal-header-content {
-            padding: 0.75rem 1rem;
+        &:hover:not(:disabled) {
+            background-color: var(--primary-dark);
+            transform: translateY(-1px);
         }
-        .patient-portal-header h1 {
-            font-size: 1.2rem;
+
+        &:active:not(:disabled) {
+            transform: translateY(0);
         }
-        .user-info-desktop {
-            display: none;
+
+        &:disabled {
+            background-color: var(--text-light);
+            cursor: not-allowed;
+            opacity: 0.5;
+            transform: none;
+        }
+
+        &.button-secondary {
+            background-color: var(--surface-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+
+            &:hover:not(:disabled) {
+                background-color: var(--surface-hover-color);
+                border-color: var(--text-light);
+            }
+        }
+
+        &.button-danger {
+            background-color: var(--error-bg);
+            color: var(--error-color);
+            border: 1px solid transparent;
+            box-shadow: none;
+            
+            &:hover:not(:disabled) {
+                background-color: var(--error-color);
+                color: white;
+            }
         }
     }
     
-    @media (max-width: 959px) {
-        .summary-tabs {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-        .summary-tab-button {
-            background-color: ${({ theme }) => theme.surfaceColor};
-            border: 1px solid ${({ theme }) => theme.borderColor};
-            color: ${({ theme }) => theme.textColor};
-            padding: 1rem;
-            border-radius: 8px;
-            font-weight: 600;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            white-space: normal;
-        }
-        .summary-tab-button:hover {
-            background-color: ${({ theme }) => theme.surfaceHoverColor};
-            border-color: ${({ theme }) => theme.primaryColor};
-        }
-        .summary-tab-button.active {
-            background-color: ${({ theme }) => theme.primaryColor};
-            color: ${({ theme }) => theme.white};
-            border-color: ${({ theme }) => theme.primaryColor};
-            box-shadow: 0 4px 8px ${({ theme }) => theme.primaryColor}33;
-        }
-    }
+    /* Utility Classes */
+    .fade-in { animation: fadeIn 0.3s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     
-    .actions-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1.5rem;
-    }
-
-    @media (max-width: 600px) {
-        .actions-grid {
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-        }
-    }
-
-    .action-card {
-        background-color: ${({ theme }) => theme.surfaceColor};
-        border: 1px solid ${({ theme }) => theme.borderColor};
-        color: ${({ theme }) => theme.textColor};
-        padding: 1.5rem 1rem;
-        border-radius: 12px;
-        font-weight: 600;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.2s ease-in-out;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 0.75rem;
-        min-height: 120px;
-    }
-    .action-card:hover {
-        background-color: ${({ theme }) => theme.surfaceHoverColor};
-        border-color: ${({ theme }) => theme.primaryColor};
-        color: ${({ theme }) => theme.primaryColor};
-        transform: translateY(-3px);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.2);
-    }
-    .action-card svg {
-        width: 24px;
-        height: 24px;
-        transition: color 0.2s;
-    }
-
-    @media print {
-        body * {
-            visibility: hidden;
-        }
-        #printable-area, #printable-area * {
-            visibility: visible;
-        }
-        #printable-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-        }
-    }
-
-    .category-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        width: 100%;
-        text-align: left;
-        background: none;
-        border: none;
-        color: ${({ theme }) => theme.textColor};
-    }
-    .category-chevron {
-        transition: transform 0.3s ease;
-        transform: rotate(-90deg);
-    }
-    .category-chevron.open {
-        transform: rotate(0deg);
-    }
-    .submenu-container {
-        overflow: hidden;
-        animation: slide-down 0.4s ease-out;
-        padding-left: 1rem;
-    }
-    @keyframes slide-down {
-        from {
-            opacity: 0;
-            max-height: 0;
-        }
-        to {
-            opacity: 1;
-            max-height: 500px;
-        }
-    }
-    .nav-sub-item {
-        padding-left: 2.25rem !important;
-    }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-weight: 600; font-size: var(--font-xs); text-transform: uppercase; color: var(--text-light); letter-spacing: 0.05em; }
 `;

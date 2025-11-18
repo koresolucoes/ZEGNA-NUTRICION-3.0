@@ -4,7 +4,8 @@ import { supabase } from '../supabase';
 import { styles } from '../constants';
 import { ICONS } from './AuthPage';
 import { useClinic } from '../contexts/ClinicContext';
-import { OperatingScheduleItem } from '../types';
+import { OperatingScheduleItem, Clinic } from '../types';
+import { themes, ThemeType } from '../theme'; // Import theme definitions for preview
 
 interface ClinicSettingsPageProps {
     user: User;
@@ -12,11 +13,11 @@ interface ClinicSettingsPageProps {
 }
 
 const themeOptions = [
-    { id: 'default', name: 'Zegna Azul (Default)', colors: ['#007BFF', '#17A2B8', '#343A40', '#212529'] },
-    { id: 'natural', name: 'Salud y Frescura', colors: ['#8FBC8F', '#F4A261', '#3a423a', '#242b24'] },
-    { id: 'clinical', name: 'Serenidad Clínica', colors: ['#6A8EAE', '#C5A169', '#383f45', '#272d31'] },
-    { id: 'vitality', name: 'Energía y Vitalidad', colors: ['#E57A44', '#48B2A7', '#443d3a', '#2c2826'] },
-    { id: 'light', name: 'Minimalista Claro', colors: ['#4A90E2', '#50E3C2', '#FFFFFF', '#F4F6F8'] },
+    { id: 'default', name: 'Zegna Oscuro', description: 'Alto contraste, ideal para ambientes con poca luz.' },
+    { id: 'light', name: 'Clínico Estándar', description: 'Limpio, brillante y profesional.' },
+    { id: 'natural', name: 'Salud Natural', description: 'Tonos verdes y tierra para un enfoque holístico.' },
+    { id: 'clinical', name: 'Minimalista Gris', description: 'Sobrio, moderno y sin distracciones.' },
+    { id: 'vitality', name: 'Energía Vital', description: 'Alto impacto con tonos cálidos oscuros.' },
 ];
 
 const fiscalRegimeOptions = [
@@ -27,8 +28,68 @@ const fiscalRegimeOptions = [
 
 const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
+// --- Subcomponent: Theme Preview Widget ---
+const ThemePreview: FC<{ themeKey: string }> = ({ themeKey }) => {
+    const theme = themes[themeKey] || themes.default;
+    
+    return (
+        <div style={{
+            backgroundColor: theme.backgroundColor,
+            color: theme.textColor,
+            padding: '1.5rem',
+            borderRadius: '12px',
+            border: `1px solid ${theme.borderColor}`,
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+            marginTop: '1rem'
+        }}>
+            <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: `1px solid ${theme.borderColor}`, paddingBottom: '0.5rem'}}>
+                <span style={{fontWeight: 600, color: theme.primaryColor}}>Vista Previa</span>
+                <span style={{fontSize: '0.8rem', color: theme.textLight}}>Dashboard</span>
+            </div>
+            
+            <div style={{display: 'flex', gap: '1rem'}}>
+                <div style={{
+                    backgroundColor: theme.surfaceColor,
+                    padding: '1rem',
+                    borderRadius: '8px',
+                    flex: 1,
+                    boxShadow: theme.shadow
+                }}>
+                    <div style={{width: '30px', height: '30px', borderRadius: '50%', backgroundColor: theme.primaryLight, color: theme.primaryColor, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.5rem'}}>
+                        {ICONS.users}
+                    </div>
+                    <div style={{fontSize: '1.5rem', fontWeight: 700, color: theme.textColor}}>124</div>
+                    <div style={{fontSize: '0.8rem', color: theme.textLight}}>Pacientes Activos</div>
+                </div>
+                
+                <div style={{
+                    backgroundColor: theme.surfaceColor,
+                    padding: '1rem',
+                    borderRadius: '8px',
+                    flex: 1,
+                    boxShadow: theme.shadow
+                }}>
+                    <div style={{fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem'}}>Próxima Cita</div>
+                    <div style={{fontSize: '0.8rem', color: theme.textLight}}>Hoy, 10:00 AM</div>
+                    <button style={{
+                        backgroundColor: theme.primaryColor,
+                        color: '#FFF',
+                        border: 'none',
+                        padding: '6px 12px',
+                        borderRadius: '4px',
+                        marginTop: '0.5rem',
+                        fontSize: '0.75rem',
+                        cursor: 'default'
+                    }}>Iniciar</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile }) => {
     const { clinic, setClinic } = useClinic();
+    const [activeTab, setActiveTab] = useState<'general' | 'theme' | 'schedule' | 'fiscal'>('general');
     
     const [clinicFormData, setClinicFormData] = useState({
         name: '', phone_number: '', email: '', address: '', website: '', logo_url: '', theme: 'default',
@@ -160,9 +221,15 @@ const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile }) => 
             }).eq('id', clinic.id).select().single();
             if (error) throw error;
             if (!updatedData) throw new Error("La actualización falló o no tienes permisos para ver el resultado.");
-            setClinic(updatedData);
-            setClinicSuccess("Los datos de la clínica han sido actualizados.");
+            setClinic(updatedData as unknown as Clinic);
+            setClinicSuccess("¡Configuración actualizada correctamente!");
             setLogoFile(null);
+            
+            // If theme changed, force a reload of style to ensure context updates immediately visually
+             if (clinic.theme !== clinicFormData.theme) {
+                 setTimeout(() => window.location.reload(), 500);
+             }
+
         } catch (err: any) {
             setClinicError(err.message);
         } finally {
@@ -170,114 +237,241 @@ const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile }) => 
         }
     };
 
-    const successMessageStyle: React.CSSProperties = { ...styles.error, backgroundColor: 'var(--primary-light)', color: 'var(--primary-dark)', borderColor: 'var(--primary-color)' };
-    
+    const renderTabs = () => (
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', gap: '0.5rem', overflowX: isMobile ? 'auto' : 'hidden' }}>
+            {[
+                { id: 'general', label: 'General', icon: ICONS.home },
+                { id: 'theme', label: 'Apariencia', icon: ICONS.sparkles },
+                { id: 'schedule', label: 'Horarios', icon: ICONS.calendar },
+                { id: 'fiscal', label: 'Fiscal', icon: ICONS.briefcase }
+            ].map(tab => (
+                <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id as any)}
+                    style={{
+                        textAlign: 'left',
+                        padding: '0.75rem 1rem',
+                        backgroundColor: activeTab === tab.id ? 'var(--primary-light)' : 'transparent',
+                        color: activeTab === tab.id ? 'var(--primary-color)' : 'var(--text-light)',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        transition: 'all 0.2s'
+                    }}
+                >
+                    <span>{tab.icon}</span>
+                    <span style={{whiteSpace: 'nowrap'}}>{tab.label}</span>
+                </button>
+            ))}
+        </div>
+    );
+
     return (
-        <div className="fade-in" style={{ maxWidth: '1200px', paddingBottom: '7rem' }}>
-             <div style={styles.pageHeader}>
+        <div className="fade-in" style={{ maxWidth: '1100px', margin: '0 auto', paddingBottom: '4rem' }}>
+            <div style={styles.pageHeader}>
                 <h1>Configuración de la Clínica</h1>
             </div>
-            {clinicError && <p style={styles.error}>{clinicError}</p>}
-            {clinicSuccess && <p style={successMessageStyle}>{clinicSuccess}</p>}
 
-             <form id="clinic-form" onSubmit={handleClinicUpdate}>
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '2rem' }}>
-                    {/* Left Column */}
-                    <div>
-                        <section>
-                            <h2>Información General</h2>
-                            <div style={{display: 'flex', gap: '2rem', alignItems: 'center', marginBottom: '1.5rem'}}>
-                                <img src={logoPreview || `https://api.dicebear.com/8.x/initials/svg?seed=${clinicFormData.name || '?'}&radius=50`} alt="Vista previa del logo" style={{width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover'}} />
-                                <div style={{flex: 1}}>
-                                    <label htmlFor="logo">Logo de la Clínica</label>
-                                    <input id="logo" name="logo" type="file" onChange={handleLogoFileChange} accept="image/*" />
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '240px 1fr', gap: '2rem', alignItems: 'start' }}>
+                
+                {/* Sidebar Navigation */}
+                <div style={{
+                    backgroundColor: 'var(--surface-color)',
+                    padding: '1rem',
+                    borderRadius: '12px',
+                    position: isMobile ? 'static' : 'sticky',
+                    top: '120px',
+                    border: '1px solid var(--border-color)'
+                }}>
+                    {renderTabs()}
+                </div>
+
+                {/* Main Content Area */}
+                <form id="clinic-form" onSubmit={handleClinicUpdate} style={{ backgroundColor: 'var(--surface-color)', padding: isMobile ? '1.5rem' : '2.5rem', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)' }}>
+                    
+                    {clinicError && <div style={{...styles.error, marginBottom: '1.5rem'}}>{clinicError}</div>}
+                    {clinicSuccess && <div style={{...styles.error, backgroundColor: 'var(--primary-light)', color: 'var(--primary-dark)', borderColor: 'var(--primary-color)', marginBottom: '1.5rem'}}>{clinicSuccess}</div>}
+
+                    {activeTab === 'general' && (
+                        <div className="fade-in">
+                            <h2 style={{marginTop: 0, marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem'}}>Información General</h2>
+                            <div style={{display: 'flex', gap: '2rem', alignItems: 'center', marginBottom: '2rem'}}>
+                                <div style={{position: 'relative', width: '100px', height: '100px'}}>
+                                    <img 
+                                        src={logoPreview || `https://api.dicebear.com/8.x/initials/svg?seed=${clinicFormData.name || '?'}&radius=50`} 
+                                        alt="Logo" 
+                                        style={{width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: '4px solid var(--surface-hover-color)'}} 
+                                    />
+                                    <label htmlFor="logo" style={{position: 'absolute', bottom: 0, right: 0, backgroundColor: 'var(--primary-color)', color: 'white', padding: '6px', borderRadius: '50%', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'}}>
+                                        {ICONS.edit}
+                                    </label>
+                                    <input id="logo" name="logo" type="file" onChange={handleLogoFileChange} accept="image/*" style={{display: 'none'}} />
+                                </div>
+                                <div>
+                                    <h3 style={{margin: 0}}>{clinicFormData.name || 'Nueva Clínica'}</h3>
+                                    <p style={{margin: '0.25rem 0 0 0', color: 'var(--text-light)', fontSize: '0.9rem'}}>Logotipo visible en reportes y portal.</p>
                                 </div>
                             </div>
-                            <label htmlFor="name">Nombre de la Clínica *</label>
-                            <input id="name" name="name" type="text" value={clinicFormData.name} onChange={handleClinicDataChange} required />
-                            <label htmlFor="phone_number">Teléfono</label>
-                            <input id="phone_number" name="phone_number" type="tel" value={clinicFormData.phone_number} onChange={handleClinicDataChange} />
-                            <label htmlFor="email">Correo Electrónico</label>
-                            <input id="email" name="email" type="email" value={clinicFormData.email} onChange={handleClinicDataChange} />
-                            <label htmlFor="address">Dirección</label>
-                            <textarea id="address" name="address" value={clinicFormData.address} onChange={handleClinicDataChange} rows={2} />
-                            <label htmlFor="website">Sitio Web</label>
-                            <input id="website" name="website" type="url" value={clinicFormData.website} onChange={handleClinicDataChange} placeholder="https://ejemplo.com"/>
-                        </section>
-                        <section style={{marginTop: '2.5rem'}}>
-                            <h2>Datos Fiscales (para Facturación)</h2>
-                            <label htmlFor="rfc">RFC de la Clínica</label>
-                            <input id="rfc" name="rfc" type="text" value={clinicFormData.rfc} onChange={handleClinicDataChange} />
-                            
-                            <label htmlFor="fiscal_regime">Régimen Fiscal</label>
-                            <select id="fiscal_regime" name="fiscal_regime" value={clinicFormData.fiscal_regime} onChange={handleClinicDataChange}>
-                                <option value="">-- Seleccionar --</option>
-                                {fiscalRegimeOptions.map(opt => (
-                                    <option key={opt.code} value={opt.code}>
-                                        ({opt.code}) {opt.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </section>
-                    </div>
 
-                    {/* Right Column */}
-                    <div>
-                        <section>
-                            <h2>Horario de Funcionamiento</h2>
-                            <div style={{display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem', backgroundColor: 'var(--surface-hover-color)', borderRadius: '8px'}}>
+                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem'}}>
+                                <div style={{gridColumn: isMobile ? 'span 2' : 'span 1'}}>
+                                    <label htmlFor="name">Nombre de la Clínica *</label>
+                                    <input id="name" name="name" type="text" value={clinicFormData.name} onChange={handleClinicDataChange} required />
+                                </div>
+                                <div style={{gridColumn: isMobile ? 'span 2' : 'span 1'}}>
+                                    <label htmlFor="phone_number">Teléfono de Contacto</label>
+                                    <input id="phone_number" name="phone_number" type="tel" value={clinicFormData.phone_number} onChange={handleClinicDataChange} />
+                                </div>
+                                <div style={{gridColumn: isMobile ? 'span 2' : 'span 1'}}>
+                                    <label htmlFor="email">Correo Electrónico</label>
+                                    <input id="email" name="email" type="email" value={clinicFormData.email} onChange={handleClinicDataChange} />
+                                </div>
+                                <div style={{gridColumn: isMobile ? 'span 2' : 'span 1'}}>
+                                    <label htmlFor="website">Sitio Web</label>
+                                    <input id="website" name="website" type="url" value={clinicFormData.website} onChange={handleClinicDataChange} placeholder="https://" />
+                                </div>
+                                <div style={{gridColumn: 'span 2'}}>
+                                    <label htmlFor="address">Dirección Física</label>
+                                    <textarea id="address" name="address" value={clinicFormData.address} onChange={handleClinicDataChange} rows={3} />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'theme' && (
+                        <div className="fade-in">
+                            <h2 style={{marginTop: 0, marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem'}}>Apariencia del Sistema</h2>
+                            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '2rem' }}>
+                                <div>
+                                    <p style={{color: 'var(--text-light)', marginBottom: '1.5rem'}}>Selecciona un tema visual para personalizar tu experiencia y la de tus pacientes.</p>
+                                    <div style={{display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
+                                        {themeOptions.map(theme => {
+                                            const isSelected = clinicFormData.theme === theme.id;
+                                            const themeDef = themes[theme.id] || themes.default;
+                                            return (
+                                                <div 
+                                                    key={theme.id} 
+                                                    onClick={() => setClinicFormData(prev => ({...prev, theme: theme.id}))}
+                                                    style={{
+                                                        padding: '1rem',
+                                                        borderRadius: '8px',
+                                                        border: `2px solid ${isSelected ? 'var(--primary-color)' : 'var(--border-color)'}`,
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '1rem',
+                                                        backgroundColor: isSelected ? 'var(--surface-hover-color)' : 'transparent',
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                >
+                                                    <div style={{display: 'flex', gap: '-5px'}}>
+                                                        <div style={{width: '24px', height: '24px', borderRadius: '50%', backgroundColor: themeDef.primaryColor, border: '2px solid var(--surface-color)'}}></div>
+                                                        <div style={{width: '24px', height: '24px', borderRadius: '50%', backgroundColor: themeDef.accentColor, marginLeft: '-8px', border: '2px solid var(--surface-color)'}}></div>
+                                                        <div style={{width: '24px', height: '24px', borderRadius: '50%', backgroundColor: themeDef.backgroundColor, marginLeft: '-8px', border: '2px solid var(--surface-color)'}}></div>
+                                                    </div>
+                                                    <div>
+                                                        <p style={{margin: 0, fontWeight: 600}}>{theme.name}</p>
+                                                        <p style={{margin: 0, fontSize: '0.8rem', color: 'var(--text-light)'}}>{theme.description}</p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                                <div style={{position: 'sticky', top: '20px'}}>
+                                    <h3 style={{fontSize: '1rem', color: 'var(--text-light)', marginBottom: '0.5rem'}}>Vista Previa</h3>
+                                    <ThemePreview themeKey={clinicFormData.theme} />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'schedule' && (
+                         <div className="fade-in">
+                            <h2 style={{marginTop: 0, marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem'}}>Horario de Atención</h2>
+                            <p style={{color: 'var(--text-light)', marginBottom: '1.5rem'}}>Define los días y horas en los que tu clínica está abierta. Esto afectará la disponibilidad en la agenda y las respuestas del agente IA.</p>
+                            
+                            <div style={{backgroundColor: 'var(--surface-hover-color)', borderRadius: '12px', padding: '0.5rem'}}>
                                 {dayNames.map((day, index) => {
                                     const scheduleDay = clinicFormData.operating_schedule?.[index];
                                     if (!scheduleDay) return null;
                                     const isDayActive = scheduleDay.active;
                                     return (
-                                        <div key={day} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto auto', gap: '1rem', alignItems: 'center', padding: '0.5rem', borderRadius: '6px', backgroundColor: isDayActive ? 'var(--background-color)' : 'transparent', border: isDayActive ? `1px solid var(--border-color)` : `1px solid transparent` }}>
+                                        <div key={day} style={{ 
+                                            display: 'grid', 
+                                            gridTemplateColumns: isMobile ? 'auto 1fr' : '40px 120px 1fr 1fr', 
+                                            gap: '1rem', 
+                                            alignItems: 'center', 
+                                            padding: '1rem', 
+                                            borderRadius: '8px', 
+                                            backgroundColor: isDayActive ? 'var(--surface-color)' : 'transparent',
+                                            marginBottom: '0.5rem',
+                                            border: isDayActive ? '1px solid var(--border-color)' : 'none',
+                                            opacity: isDayActive ? 1 : 0.6
+                                        }}>
                                             <label className="switch" style={{margin: 0}}>
                                                 <input type="checkbox" checked={isDayActive} onChange={() => handleDayToggle(index)} id={`day-toggle-${index}`} />
                                                 <span className="slider round"></span>
                                             </label>
-                                            <label htmlFor={`day-toggle-${index}`} style={{marginBottom: 0, fontWeight: isDayActive ? 600 : 400, color: isDayActive ? 'var(--text-color)' : 'var(--text-light)', cursor: 'pointer'}}>{day}</label>
-                                            <input type="time" value={scheduleDay.start} onChange={e => handleTimeChange(index, 'start', e.target.value)} disabled={!isDayActive} style={{margin: 0, width: '120px'}} />
-                                            <input type="time" value={scheduleDay.end} onChange={e => handleTimeChange(index, 'end', e.target.value)} disabled={!isDayActive} style={{margin: 0, width: '120px'}} />
+                                            <label htmlFor={`day-toggle-${index}`} style={{marginBottom: 0, fontWeight: 600, cursor: 'pointer'}}>{day}</label>
+                                            
+                                            {isDayActive ? (
+                                                <div style={{gridColumn: isMobile ? '1 / -1' : 'auto', display: 'flex', gap: '1rem', alignItems: 'center'}}>
+                                                    <input type="time" value={scheduleDay.start} onChange={e => handleTimeChange(index, 'start', e.target.value)} style={{margin: 0}} />
+                                                    <span style={{color: 'var(--text-light)'}}>a</span>
+                                                    <input type="time" value={scheduleDay.end} onChange={e => handleTimeChange(index, 'end', e.target.value)} style={{margin: 0}} />
+                                                </div>
+                                            ) : (
+                                                <div style={{gridColumn: isMobile ? '1 / -1' : '3 / -1', fontSize: '0.9rem', color: 'var(--text-light)', fontStyle: 'italic'}}>Cerrado</div>
+                                            )}
                                         </div>
                                     )
                                 })}
                             </div>
-                        </section>
-                        <section style={{marginTop: '2.5rem'}}>
-                            <h2>Tema del Sistema</h2>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem'}}>
-                                {themeOptions.map(theme => {
-                                    const isSelected = clinicFormData.theme === theme.id;
-                                    return (
-                                        <div 
-                                            key={theme.id} 
-                                            onClick={() => setClinicFormData(prev => ({...prev, theme: theme.id}))}
-                                            style={{
-                                                padding: '1rem',
-                                                borderRadius: '8px',
-                                                border: `2px solid ${isSelected ? 'var(--primary-color)' : 'var(--border-color)'}`,
-                                                cursor: 'pointer',
-                                                transition: 'border-color 0.2s, box-shadow 0.2s',
-                                                boxShadow: isSelected ? '0 0 0 3px rgba(0, 123, 255, 0.3)' : 'none'
-                                            }}
-                                        >
-                                            <p style={{fontWeight: 600, margin: '0 0 1rem 0'}}>{theme.name}</p>
-                                            <div style={{display: 'flex', gap: '0.5rem'}}>
-                                                {theme.colors.map((color, i) => <div key={i} style={{width: '30px', height: '30px', borderRadius: '50%', backgroundColor: color}} title={`Color ${i + 1}: ${color}`}></div>)}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                        </div>
+                    )}
+
+                    {activeTab === 'fiscal' && (
+                        <div className="fade-in">
+                            <h2 style={{marginTop: 0, marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem'}}>Datos Fiscales</h2>
+                             <p style={{color: 'var(--text-light)', marginBottom: '1.5rem'}}>Información requerida para la emisión de facturas (CFDI 4.0).</p>
+                            
+                            <div style={{display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.5rem'}}>
+                                <div>
+                                    <label htmlFor="rfc">RFC del Emisor</label>
+                                    <input id="rfc" name="rfc" type="text" value={clinicFormData.rfc} onChange={handleClinicDataChange} placeholder="XAXX010101000" />
+                                </div>
+                                <div>
+                                    <label htmlFor="fiscal_regime">Régimen Fiscal</label>
+                                    <select id="fiscal_regime" name="fiscal_regime" value={clinicFormData.fiscal_regime} onChange={handleClinicDataChange}>
+                                        <option value="">-- Seleccionar --</option>
+                                        {fiscalRegimeOptions.map(opt => (
+                                            <option key={opt.code} value={opt.code}>
+                                                ({opt.code}) {opt.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
-                        </section>
+                            <div style={{marginTop: '2rem', padding: '1rem', backgroundColor: 'var(--primary-light)', borderRadius: '8px', border: '1px solid var(--primary-color)'}}>
+                                <p style={{margin: 0, fontSize: '0.9rem', color: 'var(--primary-dark)'}}>
+                                    <strong>Nota:</strong> Para configurar los certificados (CSD) y la llave privada para la facturación automática, ve a la sección "Facturación" en el menú principal.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    <div style={{marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end'}}>
+                         <button type="submit" disabled={clinicLoading || !hasClinicChanges} style={{minWidth: '150px'}}>
+                            {clinicLoading ? 'Guardando...' : 'Guardar Cambios'}
+                        </button>
                     </div>
-                </div>
-            </form>
-            <div style={styles.floatingActions}>
-                <button type="submit" form="clinic-form" disabled={clinicLoading || !hasClinicChanges} style={styles.floatingSaveButton} aria-label="Guardar Cambios de la Clínica">
-                    {clinicLoading ? '...' : ICONS.save}
-                </button>
+
+                </form>
             </div>
         </div>
     );

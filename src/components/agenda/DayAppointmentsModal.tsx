@@ -1,5 +1,4 @@
 
-
 import React, { FC } from 'react';
 import { createPortal } from 'react-dom';
 import { styles } from '../../constants';
@@ -79,9 +78,8 @@ const DayAppointmentsModal: FC<DayAppointmentsModalProps> = ({ isOpen, onClose, 
                                 const nutritionist = appt.user_id ? memberMap.get(appt.user_id) : null;
                                 const startTime = new Date(appt.start_time).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
                                 const endTime = new Date(appt.end_time).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
-                                // FIX: Cast appt.persons to a specific object type to address the 'unknown' type error.
-                                // This ensures type safety when accessing properties of the joined 'persons' table data.
-                                const person = appt.persons as { full_name: string | null } | null;
+                                // FIX: Explicitly cast person to a type with full_name to prevent 'unknown' error
+                                const person = appt.persons as { full_name: string } | null;
                                 const isPending = appt.status === 'pending-approval';
 
                                 return (

@@ -1,4 +1,4 @@
-import React, { FC, useState, useEffect, useCallback } from 'react';
+import React, { FC, useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../../supabase';
 import { styles } from '../../constants';
 import { ICONS } from '../../pages/AuthPage';
@@ -19,6 +19,7 @@ const ServiceManagement: FC<ServiceManagementProps> = ({ navigate }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingService, setEditingService] = useState<Service | null>(null);
     const [deletingService, setDeletingService] = useState<Service | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const fetchData = useCallback(async () => {
         if (!clinic) return;
@@ -65,8 +66,15 @@ const ServiceManagement: FC<ServiceManagementProps> = ({ navigate }) => {
         setDeletingService(null);
     };
 
+    const filteredServices = useMemo(() => {
+        return services.filter(s => 
+            s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (s.description && s.description.toLowerCase().includes(searchTerm.toLowerCase()))
+        );
+    }, [services, searchTerm]);
+
     return (
-        <div className="fade-in" style={{ maxWidth: '900px', marginTop: '1.5rem' }}>
+        <div className="fade-in" style={{ maxWidth: '1000px', margin: '0 auto', paddingBottom: '2rem' }}>
             {isModalOpen && (
                 <ServiceFormModal
                     isOpen={isModalOpen}
@@ -85,58 +93,128 @@ const ServiceManagement: FC<ServiceManagementProps> = ({ navigate }) => {
                 />
             )}
 
-            <section>
-                <h2>Catálogo de Servicios</h2>
-                
-                <div style={{ padding: '1.5rem', backgroundColor: 'var(--primary-light)', borderRadius: '12px', marginBottom: '2rem', border: `1px solid var(--primary-color)` }}>
-                    <div style={{display: 'flex', alignItems: 'flex-start', gap: '1rem'}}>
-                        <span style={{color: 'var(--primary-color)', marginTop: '0.25rem'}}>{ICONS.info}</span>
-                        <div>
-                            <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--primary-dark)' }}>¿Qué son los Servicios?</h3>
-                            <p style={{ margin: '0.5rem 0 0 0', color: 'var(--primary-dark)', lineHeight: 1.6 }}>
-                                Los <strong>Servicios</strong> representan los cobros individuales y únicos que ofreces, como una "Consulta de primera vez" o un "Seguimiento". Son la base para registrar pagos manuales en el expediente del paciente.
-                            </p>
-                            <p style={{ margin: '1rem 0 0 0', color: 'var(--primary-dark)', lineHeight: 1.6 }}>
-                                Si buscas crear paquetes o suscripciones con duración, límites de consultas y beneficios en el portal, utiliza los <strong>Planes de Servicio</strong>.
-                            </p>
-                            <button onClick={() => navigate('service-plans')} className="button-secondary" style={{marginTop: '1rem', backgroundColor: 'rgba(255,255,255,0.3)'}}>
-                                Ir a Planes de Servicio {ICONS.back}
-                            </button>
-                        </div>
-                    </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+                <div>
+                    <h2 style={{ margin: 0, color: 'var(--text-color)' }}>Catálogo de Servicios</h2>
+                    <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-light)', fontSize: '0.9rem' }}>Gestiona los servicios individuales y sus costos.</p>
                 </div>
-
-
-                <button onClick={() => { setEditingService(null); setIsModalOpen(true); }} style={{marginBottom: '1.5rem'}}>
-                    {ICONS.add} Crear Nuevo Servicio
+                <button onClick={() => { setEditingService(null); setIsModalOpen(true); }} className="button-primary">
+                    {ICONS.add} Nuevo Servicio
                 </button>
+            </div>
 
-                {loading && <p>Cargando servicios...</p>}
-                {error && <p style={styles.error}>{error}</p>}
-                
-                {!loading && services.length > 0 && (
-                    <div className="info-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
-                        {services.map(service => (
-                            <div key={service.id} className="info-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', padding: 0 }}>
-                                <div style={{flex: 1, padding: '1rem'}}>
-                                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem'}}>
-                                        <h4 style={{margin: 0, color: 'var(--primary-color)', flex: '1 1 auto', wordBreak: 'break-word'}}>{service.name}</h4>
-                                        <p style={{margin: 0, fontSize: '1.5rem', fontWeight: 700, color: 'var(--primary-color)', flexShrink: 0, textAlign: 'right'}}>${parseFloat(String(service.price)).toFixed(2)}</p>
-                                    </div>
-                                    <p style={{margin: '0.5rem 0 0 0', fontSize: '0.9rem', color: 'var(--text-light)'}}>{service.description || 'Sin descripción.'}</p>
+            {/* Info Banner */}
+            <div style={{ 
+                padding: '1.25rem', 
+                backgroundColor: 'var(--surface-hover-color)', 
+                borderRadius: '12px', 
+                marginBottom: '2rem', 
+                border: `1px solid var(--border-color)`,
+                display: 'flex',
+                gap: '1rem',
+                alignItems: 'flex-start'
+            }}>
+                <div style={{ color: 'var(--primary-color)', fontSize: '1.5rem' }}>{ICONS.info}</div>
+                <div>
+                    <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>¿Servicios o Planes?</h3>
+                    <p style={{ margin: '0.5rem 0', fontSize: '0.9rem', color: 'var(--text-light)', lineHeight: 1.5 }}>
+                        Los <strong>Servicios</strong> son cobros únicos (ej. Consulta Suelta). Para paquetes con duración y beneficios en la app, usa <strong>Planes</strong>.
+                    </p>
+                    <button 
+                        onClick={() => navigate('service-plans')} 
+                        style={{ 
+                            background: 'none', 
+                            border: 'none', 
+                            padding: 0, 
+                            color: 'var(--primary-color)', 
+                            fontSize: '0.9rem', 
+                            fontWeight: 600, 
+                            cursor: 'pointer',
+                            textDecoration: 'underline'
+                        }}
+                    >
+                        Ir a Planes de Servicio →
+                    </button>
+                </div>
+            </div>
+
+            {/* Search Bar */}
+            <div style={{ marginBottom: '1.5rem', maxWidth: '400px' }}>
+                <div style={styles.searchInputContainer}>
+                    <span style={styles.searchInputIcon}>🔍</span>
+                    <input 
+                        type="text" 
+                        placeholder="Buscar servicios..." 
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        style={styles.searchInput}
+                    />
+                </div>
+            </div>
+
+            {loading && <div style={{textAlign: 'center', padding: '2rem', color: 'var(--text-light)'}}>Cargando servicios...</div>}
+            {error && <p style={styles.error}>{error}</p>}
+            
+            {!loading && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                    {filteredServices.map(service => (
+                        <div key={service.id} style={{ 
+                            backgroundColor: 'var(--surface-color)', 
+                            borderRadius: '12px', 
+                            border: '1px solid var(--border-color)',
+                            overflow: 'hidden',
+                            transition: 'transform 0.2s, box-shadow 0.2s',
+                            display: 'flex',
+                            flexDirection: 'column'
+                        }} className="card-hover">
+                            <div style={{ padding: '1.25rem', flex: 1 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-color)' }}>{service.name}</h3>
+                                    <span style={{ 
+                                        backgroundColor: 'var(--primary-light)', 
+                                        color: 'var(--primary-dark)', 
+                                        padding: '4px 8px', 
+                                        borderRadius: '6px', 
+                                        fontWeight: 700,
+                                        fontSize: '0.95rem' 
+                                    }}>
+                                        ${parseFloat(String(service.price)).toFixed(2)}
+                                    </span>
                                 </div>
-                                <div className="card-actions" style={{opacity: 1, borderTop: '1px solid var(--border-color)', padding: '0.75rem 1rem', justifyContent: 'flex-end'}}>
-                                    <button onClick={() => handleEdit(service)} style={styles.iconButton} title="Editar">{ICONS.edit}</button>
-                                    <button onClick={() => setDeletingService(service)} style={{...styles.iconButton, color: 'var(--error-color)'}} title="Eliminar">{ICONS.delete}</button>
-                                </div>
+                                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-light)', lineHeight: 1.5 }}>
+                                    {service.description || 'Sin descripción.'}
+                                </p>
                             </div>
-                        ))}
-                    </div>
-                )}
-                {!loading && services.length === 0 && (
-                     <p style={{textAlign: 'center', padding: '2rem', color: 'var(--text-light)'}}>Aún no has creado ningún servicio. ¡Añade tu primera consulta para empezar a registrar cobros!</p>
-                )}
-            </section>
+                            <div style={{ 
+                                padding: '0.75rem 1.25rem', 
+                                borderTop: '1px solid var(--border-color)', 
+                                display: 'flex', 
+                                justifyContent: 'flex-end', 
+                                gap: '0.5rem',
+                                backgroundColor: 'var(--surface-hover-color)'
+                            }}>
+                                <button onClick={() => handleEdit(service)} style={{...styles.iconButton, backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)'}} title="Editar">{ICONS.edit}</button>
+                                <button onClick={() => setDeletingService(service)} style={{...styles.iconButton, backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', color: 'var(--error-color)'}} title="Eliminar">{ICONS.delete}</button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {!loading && filteredServices.length === 0 && (
+                 <div style={{ 
+                     textAlign: 'center', 
+                     padding: '3rem', 
+                     border: '2px dashed var(--border-color)', 
+                     borderRadius: '12px',
+                     color: 'var(--text-light)' 
+                }}>
+                    <p style={{fontSize: '1.1rem', marginBottom: '1rem'}}>No se encontraron servicios.</p>
+                    <button onClick={() => { setEditingService(null); setIsModalOpen(true); }} className="button-secondary">
+                        Crear el primero
+                    </button>
+                 </div>
+            )}
         </div>
     );
 };

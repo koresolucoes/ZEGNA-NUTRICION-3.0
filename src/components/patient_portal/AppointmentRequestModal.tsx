@@ -40,7 +40,7 @@ const AppointmentRequestModal: FC<AppointmentRequestModalProps> = ({ isOpen, onC
         const fetchClinic = async () => {
             if (person?.clinic_id) {
                 const { data } = await supabase.from('clinics').select('*').eq('id', person.clinic_id).single();
-                setClinic(data);
+                setClinic(data as unknown as Clinic);
             }
         };
         fetchClinic();

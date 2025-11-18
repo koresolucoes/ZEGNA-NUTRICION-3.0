@@ -422,7 +422,7 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
     );
 
     const SavePlanPanel = ({ isCompact = false }) => {
-        const hasPortions = Object.values(portions).some(p => parseFloat(p) > 0);
+        const hasPortions = Object.values(portions).some(p => parseFloat(String(p)) > 0);
         return (
             <div style={{...styles.infoCard, ...(isCompact && {padding: 0, boxShadow: 'none', background: 'transparent'})}}>
                 {!isCompact && <div style={styles.infoCardHeader}><h3 style={{...styles.detailCardTitle, fontSize: '1.1rem'}}>Acciones del Plan</h3></div>}

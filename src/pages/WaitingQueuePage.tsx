@@ -47,7 +47,7 @@ const WaitingQueuePage: FC<WaitingQueuePageProps> = ({ user, isMobile, navigate 
             if (teamError) throw teamError;
             
             setAppointments(apptsData as AppointmentWithPerson[] || []);
-            setTeamMembers(teamData || []);
+            setTeamMembers(teamData as unknown as TeamMember[] || []);
 
         } catch (err: any) {
             setError(err.message);
@@ -57,25 +57,14 @@ const WaitingQueuePage: FC<WaitingQueuePageProps> = ({ user, isMobile, navigate 
     }, [clinic]);
 
     useEffect(() => {
-        if (!clinic) return; // Guard: Don't run effect if clinic isn't loaded
+        if (!clinic) return;
 
         fetchQueueData();
         const channel = supabase.channel(`waiting-queue-appointments-${clinic.id}`)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments', filter: `clinic_id=eq.${clinic.id}` }, payload => {
-                console.log('Change received!', payload);
                 fetchQueueData();
             })
-            .subscribe((status, err) => {
-                if (status === 'SUBSCRIBED') {
-                    console.log(`Realtime subscription started for WaitingQueuePage.`);
-                }
-                 if (status === 'CLOSED') {
-                    console.log(`Realtime subscription closed for WaitingQueuePage.`);
-                }
-                if (status === 'CHANNEL_ERROR') {
-                    console.error(`Realtime subscription error on WaitingQueuePage:`, err);
-                }
-            });
+            .subscribe();
 
         return () => { supabase.removeChannel(channel); };
     }, [fetchQueueData, clinic]);
@@ -114,20 +103,15 @@ const WaitingQueuePage: FC<WaitingQueuePageProps> = ({ user, isMobile, navigate 
             navigate(`${personType}-detail`, { personId: appt.person_id, startInConsultation: true });
         }
     };
+    
     const handleComplete = async (id: string) => {
         await updateAppointmentStatus(id, 'completed');
-        
         const appointment = appointments.find(appt => appt.id === id);
         if (appointment?.person_id) {
-            // Award gamification points for attendance
-            const { error: rpcError } = await supabase.rpc('award_points_for_consultation_attendance', {
+            await supabase.rpc('award_points_for_consultation_attendance', {
                 p_person_id: appointment.person_id,
                 p_appointment_id: appointment.id
             });
-
-            if (rpcError) {
-                console.warn('Could not award points for consultation attendance:', rpcError);
-            }
         }
     };
 
@@ -136,7 +120,7 @@ const WaitingQueuePage: FC<WaitingQueuePageProps> = ({ user, isMobile, navigate 
     const inConsultation = appointments.filter(a => a.status === 'called' || a.status === 'in-consultation');
     
     // -- Render Components --
-    const AppointmentCard: FC<{ appt: AppointmentWithPerson }> = ({ appt }) => {
+    const AppointmentCard: FC<{ appt: AppointmentWithPerson; type: 'scheduled' | 'waiting' | 'active' }> = ({ appt, type }) => {
         const nutritionist = appt.user_id ? memberMap.get(appt.user_id) : null;
         
         const handleCardClick = () => {
@@ -145,43 +129,111 @@ const WaitingQueuePage: FC<WaitingQueuePageProps> = ({ user, isMobile, navigate 
                 navigate(`${personType}-detail`, { personId: appt.person_id });
             }
         };
+        
+        // Styles based on type
+        let accentColor = 'var(--border-color)';
+        if (type === 'waiting') accentColor = '#EAB308'; // Yellow
+        if (type === 'active') accentColor = '#10B981'; // Green
+        if (type === 'scheduled') accentColor = 'var(--text-light)';
+
+        const statusLabel = appt.status === 'called' ? 'Llamando...' : appt.status === 'in-consultation' ? 'En Consulta' : null;
 
         return (
-            <div style={cardStyles.card}>
-                <div style={{...cardStyles.cardHeader, cursor: 'pointer'}} onClick={handleCardClick} className="nav-item-hover">
-                    <img src={appt.persons?.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${appt.persons?.full_name || '?'}&radius=50`} alt="avatar" style={cardStyles.avatar} />
-                    <div>
-                        <h4 style={cardStyles.patientName}>{appt.persons?.full_name || appt.title}</h4>
-                        <p style={cardStyles.time}>{new Date(appt.start_time).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</p>
+            <div style={{ 
+                backgroundColor: 'var(--surface-color)', 
+                borderRadius: '12px', 
+                padding: '1rem', 
+                boxShadow: 'var(--shadow)', 
+                border: `1px solid var(--border-color)`,
+                borderLeft: `4px solid ${accentColor}`,
+                position: 'relative'
+            }}>
+                {statusLabel && (
+                    <div style={{
+                        position: 'absolute', top: '0.5rem', right: '0.5rem', 
+                        fontSize: '0.7rem', fontWeight: 700, 
+                        color: appt.status === 'called' ? '#EAB308' : '#10B981',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                    }}>
+                        {statusLabel}
+                    </div>
+                )}
+
+                <div style={{display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem', cursor: 'pointer'}} onClick={handleCardClick}>
+                    <img 
+                        src={appt.persons?.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${appt.persons?.full_name || '?'}&radius=50`} 
+                        alt="avatar" 
+                        style={{width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--surface-hover-color)'}} 
+                    />
+                    <div style={{flex: 1, minWidth: 0}}>
+                        <h4 style={{margin: 0, fontSize: '1rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{appt.persons?.full_name || appt.title}</h4>
+                        <p style={{margin: '0.1rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-light)'}}>
+                            {new Date(appt.start_time).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
                     </div>
                 </div>
-                {nutritionist && <p style={cardStyles.nutritionist}>con {nutritionist.full_name}</p>}
-                <div style={cardStyles.actions}>
-                    {appt.status === 'scheduled' && <button onClick={() => handleCheckIn(appt.id)}>Registrar Llegada</button>}
-                    {appt.status === 'checked-in' && <button onClick={() => handleCall(appt)}>Llamar a Paciente</button>}
-                    {appt.status === 'called' && <button onClick={() => handleStartConsultation(appt)}>Iniciar Consulta</button>}
+
+                {nutritionist && (
+                     <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-light)', marginBottom: '1rem'}}>
+                        <img src={nutritionist.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${nutritionist.full_name}&radius=50`} style={{width:'16px', height:'16px', borderRadius: '50%'}} alt="nutri"/>
+                        <span>{nutritionist.full_name?.split(' ')[0]}</span>
+                        {appt.consulting_room && <span style={{marginLeft: 'auto', fontWeight: 600, color: 'var(--text-color)'}}>Sala {appt.consulting_room}</span>}
+                    </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    {appt.status === 'scheduled' && (
+                        <button onClick={() => handleCheckIn(appt.id)} style={{width: '100%', fontSize: '0.85rem', padding: '0.5rem'}}>
+                             Check-in
+                        </button>
+                    )}
+                    {appt.status === 'checked-in' && (
+                        <button onClick={() => handleCall(appt)} style={{width: '100%', fontSize: '0.85rem', padding: '0.5rem', backgroundColor: 'var(--primary-color)'}}>
+                             Llamar
+                        </button>
+                    )}
+                    {appt.status === 'called' && (
+                        <button onClick={() => handleStartConsultation(appt)} style={{width: '100%', fontSize: '0.85rem', padding: '0.5rem', backgroundColor: '#10B981'}}>
+                             Iniciar
+                        </button>
+                    )}
                     {appt.status === 'in-consultation' && (
-                        <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
-                            <button onClick={() => handleStartConsultation(appt)} className="button-secondary" style={{ flex: 1 }}>Ver Consulta</button>
-                            <button onClick={() => handleComplete(appt.id)} style={{ flex: 1 }}>Finalizar</button>
-                        </div>
+                        <>
+                            <button onClick={() => handleStartConsultation(appt)} className="button-secondary" style={{flex: 1, fontSize: '0.85rem', padding: '0.5rem'}}>Ver</button>
+                            <button onClick={() => handleComplete(appt.id)} style={{flex: 1, fontSize: '0.85rem', padding: '0.5rem', backgroundColor: 'var(--text-light)'}}>Fin</button>
+                        </>
                     )}
                 </div>
             </div>
         );
     };
 
-    const QueueColumn: FC<{ title: string; appointments: AppointmentWithPerson[]; count: number }> = ({ title, appointments, count }) => (
-        <div style={columnStyles.column}>
-            <h3 style={columnStyles.header}>{title} <span style={columnStyles.count}>{count}</span></h3>
-            <div style={columnStyles.content}>
-                {appointments.length > 0 ? appointments.map(a => <AppointmentCard key={a.id} appt={a} />) : <p style={columnStyles.emptyText}>No hay pacientes.</p>}
+    const QueueColumn: FC<{ title: string; appointments: AppointmentWithPerson[]; type: 'scheduled' | 'waiting' | 'active'; count: number; icon: React.ReactNode }> = ({ title, appointments, type, count, icon }) => (
+        <div style={{
+            backgroundColor: 'var(--surface-hover-color)', 
+            borderRadius: '16px', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            overflow: 'hidden', 
+            height: '100%',
+            border: '1px solid var(--border-color)'
+        }}>
+            <div style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)' }}>
+                <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+                    <span style={{color: 'var(--primary-color)'}}>{icon}</span>
+                    <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>{title}</h3>
+                </div>
+                <span style={{ backgroundColor: 'var(--primary-light)', color: 'var(--primary-dark)', borderRadius: '12px', padding: '2px 10px', fontSize: '0.8rem', fontWeight: 600 }}>{count}</span>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {appointments.length > 0 ? appointments.map(a => <AppointmentCard key={a.id} appt={a} type={type} />) : <p style={{textAlign: 'center', color: 'var(--text-light)', fontSize: '0.9rem', marginTop: '2rem', opacity: 0.6}}>Sin pacientes</p>}
             </div>
         </div>
     );
 
     return (
-        <div className="fade-in">
+        <div className="fade-in" style={{ height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
             {isRoomModalOpen && appointmentToCall && (
                 <ConsultingRoomModal
                     isOpen={isRoomModalOpen}
@@ -193,43 +245,29 @@ const WaitingQueuePage: FC<WaitingQueuePageProps> = ({ user, isMobile, navigate 
                     patientName={appointmentToCall.persons?.full_name || appointmentToCall.title}
                 />
             )}
-            <div style={{...styles.pageHeader, paddingBottom: 0, borderBottom: 'none'}}>
-                <h1>Sala de Espera Virtual</h1>
+            <div style={{...styles.pageHeader, paddingBottom: '0.5rem', marginBottom: '1rem', borderBottom: 'none'}}>
+                <h1 style={{fontSize: '1.5rem'}}>Control de Flujo de Pacientes</h1>
             </div>
             {error && <p style={styles.error}>{error}</p>}
-            {loading ? <p>Cargando fila de espera...</p> : (
+            
+            {loading ? <p>Cargando...</p> : (
                 <div style={{
                     display: isMobile ? 'flex' : 'grid',
-                    flexDirection: 'column',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    gridTemplateColumns: '1fr 1fr 1fr',
                     gap: '1.5rem',
-                    height: isMobile ? 'auto' : 'calc(100vh - 150px)',
+                    flex: 1,
+                    overflowX: isMobile ? 'auto' : 'visible',
+                    overflowY: 'hidden',
+                    paddingBottom: '1rem' // For scrollbar
                 }}>
-                    <QueueColumn title="Programados para Hoy" appointments={scheduled} count={scheduled.length} />
-                    <QueueColumn title="En Sala de Espera" appointments={waiting} count={waiting.length} />
-                    <QueueColumn title="En Consulta" appointments={inConsultation} count={inConsultation.length} />
+                    <QueueColumn title="Programados" appointments={scheduled} type="scheduled" count={scheduled.length} icon={ICONS.calendar} />
+                    <QueueColumn title="En Sala de Espera" appointments={waiting} type="waiting" count={waiting.length} icon={ICONS.clock} />
+                    <QueueColumn title="En Consulta" appointments={inConsultation} type="active" count={inConsultation.length} icon={ICONS.activity} />
                 </div>
             )}
         </div>
     );
-};
-
-const columnStyles: { [key: string]: React.CSSProperties } = {
-    column: { backgroundColor: 'var(--surface-color)', borderRadius: '12px', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
-    header: { padding: '1rem', margin: 0, borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between' },
-    count: { backgroundColor: 'var(--primary-color)', color: 'white', borderRadius: '50%', width: '24px', height: '24px', display: 'grid', placeItems: 'center', fontSize: '0.9rem' },
-    content: { flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' },
-    emptyText: { textAlign: 'center', color: 'var(--text-light)', marginTop: '2rem' }
-};
-
-const cardStyles: { [key: string]: React.CSSProperties } = {
-    card: { backgroundColor: 'var(--surface-hover-color)', borderRadius: '8px', padding: '1rem', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' },
-    cardHeader: { display: 'flex', alignItems: 'center', gap: '1rem' },
-    avatar: { width: '40px', height: '40px', borderRadius: '50%' },
-    patientName: { margin: 0, fontSize: '1rem', fontWeight: 600 },
-    time: { margin: '0.25rem 0 0 0', fontSize: '0.9rem', color: 'var(--primary-color)' },
-    nutritionist: { fontSize: '0.85rem', color: 'var(--text-light)', margin: '0.5rem 0 0 0', borderTop: '1px solid var(--border-color)', paddingTop: '0.5rem' },
-    actions: { marginTop: '1rem', display: 'flex' },
 };
 
 export default WaitingQueuePage;

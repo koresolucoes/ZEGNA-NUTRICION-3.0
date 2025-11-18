@@ -17,7 +17,7 @@ interface ManageContactModalProps {
 const modalRoot = document.getElementById('modal-root');
 
 const ManageContactModal: FC<ManageContactModalProps> = ({ isOpen, onClose, onSuccess, contact, clinicId, onDelete }) => {
-    const [persons, setPersons] = useState<Person[]>([]);
+    const [persons, setPersons] = useState<Pick<Person, 'id' | 'full_name'>[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);

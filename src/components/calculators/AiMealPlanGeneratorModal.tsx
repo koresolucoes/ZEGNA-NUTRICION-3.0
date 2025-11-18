@@ -41,7 +41,7 @@ const AiMealPlanGeneratorModal: FC<AiMealPlanGeneratorModalProps> = ({ isOpen, o
 
     const activeEquivalents = useMemo(() => {
         return Object.entries(planPortions)
-            .filter(([_, portions]) => parseFloat(portions) > 0)
+            .filter(([_, portions]) => parseFloat(String(portions)) > 0)
             .map(([id, portions]) => {
                 const eq = equivalentsData.find(e => e.id === id);
                 return { name: eq?.subgroup_name || 'Desconocido', portions };

@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { useClinic } from '../contexts/ClinicContext';
@@ -158,9 +159,13 @@ const ChatPage: FC<{ isMobile: boolean }> = ({ isMobile }) => {
         e.preventDefault();
         if (!newMessage.trim() || !selectedContact || !clinic) return;
 
-        const tempMessageId = `temp-${Date.now()}`;
+        // Using numeric timestamp for temporary ID, but ensure types align
+        const tempMessageId = Date.now(); 
         const messagePayload: WhatsappMessage = {
-            id: tempMessageId,
+            // Cast to unknown then string if ID is string, or keep as number if DB is number.
+            // Assuming DB ID is numeric based on typical setups or serial.
+            // If DB ID is UUID (string), we should use a placeholder string.
+            id: tempMessageId as unknown as number, 
             clinic_id: clinic.id,
             contact_id: selectedContact.id,
             contact_phone_number: selectedContact.phone_number,
@@ -188,7 +193,7 @@ const ChatPage: FC<{ isMobile: boolean }> = ({ isMobile }) => {
             if (!response.ok) throw new Error(result.error);
         } catch (err: any) {
             setError(`Error enviando mensaje: ${err.message}`);
-            setMessages(prev => prev.filter(msg => msg.id !== tempMessageId));
+            setMessages(prev => prev.filter(msg => msg.id !== tempMessageId)); // Revert optimistic update
         }
     };
 

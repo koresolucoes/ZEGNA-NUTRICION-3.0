@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabase';
 import { styles } from '../constants';
@@ -7,6 +8,7 @@ import PlanStatusIndicator from '../components/shared/PlanStatusIndicator';
 import ConfirmationModal from '../components/shared/ConfirmationModal';
 import { useClinic } from '../contexts/ClinicContext';
 import HelpTooltip from '../components/calculators/tools/shared/HelpTooltip';
+import SkeletonLoader from '../components/shared/SkeletonLoader';
 
 const ClientsPage: FC<{ isMobile: boolean; onViewDetails: (personId: string) => void; onAddClient: () => void; onEditClient: (personId: string) => void; }> = ({ isMobile, onViewDetails, onAddClient, onEditClient }) => {
     const { clinic, subscription } = useClinic();
@@ -65,24 +67,10 @@ const ClientsPage: FC<{ isMobile: boolean; onViewDetails: (personId: string) => 
 
     useEffect(() => {
         if (!clinic) return;
-        
         fetchClients();
-
         const channel = supabase.channel('persons-clients-changes')
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'persons',
-                    filter: `clinic_id=eq.${clinic.id}`
-                },
-                (payload) => {
-                    fetchClients();
-                }
-            )
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'persons', filter: `clinic_id=eq.${clinic.id}` }, () => fetchClients())
             .subscribe();
-
         return () => { supabase.removeChannel(channel); };
     }, [fetchClients, clinic]);
     
@@ -99,10 +87,7 @@ const ClientsPage: FC<{ isMobile: boolean; onViewDetails: (personId: string) => 
         setLoading(true);
         setError(null);
         try {
-            const { error: updateError } = await supabase
-                .from('persons')
-                .update({ person_type: 'member' })
-                .eq('id', person.id);
+            const { error: updateError } = await supabase.from('persons').update({ person_type: 'member' }).eq('id', person.id);
             if (updateError) throw updateError;
         } catch (err: any) {
             setError(`Error en la transferencia: ${err.message}.`);
@@ -121,77 +106,10 @@ const ClientsPage: FC<{ isMobile: boolean; onViewDetails: (personId: string) => 
 
     const handleConfirm = () => {
         if (!modalState.data || !modalState.action) return;
-
-        if (modalState.action === 'transfer') {
-            executeTransferToAfiliado(modalState.data);
-        } else if (modalState.action === 'delete') {
-            executeDeleteClient(modalState.data.id);
-        }
+        if (modalState.action === 'transfer') executeTransferToAfiliado(modalState.data);
+        else if (modalState.action === 'delete') executeDeleteClient(modalState.data.id);
         closeModal();
     };
-
-
-    const renderDesktopTable = () => (
-        <table style={styles.table} aria-label="Tabla de pacientes">
-            <thead>
-                <tr>
-                    <th style={{...styles.th, width: '60px'}}></th>
-                    <th style={styles.th}>Nombre Paciente</th>
-                    <th style={styles.th}>Teléfono</th>
-                    <th style={styles.th}>Folio</th>
-                    <th style={styles.th}>Estado Plan</th>
-                    <th style={styles.th}>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {clients.map(c => (
-                    <tr key={c.id} className="table-row-hover" onClick={() => onViewDetails(c.id)} style={{ cursor: 'pointer' }}>
-                        <td style={styles.td}>
-                            <img src={c.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${c.full_name}&radius=50`} alt="Avatar" style={{width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover'}} />
-                        </td>
-                        <td style={styles.td}>{c.full_name}</td>
-                        <td style={styles.td}>{c.phone_number || '-'}</td>
-                        <td style={styles.td}>{c.folio || '-'}</td>
-                        <td style={styles.td}><PlanStatusIndicator planEndDate={c.subscription_end_date} /></td>
-                        <td style={styles.td} onClick={(e) => e.stopPropagation()}>
-                            <div style={styles.actionButtons}>
-                                <button onClick={() => onViewDetails(c.id)} style={styles.iconButton} title="Ver Detalles">{ICONS.details}</button>
-                                <button onClick={() => onEditClient(c.id)} style={styles.iconButton} title="Editar Paciente">{ICONS.edit}</button>
-                                <button onClick={() => openModal('transfer', c)} style={styles.iconButton} title="Transferir a Afiliado">{ICONS.transfer}</button>
-                                <button onClick={() => openModal('delete', c)} style={{...styles.iconButton, color: 'var(--error-color)'}} title="Eliminar Paciente">{ICONS.delete}</button>
-                            </div>
-                        </td>
-                    </tr>
-                ))}
-            </tbody>
-        </table>
-    );
-
-    const renderMobileCards = () => (
-        <div>
-            {clients.map(c => (
-                <div key={c.id} style={{ ...styles.clientCard, cursor: 'pointer' }} className="card-hover" onClick={() => onViewDetails(c.id)}>
-                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem'}}>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-                            <img src={c.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${c.full_name}&radius=50`} alt="Avatar" style={{width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover'}} />
-                            <h3 style={{margin: 0, color: 'var(--primary-color)'}}>{c.full_name}</h3>
-                        </div>
-                        <div style={styles.actionButtons} onClick={(e) => e.stopPropagation()}>
-                            <button onClick={() => onEditClient(c.id)} style={styles.iconButton} title="Editar Paciente">{ICONS.edit}</button>
-                             <button onClick={() => openModal('transfer', c)} style={styles.iconButton} title="Transferir a Afiliado">{ICONS.transfer}</button>
-                            <button onClick={() => openModal('delete', c)} style={{...styles.iconButton, color: 'var(--error-color)'}} title="Eliminar Paciente">{ICONS.delete}</button>
-                        </div>
-                    </div>
-                    <p style={{margin: '0.25rem 0'}}><strong>Teléfono:</strong> {c.phone_number || '-'}</p>
-                    <p style={{margin: '0.25rem 0'}}><strong>Folio:</strong> {c.folio || '-'}</p>
-                    <div style={{display: 'flex', alignItems: 'center', gap: '4px', margin: '0.25rem 0'}}>
-                        <strong style={{margin: 0}}>Plan:</strong>
-                        <PlanStatusIndicator planEndDate={c.subscription_end_date} />
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
 
     return (
         <div className="fade-in">
@@ -203,22 +121,24 @@ const ClientsPage: FC<{ isMobile: boolean; onViewDetails: (personId: string) => 
                 message={
                     modalState.action === 'transfer' ? (
                         <>
-                            <p>¿Estás seguro de que quieres transferir a <strong>{modalState.data?.full_name}</strong> a la lista de "Afiliados"?</p>
-                            <p style={{color: 'var(--error-color)', fontWeight: 500}}>ADVERTENCIA: Esta acción es irreversible. El perfil del paciente será reclasificado como afiliado, manteniendo todo su historial.</p>
+                            <p>¿Transferir a <strong>{modalState.data?.full_name}</strong> a la lista de "Afiliados"?</p>
+                            <p style={{color: 'var(--error-color)', fontWeight: 500}}>ADVERTENCIA: Esta acción es irreversible. El perfil será reclasificado, manteniendo su historial.</p>
                         </>
                     ) : (
-                        <p>¿Estás seguro? Se eliminarán el paciente <strong>{modalState.data?.full_name}</strong> y todos sus datos asociados. Esta acción no se puede deshacer.</p>
+                        <p>¿Estás seguro? Se eliminarán el paciente <strong>{modalState.data?.full_name}</strong> y todos sus datos. Acción irreversible.</p>
                     )
                 }
                 confirmText={modalState.action === 'transfer' ? 'Sí, transferir' : 'Sí, eliminar'}
+                confirmButtonClass={modalState.action === 'delete' ? 'button-danger' : 'button-primary'}
             />
+            
             <div style={styles.pageHeader}>
-                <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0 }}>
                     Gestión de Pacientes
-                    <HelpTooltip content="Un Paciente es un cliente individual y directo de tu clínica, que contrata tus servicios por cuenta propia." />
+                    <HelpTooltip content="Pacientes directos que contratan tus servicios por cuenta propia." />
                 </h1>
-                <button onClick={onAddClient} disabled={isPatientLimitReached} title={isPatientLimitReached ? `Límite de ${maxPatients} pacientes alcanzado. Actualiza tu plan.` : 'Agregar nuevo paciente'}>
-                    {ICONS.add} Agregar
+                <button onClick={onAddClient} disabled={isPatientLimitReached} className="button-primary" title={isPatientLimitReached ? `Límite de ${maxPatients} alcanzado.` : 'Agregar nuevo paciente'}>
+                    {ICONS.add} Nuevo Paciente
                 </button>
             </div>
 
@@ -240,14 +160,53 @@ const ClientsPage: FC<{ isMobile: boolean; onViewDetails: (personId: string) => 
                 </div>
             </div>
 
-            {loading && <p>Cargando pacientes...</p>}
+            {loading && <SkeletonLoader type={isMobile ? 'card' : 'table'} count={6} />}
             {error && <p style={styles.error}>{error}</p>}
+            
             {!loading && !error && (
                 <div style={styles.tableContainer}>
                     {clients.length === 0 ? (
-                      <p style={{textAlign: 'center', padding: '2rem'}}>No se encontraron pacientes con los filtros aplicados.</p>
+                      <div style={{textAlign: 'center', padding: '3rem', color: 'var(--text-light)'}}>
+                          <div style={{fontSize: '3rem', marginBottom: '1rem', opacity: 0.5}}>{ICONS.users}</div>
+                          <p>No se encontraron pacientes con los filtros aplicados.</p>
+                      </div>
                     ) : (
-                      isMobile ? renderMobileCards() : renderDesktopTable()
+                        <table style={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th style={{...styles.th, width: '60px'}}></th>
+                                    <th style={styles.th}>Nombre</th>
+                                    {!isMobile && <th style={styles.th}>Contacto</th>}
+                                    {!isMobile && <th style={styles.th}>Folio</th>}
+                                    <th style={styles.th}>Estado Plan</th>
+                                    <th style={styles.th}>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {clients.map(c => (
+                                    <tr key={c.id} className="table-row-hover" onClick={() => onViewDetails(c.id)} style={{ cursor: 'pointer' }}>
+                                        <td style={styles.td}>
+                                            <img src={c.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${c.full_name}&radius=50`} alt="Avatar" style={{width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover'}} />
+                                        </td>
+                                        <td style={styles.td}>
+                                            <div style={{fontWeight: 500, color: 'var(--text-color)'}}>{c.full_name}</div>
+                                            {isMobile && <div style={{fontSize: '0.8rem', color: 'var(--text-light)'}}>{c.phone_number}</div>}
+                                        </td>
+                                        {!isMobile && <td style={styles.td}>{c.phone_number || '-'}</td>}
+                                        {!isMobile && <td style={styles.td}><code style={{backgroundColor: 'var(--surface-hover-color)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85rem'}}>{c.folio || '-'}</code></td>}
+                                        <td style={styles.td}><PlanStatusIndicator planEndDate={c.subscription_end_date} /></td>
+                                        <td style={styles.td} onClick={(e) => e.stopPropagation()}>
+                                            <div style={styles.actionButtons}>
+                                                <button onClick={() => onViewDetails(c.id)} style={styles.iconButton} title="Ver Expediente">{ICONS.details}</button>
+                                                <button onClick={() => onEditClient(c.id)} style={styles.iconButton} title="Editar">{ICONS.edit}</button>
+                                                <button onClick={() => openModal('transfer', c)} style={styles.iconButton} title="Transferir">{ICONS.transfer}</button>
+                                                <button onClick={() => openModal('delete', c)} style={{...styles.iconButton, color: 'var(--error-color)'}} title="Eliminar">{ICONS.delete}</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     )}
                 </div>
             )}

@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useMemo, useCallback } from 'react';
 import { supabase } from '../../supabase';
 import { styles } from '../../constants';
@@ -61,9 +62,13 @@ const ClinicalReferences: FC<ClinicalReferencesProps> = ({ references, selectedP
                 }
             }
         } else if (lastConsultation.lab_results?.[0] && item.key in lastConsultation.lab_results[0]) {
-            patientValue = lastConsultation.lab_results[0][item.key as keyof typeof lastConsultation.lab_results[0]];
+             const labResults = lastConsultation.lab_results[0] as any;
+             patientValue = labResults[item.key];
         } else if (item.key in lastConsultation) {
-            patientValue = lastConsultation[item.key as keyof typeof lastConsultation];
+            const val = (lastConsultation as any)[item.key];
+            if (typeof val === 'string' || typeof val === 'number') {
+                patientValue = val;
+            }
         }
 
         if (patientValue === null || patientValue === undefined) return { value: null, isOutOfRange: false };

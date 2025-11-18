@@ -22,10 +22,9 @@ const DisplayManagement: FC = () => {
     const handleCopyUrl = () => {
         navigator.clipboard.writeText(publicUrl).then(() => {
             setCopySuccess(true);
-            setTimeout(() => setCopySuccess(false), 2000); // Reset after 2 seconds
+            setTimeout(() => setCopySuccess(false), 2000);
         }, (err) => {
             console.error('Failed to copy URL: ', err);
-            // Optionally, show an error message to the user
         });
     };
 
@@ -59,7 +58,7 @@ const DisplayManagement: FC = () => {
     const handleSaveSuccess = () => {
         setIsModalOpen(false);
         setEditingDisplay(null);
-        fetchData(); // Refetch data after save
+        fetchData();
     };
     
     const handleDeleteConfirm = async () => {
@@ -73,9 +72,8 @@ const DisplayManagement: FC = () => {
         setDeletingDisplay(null);
     };
 
-
     return (
-        <div className="fade-in" style={{ maxWidth: '800px' }}>
+        <div className="fade-in" style={{ maxWidth: '1000px', margin: '0 auto', paddingBottom: '2rem' }}>
             {isModalOpen && (
                 <DisplayFormModal
                     isOpen={isModalOpen}
@@ -94,56 +92,115 @@ const DisplayManagement: FC = () => {
                 />
             )}
 
-            <section>
-                <h2>Gestionar Pantallas de Sala de Espera</h2>
-                <p style={{color: 'var(--text-light)'}}>Crea y administra las pantallas públicas donde tus pacientes verán la fila de espera. Cada pantalla tiene un código único para vincularla a un dispositivo (TV, tablet, etc.).</p>
+            <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+                <h2 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: '1rem' }}>Pantallas de Sala de Espera</h2>
+                <p style={{ color: 'var(--text-light)', maxWidth: '600px', margin: '0 auto', lineHeight: 1.6 }}>
+                    Configura las pantallas públicas para gestionar el flujo de pacientes de forma ordenada y profesional.
+                </p>
+            </div>
+            
+            {/* URL Banner */}
+            <div style={{ 
+                padding: '1.5rem', 
+                backgroundColor: 'var(--surface-color)', 
+                borderRadius: '16px', 
+                marginBottom: '2.5rem', 
+                border: `1px solid var(--border-color)`,
+                boxShadow: 'var(--shadow)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                textAlign: 'center'
+            }}>
+                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-color)' }}>🔗 URL Pública de la Sala</h3>
+                <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: 'var(--text-light)', maxWidth: '500px' }}>
+                    Abre esta dirección en la Smart TV o Tablet de tu recepción. Luego, ingresa el código de vinculación de la pantalla que desees mostrar.
+                </p>
                 
-                <div style={{ padding: '1rem', backgroundColor: 'var(--surface-hover-color)', borderRadius: '8px', marginBottom: '1.5rem', border: `1px solid var(--border-color)` }}>
-                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', color: 'var(--primary-color)' }}>URL de la Sala de Espera Pública</h3>
-                    <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: 'var(--text-light)' }}>
-                        Usa esta dirección en el navegador de tu Smart TV o tablet para mostrar la sala de espera. Luego, ingresa el código de vinculación de la pantalla correspondiente.
-                    </p>
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                        <input 
-                            type="text" 
-                            readOnly 
-                            value={publicUrl}
-                            style={{ flex: 1, margin: 0, backgroundColor: 'var(--background-color)', cursor: 'text' }} 
-                        />
-                        <button type="button" onClick={handleCopyUrl} className="button-secondary">
-                            {copySuccess ? '¡Copiado!' : 'Copiar'}
-                        </button>
-                    </div>
+                <div style={{ 
+                    display: 'flex', 
+                    gap: '0.5rem', 
+                    alignItems: 'center', 
+                    backgroundColor: 'var(--surface-hover-color)', 
+                    padding: '0.5rem 0.5rem 0.5rem 1.5rem', 
+                    borderRadius: '50px',
+                    maxWidth: '100%',
+                    width: 'auto'
+                }}>
+                    <span style={{fontFamily: 'monospace', color: 'var(--primary-color)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '300px'}}>
+                        {publicUrl}
+                    </span>
+                    <button 
+                        type="button" 
+                        onClick={handleCopyUrl} 
+                        style={{
+                            borderRadius: '50px',
+                            padding: '6px 16px',
+                            fontSize: '0.85rem',
+                            backgroundColor: copySuccess ? '#10B981' : 'var(--primary-color)',
+                            color: 'white',
+                            border: 'none',
+                            cursor: 'pointer',
+                            transition: 'background-color 0.2s',
+                            fontWeight: 600
+                        }}
+                    >
+                        {copySuccess ? '¡Copiado!' : 'Copiar'}
+                    </button>
                 </div>
+            </div>
 
-                <button onClick={() => { setEditingDisplay(null); setIsModalOpen(true); }} style={{marginBottom: '1.5rem'}}>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem'}}>
+                 <h3 style={{margin: 0, fontSize: '1.2rem'}}>Mis Pantallas</h3>
+                 <button onClick={() => { setEditingDisplay(null); setIsModalOpen(true); }} className="button-primary">
                     {ICONS.add} Nueva Pantalla
                 </button>
+            </div>
 
-                {loading && <p>Cargando pantallas...</p>}
-                {error && <p style={styles.error}>{error}</p>}
-                
-                {!loading && displays.length > 0 && (
-                    <div className="info-grid">
-                        {displays.map(display => (
-                            <div key={display.id} className="info-card">
-                                <div style={{flex: 1}}>
-                                    <h4 style={{margin: '0 0 0.5rem 0', color: 'var(--primary-color)'}}>{display.name}</h4>
-                                    <p style={{margin: '0 0 0.5rem 0', fontSize: '1.2rem', fontWeight: 600, letterSpacing: '2px', fontFamily: 'monospace'}}>{display.display_code}</p>
-                                    <p style={{margin: 0, fontSize: '0.9rem', color: 'var(--text-light)'}}>Texto de llamada: <strong style={{color: 'var(--text-color)'}}>{display.calling_label}</strong></p>
-                                </div>
-                                <div className="card-actions">
-                                    <button onClick={() => handleEdit(display)} style={styles.iconButton} title="Editar">{ICONS.edit}</button>
-                                    <button onClick={() => setDeletingDisplay(display)} style={{...styles.iconButton, color: 'var(--error-color)'}} title="Eliminar">{ICONS.delete}</button>
+            {loading && <div style={{textAlign: 'center', padding: '2rem', color: 'var(--text-light)'}}>Cargando pantallas...</div>}
+            {error && <p style={styles.error}>{error}</p>}
+            
+            {!loading && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                    {displays.map(display => (
+                        <div key={display.id} style={{ 
+                            backgroundColor: 'var(--surface-color)', 
+                            borderRadius: '16px', 
+                            border: '1px solid var(--border-color)',
+                            padding: '1.5rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            position: 'relative',
+                            overflow: 'hidden',
+                            transition: 'transform 0.2s, box-shadow 0.2s'
+                        }} className="card-hover">
+                            <div style={{position: 'absolute', top: 0, right: 0, padding: '0.5rem 1rem', backgroundColor: 'var(--surface-hover-color)', borderBottomLeftRadius: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-light)'}}>
+                                {display.calling_label}
+                            </div>
+
+                            <h4 style={{margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-color)'}}>{display.name}</h4>
+                            
+                            <div style={{margin: '1.5rem 0', textAlign: 'center'}}>
+                                <p style={{fontSize: '0.8rem', color: 'var(--text-light)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '1px'}}>Código de Vinculación</p>
+                                <div style={{fontSize: '2rem', fontFamily: 'monospace', fontWeight: 700, color: 'var(--primary-color)', letterSpacing: '4px'}}>
+                                    {display.display_code}
                                 </div>
                             </div>
-                        ))}
-                    </div>
-                )}
-                 {!loading && displays.length === 0 && (
-                    <p>No has configurado ninguna pantalla de sala de espera.</p>
-                 )}
-            </section>
+
+                            <div style={{ marginTop: 'auto', display: 'flex', gap: '0.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                                <button onClick={() => handleEdit(display)} style={{flex: 1}} className="button-secondary">Editar</button>
+                                <button onClick={() => setDeletingDisplay(display)} style={{padding: '0.6rem 1rem', color: 'var(--error-color)'}} className="button-secondary">{ICONS.delete}</button>
+                            </div>
+                        </div>
+                    ))}
+                    
+                    {displays.length === 0 && (
+                         <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', border: '2px dashed var(--border-color)', borderRadius: '12px', color: 'var(--text-light)' }}>
+                            <p>No hay pantallas configuradas.</p>
+                         </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 };

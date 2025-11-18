@@ -3,6 +3,7 @@ import { supabase } from '../../supabase';
 import { styles } from '../../constants';
 import { ICONS } from '../AuthPage';
 import { Ally } from '../../types';
+import SkeletonLoader from '../../components/shared/SkeletonLoader';
 
 type PartnershipStatusMap = { [allyId: string]: 'pending' | 'active' | 'revoked' | 'rejected' | 'none' };
 
@@ -88,7 +89,7 @@ const AllyDirectoryPage: FC<{ navigate: (page: string) => void }> = ({ navigate 
                 </div>
             </div>
 
-            {loading && <p>Cargando directorio...</p>}
+            {loading && <SkeletonLoader type="card" count={6} />}
             {error && <p style={styles.error}>{error}</p>}
             {!loading && (
                 <div className="info-grid" style={{marginTop: '1.5rem'}}>
