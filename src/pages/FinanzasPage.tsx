@@ -105,20 +105,22 @@ const FinanzasPage: FC<{ isMobile: boolean; navigate: (page: string, context?: a
         }, {} as Record<string, number>);
         
         const bestSellingService = Object.keys(serviceCounts).length > 0
-            ? Object.entries(serviceCounts).sort((a, b) => b[1] - a[1])[0][0]
+            ? Object.entries(serviceCounts).sort((a, b) => (b[1] as number) - (a[1] as number))[0][0]
             : 'N/A';
         
-        const revenueByDay = paidPayments.reduce((acc, p) => {
+        const revenueByDay = paidPayments.reduce((acc: Record<string, number>, p) => {
             const date = p.payment_date.split('T')[0];
-            acc[date] = (acc[date] || 0) + Number(p.amount);
+            const currentVal = acc[date] || 0;
+            const amount = Number(p.amount) || 0;
+            acc[date] = currentVal + amount;
             return acc;
         }, {} as Record<string, number>);
 
-        const servicesDistribution = paidPayments.reduce((acc: Record<string, number>, p: any) => {
+        const servicesDistribution = paidPayments.reduce((acc: Record<string, number>, p) => {
              const serviceName = p.services?.name || 'Otros';
              const currentVal = acc[serviceName] || 0;
-             // FIX: Explicitly cast `p.amount` to a number using `Number()` and ensure arithmetic operands are numbers
-             acc[serviceName] = currentVal + Number(p.amount);
+             const amount = Number(p.amount) || 0;
+             acc[serviceName] = currentVal + amount;
              return acc;
         }, {} as Record<string, number>);
 

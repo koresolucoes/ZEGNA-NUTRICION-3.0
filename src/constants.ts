@@ -68,7 +68,7 @@ export const styles: { [key: string]: React.CSSProperties } = {
     
     // Actions
     actionButtons: { display: 'flex', gap: '0.5rem' },
-    iconButton: { background: 'transparent', border: 'none', color: 'var(--text-light)', padding: '0.5rem', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background-color 0.2s, color 0.2s' },
+    iconButton: { background: 'transparent', border: 'none', color: 'var(--text-light)', padding: '0.5rem', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background-color 0.2s, color 0.2s, transform 0.1s' },
     
     // Modals - Cleaner
     modalOverlay: { position: 'fixed' as const, top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, overflowY: 'auto' as const, padding: '1rem' },
@@ -148,6 +148,7 @@ export const styles: { [key: string]: React.CSSProperties } = {
         marginBottom: '-1px', // Overlap with the content border
         zIndex: 1,
         position: 'relative' as const,
+        overflowX: 'auto' as const,
     },
     folderTab: {
         padding: '0.75rem 1.5rem',
@@ -161,7 +162,8 @@ export const styles: { [key: string]: React.CSSProperties } = {
         fontSize: '0.95rem',
         transition: 'all 0.2s ease-in-out',
         position: 'relative' as const,
-        marginBottom: '-1px' // Crucial for the merge effect
+        marginBottom: '-1px', // Crucial for the merge effect
+        whiteSpace: 'nowrap' as const
     },
     folderTabActive: {
         backgroundColor: 'var(--surface-color)',
@@ -177,6 +179,16 @@ export const styles: { [key: string]: React.CSSProperties } = {
         border: '1px solid var(--border-color)',
         padding: '2rem',
         boxShadow: 'var(--shadow)',
+        position: 'relative' as const,
+        zIndex: 0
+    },
+    // Variant for nested content (e.g. inside Clinical History)
+    nestedFolderContent: {
+        backgroundColor: 'var(--surface-color)',
+        borderRadius: '0 8px 8px 8px',
+        border: '1px solid var(--border-color)',
+        padding: '1.5rem',
+        marginTop: 0, // Adjusted to merge with tabs
         position: 'relative' as const,
         zIndex: 0
     },

@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Type } from '@google/genai';
@@ -227,7 +228,7 @@ const MealPlanGenerator: FC<MealPlanGeneratorProps> = ({ person, lastConsultatio
 
     const modalContent = (
         <div style={styles.modalOverlay}>
-            <div style={styles.modalContent} className="fade-in">
+            <div style={{...styles.modalContent, maxWidth: '800px'}} className="fade-in">
                 <div style={styles.modalHeader}>
                     <h2 style={styles.modalTitle}>Generador de Plan Alimenticio con IA</h2>
                     <button onClick={onClose} style={{...styles.iconButton, border: 'none'}}>{ICONS.close}</button>
@@ -235,29 +236,32 @@ const MealPlanGenerator: FC<MealPlanGeneratorProps> = ({ person, lastConsultatio
                 <div style={styles.modalBody}>
                     {!generatedPlan && !loading && (
                         <>
-                            <p>Se generará un plan para <strong>{person.full_name}</strong>.</p>
+                            <p style={{marginTop: 0, color: 'var(--text-light)'}}>Se generará un plan para <strong>{person.full_name}</strong>.</p>
 
-                            <label htmlFor="num_days_meal_plan">Número de Días del Plan</label>
-                            <input
-                                id="num_days_meal_plan"
-                                type="number"
-                                min="1"
-                                max="14"
-                                value={numDays}
-                                onChange={(e) => setNumDays(e.target.value)}
-                                style={{maxWidth: '150px'}}
-                            />
-                            
-                            <label htmlFor="health_goal">Objetivo de Salud Principal *</label>
-                            <textarea
-                                id="health_goal"
-                                name="health_goal"
-                                value={healthGoal}
-                                onChange={(e) => setHealthGoal(e.target.value)}
-                                rows={2}
-                                placeholder="Ej: Pérdida de peso, control de glucosa, aumento de masa muscular..."
-                                required
-                            />
+                            <div style={{display: 'flex', gap: '1rem'}}>
+                                <div style={{flex: 1}}>
+                                     <label htmlFor="num_days_meal_plan">Número de Días</label>
+                                    <input
+                                        id="num_days_meal_plan"
+                                        type="number"
+                                        min="1"
+                                        max="14"
+                                        value={numDays}
+                                        onChange={(e) => setNumDays(e.target.value)}
+                                    />
+                                </div>
+                                 <div style={{flex: 3}}>
+                                    <label htmlFor="health_goal">Objetivo Principal *</label>
+                                    <input
+                                        id="health_goal"
+                                        name="health_goal"
+                                        value={healthGoal}
+                                        onChange={(e) => setHealthGoal(e.target.value)}
+                                        placeholder="Ej: Pérdida de peso, control de glucosa..."
+                                        required
+                                    />
+                                </div>
+                            </div>
 
                             <label htmlFor="custom_instructions">Instrucciones Adicionales (Opcional)</label>
                             <textarea
@@ -284,15 +288,15 @@ const MealPlanGenerator: FC<MealPlanGeneratorProps> = ({ person, lastConsultatio
                     
                     {generatedPlan && generatedPlan.plan_semanal && !loading &&(
                         <div style={{maxHeight: '45vh', overflowY: 'auto', paddingRight: '1rem'}}>
-                            <h3 style={{color: 'var(--primary-dark)'}}>Plan Semanal Sugerido</h3>
+                            <h3 style={{color: 'var(--primary-dark)', fontSize: '1.1rem'}}>Plan Semanal Sugerido</h3>
                             {generatedPlan.plan_semanal.map((day: any, index: number) => (
-                                <div key={`${day.dia}-${index}`} style={{marginBottom: '1rem'}}>
-                                    <h4 style={{borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem'}}>{day.dia}</h4>
-                                    <p style={{margin: '0.25rem 0'}}><strong>Desayuno:</strong> {day.desayuno}</p>
-                                    <p style={{margin: '0.25rem 0'}}><strong>Colación 1:</strong> {day.colacion_1 || 'N/A'}</p>
-                                    <p style={{margin: '0.25rem 0'}}><strong>Comida:</strong> {day.comida}</p>
-                                    <p style={{margin: '0.25rem 0'}}><strong>Colación 2:</strong> {day.colacion_2 || 'N/A'}</p>
-                                    <p style={{margin: '0.25rem 0'}}><strong>Cena:</strong> {day.cena}</p>
+                                <div key={`${day.dia}-${index}`} style={{marginBottom: '1rem', backgroundColor: 'var(--surface-hover-color)', padding: '1rem', borderRadius: '8px'}}>
+                                    <h4 style={{borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem', margin: '0 0 0.5rem 0', color: 'var(--primary-color)'}}>{day.dia}</h4>
+                                    <p style={{margin: '0.25rem 0', fontSize: '0.9rem'}}><strong>Desayuno:</strong> {day.desayuno}</p>
+                                    <p style={{margin: '0.25rem 0', fontSize: '0.9rem'}}><strong>Colación 1:</strong> {day.colacion_1 || 'N/A'}</p>
+                                    <p style={{margin: '0.25rem 0', fontSize: '0.9rem'}}><strong>Comida:</strong> {day.comida}</p>
+                                    <p style={{margin: '0.25rem 0', fontSize: '0.9rem'}}><strong>Colación 2:</strong> {day.colacion_2 || 'N/A'}</p>
+                                    <p style={{margin: '0.25rem 0', fontSize: '0.9rem'}}><strong>Cena:</strong> {day.cena}</p>
                                 </div>
                             ))}
                         </div>

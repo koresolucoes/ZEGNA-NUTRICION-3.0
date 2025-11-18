@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useMemo } from 'react';
 import { ConsultationWithLabs, TeamMember } from '../../../types';
 import { styles } from '../../../constants';
@@ -29,42 +30,79 @@ export const ConsultationsTab: FC<ConsultationsTabProps> = ({ consultations, mem
 
     return (
         <section className="fade-in">
-            <div style={{...styles.pageHeader, paddingBottom: '0.5rem', marginBottom: '1.5rem'}}>
-                <h2 style={{margin:0}}>Historial de Consultas</h2>
-                <button onClick={onAdd}>{ICONS.add} Nueva</button>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem'}}>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color)' }}>Historial de Consultas</h3>
+                <button onClick={onAdd} style={{padding: '0.5rem 1rem', fontSize: '0.9rem'}}>{ICONS.add} Nueva Consulta</button>
             </div>
-             <div style={{...styles.filterBar, marginBottom: '1.5rem'}}>
-                <div style={{flex: 1}}><label>Desde</label><input type="date" value={filters.startDate} onChange={e => setFilters(prev => ({...prev, startDate: e.target.value}))} style={{margin:0}} /></div>
-                <div style={{flex: 1}}><label>Hasta</label><input type="date" value={filters.endDate} onChange={e => setFilters(prev => ({...prev, endDate: e.target.value}))} style={{margin:0}} /></div>
+
+             <div style={{...styles.filterBar, marginBottom: '1.5rem', padding: '0.75rem', borderRadius: '8px'}}>
+                <div style={{flex: 1, display: 'flex', gap: '1rem', alignItems: 'center'}}>
+                    <span style={{fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-light)'}}>Filtrar:</span>
+                    <input type="date" value={filters.startDate} onChange={e => setFilters(prev => ({...prev, startDate: e.target.value}))} style={{margin:0, minWidth: '130px', fontSize: '0.85rem', padding: '0.4rem'}} />
+                    <span style={{color: 'var(--text-light)'}}>-</span>
+                    <input type="date" value={filters.endDate} onChange={e => setFilters(prev => ({...prev, endDate: e.target.value}))} style={{margin:0, minWidth: '130px', fontSize: '0.85rem', padding: '0.4rem'}} />
+                </div>
             </div>
+
             {filteredConsultations.length > 0 ? (
-                <div className="info-grid">
+                <div className="info-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
                     {filteredConsultations.map(c => {
                         const nutritionist = c.nutritionist_id ? memberMap.get(c.nutritionist_id) : null;
                         return (
-                            <div key={c.id} className="info-card info-card-clickable" onClick={() => onView(c)}>
-                                <div style={{ flex: 1 }}>
-                                    <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--primary-color)' }}>
-                                        {new Date(c.consultation_date).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })}
+                            <div key={c.id} onClick={() => onView(c)} style={{ 
+                                backgroundColor: 'var(--surface-hover-color)', 
+                                borderRadius: '12px', 
+                                border: '1px solid var(--border-color)',
+                                padding: '1.25rem',
+                                cursor: 'pointer',
+                                position: 'relative',
+                                transition: 'all 0.2s'
+                            }} className="card-hover">
+                                {/* Top Actions */}
+                                <div style={{position: 'absolute', top: '1rem', right: '1rem', display: 'flex', gap: '0.25rem'}}>
+                                    <button onClick={(e) => { e.stopPropagation(); onEdit(c.id); }} style={{...styles.iconButton, width: '28px', height: '28px', padding: '4px'}} title="Editar">{ICONS.edit}</button>
+                                    <button onClick={(e) => { e.stopPropagation(); openModal('deleteConsultation', c.id, '¿Eliminar esta consulta?'); }} style={{...styles.iconButton, color: 'var(--error-color)', width: '28px', height: '28px', padding: '4px'}} title="Eliminar">{ICONS.delete}</button>
+                                </div>
+
+                                <div style={{ marginBottom: '1rem' }}>
+                                    <h4 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '1.1rem', fontWeight: 700 }}>
+                                        {new Date(c.consultation_date).toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' })}
                                     </h4>
-                                    <p style={{ margin: '0.25rem 0', fontSize: '0.9rem' }}><strong>Peso:</strong> {c.weight_kg ?? '-'} kg</p>
-                                    <p style={{ margin: '0.25rem 0', fontSize: '0.9rem' }}><strong>IMC:</strong> {c.imc ?? '-'}</p>
-                                    {nutritionist && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '1rem', fontSize: '0.8rem', color: 'var(--text-light)', borderTop: '1px solid var(--border-color)', paddingTop: '0.5rem' }}>
-                                            <img src={nutritionist.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${nutritionist.full_name || '?'}&radius=50`} alt="avatar" style={{width: '20px', height: '20px', borderRadius: '50%'}} />
-                                            <span>{nutritionist.full_name || 'Usuario'}</span>
-                                        </div>
-                                    )}
+                                    <span style={{fontSize: '0.8rem', color: 'var(--text-light)'}}>
+                                        {new Date(c.consultation_date).toLocaleTimeString('es-MX', {hour: '2-digit', minute: '2-digit', timeZone: 'UTC'})}
+                                    </span>
                                 </div>
-                                <div className="card-actions">
-                                    <button onClick={(e) => { e.stopPropagation(); onEdit(c.id); }} style={styles.iconButton} title="Editar">{ICONS.edit}</button>
-                                    <button onClick={(e) => { e.stopPropagation(); openModal('deleteConsultation', c.id, '¿Eliminar esta consulta?'); }} style={{...styles.iconButton, color: 'var(--error-color)'}} title="Eliminar">{ICONS.delete}</button>
+
+                                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '1rem'}}>
+                                    <div style={{backgroundColor: 'var(--surface-color)', padding: '0.5rem', borderRadius: '6px', textAlign: 'center', border: '1px solid var(--border-color)'}}>
+                                        <span style={{fontSize: '0.7rem', color: 'var(--text-light)', display: 'block', textTransform: 'uppercase'}}>Peso</span>
+                                        <span style={{fontWeight: 700, fontSize: '1rem', color: 'var(--text-color)'}}>{c.weight_kg ?? '-'}</span>
+                                    </div>
+                                    <div style={{backgroundColor: 'var(--surface-color)', padding: '0.5rem', borderRadius: '6px', textAlign: 'center', border: '1px solid var(--border-color)'}}>
+                                        <span style={{fontSize: '0.7rem', color: 'var(--text-light)', display: 'block', textTransform: 'uppercase'}}>IMC</span>
+                                        <span style={{fontWeight: 700, fontSize: '1rem', color: 'var(--text-color)'}}>{c.imc ?? '-'}</span>
+                                    </div>
+                                     <div style={{backgroundColor: 'var(--surface-color)', padding: '0.5rem', borderRadius: '6px', textAlign: 'center', border: '1px solid var(--border-color)'}}>
+                                        <span style={{fontSize: '0.7rem', color: 'var(--text-light)', display: 'block', textTransform: 'uppercase'}}>TA</span>
+                                        <span style={{fontWeight: 700, fontSize: '1rem', color: 'var(--text-color)'}}>{c.ta ?? '-'}</span>
+                                    </div>
                                 </div>
+
+                                {nutritionist && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-light)', marginTop: '0.5rem'}}>
+                                        <img src={nutritionist.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${nutritionist.full_name || '?'}&radius=50`} alt="avatar" style={{width: '20px', height: '20px', borderRadius: '50%'}} />
+                                        <span>{nutritionist.full_name}</span>
+                                    </div>
+                                )}
                             </div>
                         )
                     })}
                 </div>
-            ) : <p>No hay consultas registradas para el filtro seleccionado.</p>}
+            ) : (
+                <div style={{textAlign: 'center', padding: '3rem', border: '2px dashed var(--border-color)', borderRadius: '12px', color: 'var(--text-light)'}}>
+                    <p>No hay consultas registradas para el filtro seleccionado.</p>
+                </div>
+            )}
         </section>
     );
 };

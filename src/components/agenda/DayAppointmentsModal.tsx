@@ -1,4 +1,3 @@
-
 import React, { FC } from 'react';
 import { createPortal } from 'react-dom';
 import { styles } from '../../constants';
@@ -75,10 +74,10 @@ const DayAppointmentsModal: FC<DayAppointmentsModalProps> = ({ isOpen, onClose, 
                     {sortedAppointments.length > 0 ? (
                         <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
                             {sortedAppointments.map(appt => {
-                                const nutritionist = appt.user_id ? memberMap.get(appt.user_id) : null;
+                                const nutritionist = (appt.user_id ? memberMap.get(appt.user_id) : null) as TeamMember | null | undefined;
                                 const startTime = new Date(appt.start_time).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
                                 const endTime = new Date(appt.end_time).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
-                                // FIX: Explicitly cast person to a type with full_name to prevent 'unknown' error
+                                // Use explicit type or unknown check to avoid errors
                                 const person = appt.persons as { full_name: string } | null;
                                 const isPending = appt.status === 'pending-approval';
 

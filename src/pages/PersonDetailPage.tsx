@@ -1,5 +1,4 @@
 
-
 import React, { FC, useState, useEffect, useCallback, useMemo, FormEvent } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
@@ -145,7 +144,7 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
     
     // UI States
     const [activeTab, setActiveTab] = useState('resumen');
-    const [activeSubTab, setActiveSubTab] = useState('');
+    const [activeSubTab, setActiveSubTab] = useState('clinical_history'); // Default subtab for Expediente
     const [isConsultationMode, setConsultationMode] = useState(initialConsultationMode);
     const [isUploadingConsent, setIsUploadingConsent] = useState(false);
     
@@ -186,7 +185,7 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
     
     const handleTabClick = (tab: string, defaultSubTab: string = '') => {
         setActiveTab(tab);
-        setActiveSubTab(defaultSubTab);
+        if(defaultSubTab) setActiveSubTab(defaultSubTab);
     };
 
     const fetchData = useCallback(async () => {
@@ -267,9 +266,6 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
-    // Realtime subscriptions omitted for brevity, but logic remains the same...
-
-    // ... handlers (handleConfirm, handleSaveAppointment, etc.) ...
     
     const handlePlanSaved = () => { setMealPlanModalOpen(false); setExercisePlanModalOpen(false); setEditingDietLog(null); setEditingExerciseLog(null); setIsCreatingManualLog(null); fetchData(); }
     const handleClinicalHistorySave = () => { setAllergyModalOpen(false); setEditingAllergy(null); setMedicalHistoryModalOpen(false); setEditingMedicalHistory(null); setMedicationModalOpen(false); setEditingMedication(null); setLifestyleModalOpen(false); fetchData(); }
@@ -282,7 +278,6 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
         if (type === 'medication') { setEditingMedication(item); setMedicationModalOpen(true); }
     };
 
-    // ... other handlers ...
 
     const checkedInAppointmentForToday = appointments.find(a => a.status === 'checked-in' && new Date(a.start_time).toDateString() === new Date().toDateString());
     const handleCallPatient = () => { if (checkedInAppointmentForToday) { setAppointmentToCall(checkedInAppointmentForToday); setIsRoomModalOpen(true); } };
@@ -314,7 +309,6 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
                 if (action === 'deleteFile') {
                     await supabase.from('files').delete().eq('id', idToDelete);
                 } else {
-                    // For consent file, we update person record
                     await supabase.from('persons').update({ consent_file_url: null }).eq('id', idToDelete);
                 }
             } else if (action === 'deleteDietLog') {
@@ -324,13 +318,19 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
             } else if (action === 'deleteLog') {
                 await supabase.from('logs').delete().eq('id', idToDelete);
             } else if (action === 'deletePerson') {
-                // Revoke consent and delete person data
                 await supabase.from('persons').delete().eq('id', idToDelete);
-                // Redirect after deletion if it was the current person being viewed
                 if (idToDelete === personId) {
                      onBack();
                      return;
                 }
+            } else if (action === 'deleteAllergy') {
+                await supabase.from('allergies_intolerances').delete().eq('id', idToDelete);
+            } else if (action === 'deleteMedicalHistory') {
+                await supabase.from('medical_history').delete().eq('id', idToDelete);
+            } else if (action === 'deleteMedication') {
+                await supabase.from('medications').delete().eq('id', idToDelete);
+            } else if (action === 'deleteConsultation') {
+                await supabase.from('consultations').delete().eq('id', idToDelete);
             }
             
             closeModal();
@@ -394,31 +394,50 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
                 
                 {activeTab === 'expediente' && (
                     <section className="fade-in">
-                         <div style={styles.filterButtonGroup}>
-                            {['clinical_history', 'consultations', 'progress'].map(sub => (
-                                <button key={sub} onClick={() => setActiveSubTab(sub)} className={`filter-button ${activeSubTab === sub ? 'active' : ''}`}>
-                                    {sub === 'clinical_history' ? 'Historia Clínica' : sub === 'consultations' ? 'Consultas' : 'Progreso'}
-                                </button>
-                            ))}
+                         {/* The new clinical history tab handles its own sub-navigation now, simplifying this parent render */}
+                        <ClinicalHistoryTab 
+                            allergies={allergies} 
+                            medicalHistory={medicalHistory} 
+                            medications={medications} 
+                            lifestyleHabits={lifestyleHabits} 
+                            memberMap={memberMap} 
+                            onEditAllergy={(a) => handleOpenClinicalHistoryModal('allergy', a)} 
+                            onEditMedicalHistory={(h) => handleOpenClinicalHistoryModal('medical', h)} 
+                            onEditMedication={(m) => handleOpenClinicalHistoryModal('medication', m)} 
+                            onEditLifestyle={() => setLifestyleModalOpen(true)} 
+                            openModal={openModal} 
+                        />
+                        
+                        {/* We can render other big sections below if needed, or keep them in their own main tabs */}
+                        <div style={{marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '2rem'}}>
+                             <ConsultationsTab consultations={consultations} memberMap={memberMap} onAdd={() => navigate('consultation-form', { personId: person.id, personType })} onEdit={(id) => navigate('consultation-form', { personId: person.id, personType, consultationId: id })} onView={setViewingConsultation} openModal={openModal} />
                         </div>
-                        <div style={{marginTop: '1.5rem'}}>
-                            {activeSubTab === 'clinical_history' && <ClinicalHistoryTab allergies={allergies} medicalHistory={medicalHistory} medications={medications} lifestyleHabits={lifestyleHabits} memberMap={memberMap} onEditAllergy={(a) => handleOpenClinicalHistoryModal('allergy', a)} onEditMedicalHistory={(h) => handleOpenClinicalHistoryModal('medical', h)} onEditMedication={(m) => handleOpenClinicalHistoryModal('medication', m)} onEditLifestyle={() => setLifestyleModalOpen(true)} openModal={openModal} />}
-                            {activeSubTab === 'consultations' && <ConsultationsTab consultations={consultations} memberMap={memberMap} onAdd={() => navigate('consultation-form', { personId: person.id, personType })} onEdit={(id) => navigate('consultation-form', { personId: person.id, personType, consultationId: id })} onView={setViewingConsultation} openModal={openModal} />}
-                            {activeSubTab === 'progress' && <ProgressTab consultations={consultations} isMobile={isMobile} />}
+                        
+                        <div style={{marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '2rem'}}>
+                             <ProgressTab consultations={consultations} isMobile={isMobile} />
                         </div>
                     </section>
                 )}
 
                 {activeTab === 'planes' && (
                      <section className="fade-in">
-                        <div style={styles.filterButtonGroup}>
-                            {['current_plans', 'calculated_plans', 'log_files', 'daily_tracking'].map(sub => (
-                                <button key={sub} onClick={() => setActiveSubTab(sub)} className={`filter-button ${activeSubTab === sub ? 'active' : ''}`}>
-                                    {sub === 'current_plans' ? 'Planes Actuales' : sub === 'calculated_plans' ? 'Calculados' : sub === 'log_files' ? 'Bitácora/Archivos' : 'Auto-Registro'}
+                        <div style={{...styles.tabContainer, paddingLeft: 0, marginBottom: '-1px'}}>
+                            {[
+                                { key: 'current_plans', label: 'Planes Actuales' },
+                                { key: 'calculated_plans', label: 'Calculados' },
+                                { key: 'log_files', label: 'Bitácora/Archivos' },
+                                { key: 'daily_tracking', label: 'Auto-Registro' }
+                            ].map(sub => (
+                                <button
+                                    key={sub.key}
+                                    style={activeSubTab === sub.key ? {...styles.folderTab, ...styles.folderTabActive} : styles.folderTab}
+                                    onClick={() => setActiveSubTab(sub.key)}
+                                >
+                                    {sub.label}
                                 </button>
                             ))}
                         </div>
-                        <div style={{marginTop: '1.5rem'}}>
+                        <div style={styles.nestedFolderContent}>
                             {activeSubTab === 'current_plans' && <PlansTab allDietLogs={allDietLogs} allExerciseLogs={allExerciseLogs} onGenerateMeal={() => setMealPlanModalOpen(true)} onGenerateExercise={() => setExercisePlanModalOpen(true)} onAddManualDiet={() => setIsCreatingManualLog('diet')} onAddManualExercise={() => setIsCreatingManualLog('exercise')} onEditDietLog={setEditingDietLog} onViewDietLog={setViewingDietLog} onEditExerciseLog={setEditingExerciseLog} onViewExerciseLog={setViewingExerciseLog} openModal={openModal} hasAiFeature={hasAiFeature} />}
                             {activeSubTab === 'calculated_plans' && <CalculatedPlansTab planHistory={planHistory} navigate={navigate} openModal={openModal} />}
                             {activeSubTab === 'log_files' && (
@@ -434,14 +453,22 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
 
                 {activeTab === 'gestion' && (
                      <section className="fade-in">
-                        <div style={styles.filterButtonGroup}>
-                            {['appointments', 'team', 'info'].map(sub => (
-                                <button key={sub} onClick={() => setActiveSubTab(sub)} className={`filter-button ${activeSubTab === sub ? 'active' : ''}`}>
-                                    {sub === 'appointments' ? 'Citas' : sub === 'team' ? 'Equipo' : 'Información'}
+                        <div style={{...styles.tabContainer, paddingLeft: 0, marginBottom: '-1px'}}>
+                            {[
+                                { key: 'appointments', label: 'Citas' },
+                                { key: 'team', label: 'Equipo' },
+                                { key: 'info', label: 'Información' }
+                            ].map(sub => (
+                                <button
+                                    key={sub.key}
+                                    style={activeSubTab === sub.key ? {...styles.folderTab, ...styles.folderTabActive} : styles.folderTab}
+                                    onClick={() => setActiveSubTab(sub.key)}
+                                >
+                                    {sub.label}
                                 </button>
                             ))}
                         </div>
-                         <div style={{marginTop: '1.5rem'}}>
+                         <div style={styles.nestedFolderContent}>
                             {activeSubTab === 'appointments' && <AppointmentsTab appointments={appointments} memberMap={memberMap} onAdd={() => setIsAppointmentModalOpen(true)} onEdit={(a) => {setEditingAppointment(a); setIsAppointmentModalOpen(true);}} />}
                             {activeSubTab === 'team' && <TeamTab careTeam={careTeam} allTeamMembers={teamMembers} personId={personId} isAdmin={role === 'admin'} onTeamUpdate={fetchData} internalNotes={internalNotes} user={user} />}
                             {activeSubTab === 'info' && <InfoTab person={person} consultations={consultations} allergies={allergies} medicalHistory={medicalHistory} onRegisterConsent={handleRegisterConsent} onRevokeConsent={handleRevokeConsent} onExportData={handleExportData} onUploadConsent={handleConsentFileUpload} isUploadingConsent={isUploadingConsent} openModal={openModal} onManagePlan={() => setPlanModalOpen(true)} servicePlans={servicePlans} />}

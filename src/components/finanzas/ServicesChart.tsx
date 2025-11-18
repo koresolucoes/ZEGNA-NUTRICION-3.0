@@ -11,9 +11,9 @@ const ServicesChart: FC<ServicesChartProps> = ({ data }) => {
     const [hoveredSlice, setHoveredSlice] = useState<string | null>(null);
 
     const chartData = useMemo(() => {
-        // FIX: Explicitly cast values to Number for safe arithmetic operations.
-        // Object.values can return `unknown[]`, so casting to Number prevents type errors during reduction.
-        const total: number = Object.values(data).reduce((sum: number, v: any) => sum + Number(v), 0);
+        // FIX: Cast to number[] to ensure TS knows these are numbers for the reduce
+        const values = Object.values(data) as number[];
+        const total = values.reduce((sum, v) => sum + Number(v), 0);
         if (total === 0) return [];
         return Object.entries(data)
             .map(([name, value], index) => ({

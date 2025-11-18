@@ -1,3 +1,4 @@
+
 import React, { FC } from 'react';
 import { LifestyleHabits, TeamMember } from '../../types';
 import { styles } from '../../constants';
@@ -22,9 +23,9 @@ const LifestyleManager: FC<LifestyleManagerProps> = ({ habits, onEdit, memberMap
 
     return (
         <div className="fade-in">
-            <div style={{ ...styles.pageHeader, padding: 0, border: 'none', marginBottom: '1.5rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Hábitos de Estilo de Vida</h3>
-                <button onClick={onEdit}>{ICONS.edit} {habits ? 'Editar' : 'Registrar'}</button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color)' }}>Hábitos de Estilo de Vida</h3>
+                <button onClick={onEdit} style={{padding: '0.5rem 1rem', fontSize: '0.9rem'}}>{ICONS.edit} {habits ? 'Editar' : 'Registrar'}</button>
             </div>
             
             {habits ? (

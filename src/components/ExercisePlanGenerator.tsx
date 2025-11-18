@@ -214,7 +214,7 @@ const ExercisePlanGenerator: FC<ExercisePlanGeneratorProps> = ({ person, lastCon
 
     const modalContent = (
         <div style={styles.modalOverlay}>
-            <div style={styles.modalContent} className="fade-in">
+            <div style={{...styles.modalContent, maxWidth: '800px'}} className="fade-in">
                 <div style={styles.modalHeader}>
                     <h2 style={styles.modalTitle}>Generador de Rutina de Ejercicio con IA</h2>
                     <button onClick={onClose} style={{...styles.iconButton, border: 'none'}}>{ICONS.close}</button>
@@ -222,9 +222,9 @@ const ExercisePlanGenerator: FC<ExercisePlanGeneratorProps> = ({ person, lastCon
                 <div style={styles.modalBody}>
                     {!generatedPlan && !loading && (
                         <>
-                            <p>Se generará una rutina para <strong>{person.full_name}</strong>.</p>
+                            <p style={{marginTop: 0, color: 'var(--text-light)'}}>Se generará una rutina para <strong>{person.full_name}</strong>.</p>
                             
-                            <label htmlFor="health_goal">Objetivo de Salud Principal *</label>
+                            <label htmlFor="health_goal">Objetivo Principal *</label>
                             <textarea
                                 id="health_goal"
                                 name="health_goal"
@@ -260,19 +260,19 @@ const ExercisePlanGenerator: FC<ExercisePlanGeneratorProps> = ({ person, lastCon
                     
                     {generatedPlan && !loading && (
                         <div style={{maxHeight: '45vh', overflowY: 'auto', paddingRight: '1rem'}}>
-                            <h3 style={{color: 'var(--primary-dark)'}}>Rutina Semanal Sugerida</h3>
+                            <h3 style={{color: 'var(--primary-dark)', fontSize: '1.1rem'}}>Rutina Semanal Sugerida</h3>
                             {generatedPlan.plan_semanal.map((day: any, dayIndex: number) => (
-                                <div key={day.dia + dayIndex} style={{marginBottom: '1rem'}}>
-                                    <h4 style={{borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem'}}>{day.dia} - {day.enfoque}</h4>
+                                <div key={day.dia + dayIndex} style={{marginBottom: '1rem', backgroundColor: 'var(--surface-hover-color)', padding: '1rem', borderRadius: '8px'}}>
+                                    <h4 style={{borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem', margin: '0 0 0.5rem 0', color: 'var(--primary-color)'}}>{day.dia} - {day.enfoque}</h4>
                                     {day.ejercicios && day.ejercicios.length > 0 ? (
-                                        <ul style={{paddingLeft: '20px', margin: '0.5rem 0'}}>
+                                        <ul style={{paddingLeft: '20px', margin: '0.5rem 0', fontSize: '0.9rem'}}>
                                             {day.ejercicios.map((ex: any, exIndex: number) => (
                                                 <li key={ex.nombre + exIndex}>
                                                     <strong>{ex.nombre}:</strong> {ex.series} de {ex.repeticiones}, descanso {ex.descanso}.
                                                 </li>
                                             ))}
                                         </ul>
-                                    ) : <p style={{paddingLeft: '20px'}}>Descanso o actividad de baja intensidad.</p>}
+                                    ) : <p style={{paddingLeft: '20px', fontSize: '0.9rem', fontStyle: 'italic'}}>Descanso o actividad de baja intensidad.</p>}
                                 </div>
                             ))}
                         </div>

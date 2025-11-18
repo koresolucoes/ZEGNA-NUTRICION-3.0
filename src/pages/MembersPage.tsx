@@ -18,6 +18,7 @@ const AfiliadosPage: FC<{ isMobile: boolean; onViewDetails: (afiliadoId: string)
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid'); // View Toggle
     const [modalState, setModalState] = useState<{
         isOpen: boolean;
         action: 'transfer' | 'delete' | null;
@@ -111,6 +112,74 @@ const AfiliadosPage: FC<{ isMobile: boolean; onViewDetails: (afiliadoId: string)
         closeModal();
     };
 
+    // --- RENDER HELPERS ---
+    const AfiliadoCard: FC<{ person: Person }> = ({ person }) => (
+        <div 
+            className="card-hover" 
+            onClick={() => onViewDetails(person.id)}
+            style={{
+                backgroundColor: 'var(--surface-color)',
+                borderRadius: '12px',
+                border: '1px solid var(--border-color)',
+                display: 'flex',
+                flexDirection: 'column',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                overflow: 'hidden',
+                position: 'relative',
+                boxShadow: 'var(--shadow)'
+            }}
+        >
+             {/* Top Section: Status Badge (Absolute to not shift layout, but with safe padding) */}
+             <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 2 }}>
+                <PlanStatusIndicator planEndDate={person.subscription_end_date} />
+            </div>
+
+            <div style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', paddingTop: '2.5rem' }}>
+                 <img 
+                    src={person.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${person.full_name}&radius=50`} 
+                    alt="Avatar" 
+                    style={{
+                        width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', 
+                        border: '3px solid var(--surface-hover-color)', flexShrink: 0
+                    }} 
+                />
+                <div style={{flex: 1, minWidth: 0}}>
+                     <h3 style={{margin: 0, fontSize: '1.1rem', color: 'var(--text-color)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}} title={person.full_name}>
+                        {person.full_name}
+                    </h3>
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '0.25rem'}}>
+                        {person.folio && (
+                            <span style={{fontSize: '0.8rem', color: 'var(--text-light)', backgroundColor: 'var(--surface-hover-color)', padding: '2px 6px', borderRadius: '4px', alignSelf: 'flex-start'}}>
+                                Folio: {person.folio}
+                            </span>
+                        )}
+                         {person.phone_number && (
+                            <span style={{fontSize: '0.85rem', color: 'var(--text-light)', display: 'flex', alignItems: 'center', gap: '4px'}}>
+                                {ICONS.phone} {person.phone_number}
+                            </span>
+                        )}
+                    </div>
+                </div>
+            </div>
+            
+            <div style={{
+                marginTop: 'auto', 
+                padding: '0.75rem 1.5rem', 
+                backgroundColor: 'var(--surface-hover-color)', 
+                borderTop: '1px solid var(--border-color)',
+                display: 'flex',
+                gap: '0.5rem'
+            }}>
+                <button onClick={(e) => { e.stopPropagation(); onViewDetails(person.id); }} className="button-secondary" style={{flex: 1, padding: '6px', fontSize: '0.85rem'}}>
+                    Ver Detalles
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); onEditAfiliado(person.id); }} style={{...styles.iconButton, backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)'}} title="Editar">{ICONS.edit}</button>
+                <button onClick={(e) => { e.stopPropagation(); openModal('delete', person); }} style={{...styles.iconButton, backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', color: 'var(--error-color)'}} title="Eliminar">{ICONS.delete}</button>
+            </div>
+        </div>
+    );
+
     return (
         <div className="fade-in">
              <ConfirmationModal
@@ -131,11 +200,30 @@ const AfiliadosPage: FC<{ isMobile: boolean; onViewDetails: (afiliadoId: string)
                 confirmText={modalState.action === 'transfer' ? 'Sí, transferir' : 'Sí, eliminar'}
                 confirmButtonClass={modalState.action === 'delete' ? 'button-danger' : 'button-primary'}
             />
-            <div style={styles.pageHeader}>
-                 <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0 }}>
-                    Gestión de Afiliados
-                    <HelpTooltip content="Clientes que llegan por convenios (empresas, gimnasios)." />
-                </h1>
+            <div style={{...styles.pageHeader, alignItems: 'center'}}>
+                <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+                     <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0 }}>
+                        Gestión de Afiliados
+                        <HelpTooltip content="Clientes que llegan por convenios (empresas, gimnasios)." />
+                    </h1>
+                    {/* View Toggle Switch */}
+                    <div style={{display: 'flex', gap: '0.25rem', backgroundColor: 'var(--surface-color)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-color)'}}>
+                        <button 
+                            onClick={() => setViewMode('grid')} 
+                            style={{...styles.iconButton, backgroundColor: viewMode === 'grid' ? 'var(--primary-light)' : 'transparent', color: viewMode === 'grid' ? 'var(--primary-color)' : 'var(--text-light)', borderRadius: '6px', padding: '6px'}}
+                            title="Vista Cuadrícula"
+                        >
+                            {ICONS.grid}
+                        </button>
+                        <button 
+                            onClick={() => setViewMode('list')} 
+                            style={{...styles.iconButton, backgroundColor: viewMode === 'list' ? 'var(--primary-light)' : 'transparent', color: viewMode === 'list' ? 'var(--primary-color)' : 'var(--text-light)', borderRadius: '6px', padding: '6px'}}
+                            title="Vista Lista"
+                        >
+                            {ICONS.list}
+                        </button>
+                    </div>
+                </div>
                 <button onClick={onAddAfiliado} disabled={isPersonLimitReached} className="button-primary" title={isPersonLimitReached ? `Límite de ${maxPersons} alcanzado.` : 'Agregar nuevo afiliado'}>
                     {ICONS.add} Nuevo Afiliado
                 </button>
@@ -159,54 +247,64 @@ const AfiliadosPage: FC<{ isMobile: boolean; onViewDetails: (afiliadoId: string)
                 </div>
             </div>
 
-            {loading && <SkeletonLoader type={isMobile ? 'card' : 'table'} count={6} />}
+            {loading && <SkeletonLoader type={viewMode === 'grid' ? 'card' : 'table'} count={6} />}
             {error && <p style={styles.error}>{error}</p>}
+            
             {!loading && !error && (
-                <div style={styles.tableContainer}>
+                <>
                     {afiliados.length === 0 ? (
-                      <div style={{textAlign: 'center', padding: '3rem', color: 'var(--text-light)'}}>
+                      <div style={{textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-light)', border: '2px dashed var(--border-color)', borderRadius: '12px'}}>
                           <div style={{fontSize: '3rem', marginBottom: '1rem', opacity: 0.5}}>{ICONS.users}</div>
                           <p>No se encontraron afiliados con los filtros aplicados.</p>
+                          <button onClick={() => {setSearchTerm(''); setStatusFilter('all');}} style={{marginTop: '1rem', background: 'transparent', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', textDecoration: 'underline'}}>Limpiar filtros</button>
                       </div>
                     ) : (
-                        <table style={styles.table}>
-                            <thead>
-                                <tr>
-                                    <th style={{...styles.th, width: '60px'}}></th>
-                                    <th style={styles.th}>Nombre</th>
-                                    {!isMobile && <th style={styles.th}>Contacto</th>}
-                                    {!isMobile && <th style={styles.th}>Folio</th>}
-                                    <th style={styles.th}>Estado Suscripción</th>
-                                    <th style={styles.th}>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {afiliados.map(m => (
-                                    <tr key={m.id} className="table-row-hover" onClick={() => onViewDetails(m.id)} style={{ cursor: 'pointer' }}>
-                                        <td style={styles.td}>
-                                            <img src={m.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${m.full_name}&radius=50`} alt="Avatar" style={{width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover'}} />
-                                        </td>
-                                        <td style={styles.td}>
-                                            <div style={{fontWeight: 500, color: 'var(--text-color)'}}>{m.full_name}</div>
-                                            {isMobile && <div style={{fontSize: '0.8rem', color: 'var(--text-light)'}}>{m.phone_number}</div>}
-                                        </td>
-                                        {!isMobile && <td style={styles.td}>{m.phone_number || '-'}</td>}
-                                        {!isMobile && <td style={styles.td}><code style={{backgroundColor: 'var(--surface-hover-color)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85rem'}}>{m.folio || '-'}</code></td>}
-                                        <td style={styles.td}><PlanStatusIndicator planEndDate={m.subscription_end_date} /></td>
-                                        <td style={styles.td} onClick={(e) => e.stopPropagation()}>
-                                            <div style={styles.actionButtons}>
-                                                <button onClick={() => onViewDetails(m.id)} style={styles.iconButton} title="Ver Detalles">{ICONS.details}</button>
-                                                <button onClick={() => onEditAfiliado(m.id)} style={styles.iconButton} title="Editar">{ICONS.edit}</button>
-                                                <button onClick={() => openModal('transfer', m)} style={styles.iconButton} title="Transferir">{ICONS.transfer}</button>
-                                                <button onClick={() => openModal('delete', m)} style={{...styles.iconButton, color: 'var(--error-color)'}} title="Eliminar">{ICONS.delete}</button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                        viewMode === 'grid' ? (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                                {afiliados.map(m => <AfiliadoCard key={m.id} person={m} />)}
+                            </div>
+                        ) : (
+                            <div style={styles.tableContainer}>
+                                <table style={styles.table}>
+                                    <thead>
+                                        <tr>
+                                            <th style={{...styles.th, width: '60px'}}></th>
+                                            <th style={styles.th}>Nombre</th>
+                                            {!isMobile && <th style={styles.th}>Contacto</th>}
+                                            {!isMobile && <th style={styles.th}>Folio</th>}
+                                            <th style={styles.th}>Estado Suscripción</th>
+                                            <th style={styles.th}>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {afiliados.map(m => (
+                                            <tr key={m.id} className="table-row-hover" onClick={() => onViewDetails(m.id)} style={{ cursor: 'pointer' }}>
+                                                <td style={styles.td}>
+                                                    <img src={m.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${m.full_name}&radius=50`} alt="Avatar" style={{width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover'}} />
+                                                </td>
+                                                <td style={styles.td}>
+                                                    <div style={{fontWeight: 500, color: 'var(--text-color)'}}>{m.full_name}</div>
+                                                    {isMobile && <div style={{fontSize: '0.8rem', color: 'var(--text-light)'}}>{m.phone_number}</div>}
+                                                </td>
+                                                {!isMobile && <td style={styles.td}>{m.phone_number || '-'}</td>}
+                                                {!isMobile && <td style={styles.td}><code style={{backgroundColor: 'var(--surface-hover-color)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85rem'}}>{m.folio || '-'}</code></td>}
+                                                <td style={styles.td}><PlanStatusIndicator planEndDate={m.subscription_end_date} /></td>
+                                                <td style={styles.td} onClick={(e) => e.stopPropagation()}>
+                                                    <div style={styles.actionButtons}>
+                                                        <button onClick={() => onViewDetails(m.id)} style={styles.iconButton} title="Ver Detalles">{ICONS.details}</button>
+                                                        <button onClick={() => onEditAfiliado(m.id)} style={styles.iconButton} title="Editar">{ICONS.edit}</button>
+                                                        <button onClick={() => openModal('transfer', m)} style={styles.iconButton} title="Transferir">{ICONS.transfer}</button>
+                                                        <button onClick={() => openModal('delete', m)} style={{...styles.iconButton, color: 'var(--error-color)'}} title="Eliminar">{ICONS.delete}</button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )
                     )}
-                </div>
+                </>
             )}
         </div>
     );

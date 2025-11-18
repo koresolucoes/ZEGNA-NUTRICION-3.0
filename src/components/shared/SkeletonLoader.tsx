@@ -23,13 +23,12 @@ const SkeletonLoader: FC<SkeletonLoaderProps> = ({ type = 'list', count = 1 }) =
             padding: '1.5rem', 
             borderRadius: '16px', 
             border: '1px solid var(--border-color)',
-            marginBottom: '1rem',
             display: 'flex',
             flexDirection: 'column',
             gap: '1rem'
         }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div style={{ ...baseStyle, width: '48px', height: '48px', borderRadius: '50%' }}></div>
+                <div style={{ ...baseStyle, width: '48px', height: '48px', borderRadius: '50%', flexShrink: 0 }}></div>
                 <div style={{ flex: 1 }}>
                     <div style={{ ...baseStyle, height: '20px', width: '60%', marginBottom: '0.5rem' }}></div>
                     <div style={{ ...baseStyle, height: '14px', width: '40%' }}></div>
@@ -52,35 +51,39 @@ const SkeletonLoader: FC<SkeletonLoaderProps> = ({ type = 'list', count = 1 }) =
             borderBottom: '1px solid var(--border-color)',
             backgroundColor: 'var(--surface-color)'
         }}>
-            <div style={{ ...baseStyle, width: '40px', height: '40px', borderRadius: '50%', marginRight: '1rem' }}></div>
+            <div style={{ ...baseStyle, width: '40px', height: '40px', borderRadius: '50%', marginRight: '1rem', flexShrink: 0 }}></div>
             <div style={{ flex: 1 }}>
                 <div style={{ ...baseStyle, height: '16px', width: '50%', marginBottom: '0.5rem' }}></div>
                 <div style={{ ...baseStyle, height: '12px', width: '30%' }}></div>
             </div>
-            <div style={{ ...baseStyle, width: '24px', height: '24px', borderRadius: '4px' }}></div>
+            <div style={{ ...baseStyle, width: '24px', height: '24px', borderRadius: '4px', flexShrink: 0 }}></div>
         </div>
     );
     
     const renderTable = () => (
         <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: '12px', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
             <div style={{ display: 'flex', padding: '1rem', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--surface-hover-color)' }}>
-                {[...Array(4)].map((_, i) => <div key={i} style={{ ...baseStyle, height: '16px', flex: 1, marginRight: '1rem', opacity: 0.5 }}></div>)}
+                <div style={{ ...baseStyle, height: '16px', width: '32px', marginRight: '1rem', opacity: 0.5, borderRadius: '50%', flexShrink: 0 }}></div>
+                <div style={{ ...baseStyle, height: '16px', flex: 2, marginRight: '1rem', opacity: 0.5 }}></div>
+                <div className="skeleton-hidden-mobile" style={{ ...baseStyle, height: '16px', flex: 1, marginRight: '1rem', opacity: 0.5 }}></div>
+                <div className="skeleton-hidden-mobile" style={{ ...baseStyle, height: '16px', flex: 1, marginRight: '1rem', opacity: 0.5 }}></div>
+                <div className="skeleton-hidden-mobile" style={{ ...baseStyle, height: '16px', width: '60px', opacity: 0.5 }}></div>
             </div>
             {[...Array(count)].map((_, i) => (
                 <div key={i} style={{ display: 'flex', padding: '1rem', borderBottom: '1px solid var(--border-color)', alignItems: 'center' }}>
-                    <div style={{ ...baseStyle, height: '32px', width: '32px', borderRadius: '50%', marginRight: '1rem' }}></div>
+                    <div style={{ ...baseStyle, height: '32px', width: '32px', borderRadius: '50%', marginRight: '1rem', flexShrink: 0 }}></div>
                     <div style={{ ...baseStyle, height: '16px', flex: 2, marginRight: '1rem' }}></div>
-                    <div style={{ ...baseStyle, height: '16px', flex: 1, marginRight: '1rem' }}></div>
-                    <div style={{ ...baseStyle, height: '16px', flex: 1, marginRight: '1rem' }}></div>
-                    <div style={{ ...baseStyle, height: '24px', width: '80px', borderRadius: '6px' }}></div>
+                    <div className="skeleton-hidden-mobile" style={{ ...baseStyle, height: '16px', flex: 1, marginRight: '1rem' }}></div>
+                    <div className="skeleton-hidden-mobile" style={{ ...baseStyle, height: '16px', flex: 1, marginRight: '1rem' }}></div>
+                    <div style={{ ...baseStyle, height: '24px', width: '60px', borderRadius: '6px', flexShrink: 0, marginLeft: 'auto' }}></div>
                 </div>
             ))}
         </div>
     );
 
     const renderDetail = () => (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
-             {[...Array(4)].map((_, i) => (
+        <div className="skeleton-grid">
+             {[...Array(count > 1 ? count : 4)].map((_, i) => (
                 <div key={i} style={{ 
                     backgroundColor: 'var(--surface-color)', 
                     padding: '1.5rem', 
@@ -102,14 +105,13 @@ const SkeletonLoader: FC<SkeletonLoaderProps> = ({ type = 'list', count = 1 }) =
             padding: '1.5rem', 
             borderRadius: '12px', 
             border: '1px solid var(--border-color)',
-            marginBottom: '1rem',
             height: '100%'
         }}>
              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                  <div style={{ ...baseStyle, height: '20px', width: '40%' }}></div>
                  <div style={{ ...baseStyle, height: '20px', width: '20px', borderRadius: '50%' }}></div>
              </div>
-             <div style={{ ...baseStyle, height: '100px', width: '100%', borderRadius: '8px' }}></div>
+             <div style={{ ...baseStyle, height: '60px', width: '100%', borderRadius: '8px' }}></div>
         </div>
     );
 
@@ -121,13 +123,31 @@ const SkeletonLoader: FC<SkeletonLoaderProps> = ({ type = 'list', count = 1 }) =
                     50% { opacity: 0.2; }
                     100% { opacity: 0.4; }
                 }
+                
+                .skeleton-grid {
+                    display: grid;
+                    grid-template-columns: 1fr;
+                    gap: 1.5rem;
+                }
+                
+                @media (min-width: 640px) {
+                    .skeleton-grid {
+                        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                    }
+                }
+
+                @media (max-width: 768px) {
+                    .skeleton-hidden-mobile {
+                        display: none !important;
+                    }
+                }
             `}</style>
             <div style={containerStyle}>
-                {type === 'card' && <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem'}}>{[...Array(count)].map((_, i) => renderCard(i))}</div>}
+                {type === 'card' && <div className="skeleton-grid">{[...Array(count)].map((_, i) => renderCard(i))}</div>}
                 {type === 'list' && [...Array(count)].map((_, i) => renderListItem(i))}
                 {type === 'table' && renderTable()}
                 {type === 'detail' && renderDetail()}
-                {type === 'widget' && <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem'}}>{[...Array(count)].map((_, i) => renderWidget(i))}</div>}
+                {type === 'widget' && <div className="skeleton-grid">{[...Array(count)].map((_, i) => renderWidget(i))}</div>}
             </div>
         </>
     );
