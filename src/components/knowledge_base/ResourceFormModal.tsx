@@ -113,21 +113,52 @@ const ResourceFormModal: FC<ResourceFormModalProps> = ({ isOpen, onClose, user, 
 
             const tagsArray = formData.tags.split(',').map(tag => tag.trim()).filter(Boolean);
             
-            // 1. Handle File Upload FIRST (Generate the URL)
-            let finalFileUrl = resourceToEdit?.file_url || null;
-
+            // 1. Create/Update the database record first
+            const basePayload: any = {
+                title: formData.title,
+                type: formData.type,
+                content: formData.content || null,
+                tags: tagsArray,
+                clinic_id: clinic.id,
+            };
+            
+            // If user explicitly removed the file, clear the URL
             if (isFileRemoved) {
-                finalFileUrl = null;
-                // Optional: Delete old file from storage here if desired
+                basePayload.file_url = null;
             }
 
-            if (fileToUpload) {
+            let resourceId = resourceToEdit?.id;
+
+            if (resourceToEdit) {
+                // Remove clinic_id from update payload to be safe with RLS
+                const { clinic_id, ...updatePayload } = basePayload;
+                
+                const { error: updateError } = await supabase
+                    .from('knowledge_base_resources')
+                    .update(updatePayload)
+                    .eq('id', resourceToEdit.id);
+                
+                if (updateError) throw updateError;
+            } else {
+                const { data: newResource, error: insertError } = await supabase
+                    .from('knowledge_base_resources')
+                    .insert(basePayload)
+                    .select('id')
+                    .single();
+                
+                if (insertError) throw insertError;
+                resourceId = newResource.id;
+            }
+
+            // 2. Upload File if present and update record
+            if (fileToUpload && resourceId) {
                 const fileExt = fileToUpload.name.split('.').pop() || '';
                 const baseName = fileToUpload.name.substring(0, fileToUpload.name.lastIndexOf('.')) || fileToUpload.name;
                 const cleanName = sanitizeFileName(baseName);
                 
-                // Construct path similar to profile images: userID/timestamp_filename
-                const filePath = `resources/${currentUser.id}/${Date.now()}_${cleanName}.${fileExt}`;
+                // Use user ID as root folder to ensure RLS compatibility (matches FileManager logic)
+                // Format: user_id/resources/timestamp_filename
+                const filePath = `${currentUser.id}/resources/${Date.now()}_${cleanName}.${fileExt}`;
 
                 const { error: uploadError } = await supabase.storage
                     .from('files')
@@ -143,37 +174,15 @@ const ResourceFormModal: FC<ResourceFormModalProps> = ({ isOpen, onClose, user, 
                     .getPublicUrl(filePath);
                 
                 // Add timestamp param to bust cache if overwriting
-                finalFileUrl = `${urlData.publicUrl}?t=${new Date().getTime()}`;
-            }
+                const finalFileUrl = `${urlData.publicUrl}?t=${new Date().getTime()}`;
 
-            // 2. Prepare Payload with the URL included
-            const dbPayload = {
-                title: formData.title,
-                type: formData.type,
-                content: formData.content || null,
-                tags: tagsArray,
-                clinic_id: clinic.id,
-                file_url: finalFileUrl, // Save the URL generated above
-            };
+                // Update the resource with the file URL
+                const { error: urlUpdateError } = await supabase
+                    .from('knowledge_base_resources')
+                    .update({ file_url: finalFileUrl })
+                    .eq('id', resourceId);
 
-            // 3. Insert or Update Database Record
-            if (resourceToEdit) {
-                // Remove clinic_id from update payload to be safe with RLS
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const { clinic_id, ...updatePayload } = dbPayload;
-                
-                const { error: updateError } = await supabase
-                    .from('knowledge_base_resources')
-                    .update(updatePayload)
-                    .eq('id', resourceToEdit.id);
-                
-                if (updateError) throw updateError;
-            } else {
-                const { error: insertError } = await supabase
-                    .from('knowledge_base_resources')
-                    .insert(dbPayload);
-                
-                if (insertError) throw insertError;
+                if (urlUpdateError) throw urlUpdateError;
             }
 
             onClose();
