@@ -1,6 +1,5 @@
 import React, { FC, useState, FormEvent, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-// FIX: In Supabase v2, User is exported via `import type`.
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../../supabase';
 import { InternalNoteWithAuthor, TeamMember } from '../../types';
@@ -182,7 +181,7 @@ const InternalNotesManager: FC<InternalNotesManagerProps> = ({ notes, teamMember
     );
 
     return (
-        <div className="fade-in" style={{ maxWidth: '800px', margin: '0 auto', position: 'relative' }}>
+        <div className="fade-in" style={{position: 'relative' }}>
             {mentionPopoverComponent}
             {noteToDelete && (
                 <ConfirmationModal
@@ -193,30 +192,37 @@ const InternalNotesManager: FC<InternalNotesManagerProps> = ({ notes, teamMember
                     message={<p>¿Estás seguro de que quieres eliminar esta nota? Esta acción no se puede deshacer.</p>}
                 />
             )}
-            <div style={{ ...styles.pageHeader, padding: 0, border: 'none', marginBottom: '1.5rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Notas Internas del Equipo</h3>
-            </div>
             
-            <form onSubmit={handleSubmit} style={{ marginBottom: '2rem' }}>
-                <label htmlFor="new-note">Agregar una nota sobre el paciente</label>
-                <textarea
-                    id="new-note"
-                    ref={newNoteTextareaRef}
-                    value={newNote}
-                    onChange={handleNewNoteChange}
-                    rows={4}
-                    placeholder="Escribe tus observaciones, ideas o discusiones sobre el caso aquí. Usa @nombre para mencionar a un colega."
-                    required
-                />
-                {error && <p style={styles.error}>{error}</p>}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-0.5rem' }}>
-                    <button type="submit" disabled={loading || !newNote.trim()}>
-                        {loading ? 'Guardando...' : 'Guardar Nota'}
-                    </button>
-                </div>
-            </form>
+            {/* Header & Info */}
+             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color)' }}>Discusión del Caso</h3>
+            </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{backgroundColor: 'var(--surface-hover-color)', padding: '1.5rem', borderRadius: '12px', marginBottom: '2rem', border: '1px solid var(--border-color)'}}>
+                <form onSubmit={handleSubmit}>
+                    <label htmlFor="new-note" style={{fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-color)'}}>Nueva Nota</label>
+                    <div style={{position: 'relative'}}>
+                        <textarea
+                            id="new-note"
+                            ref={newNoteTextareaRef}
+                            value={newNote}
+                            onChange={handleNewNoteChange}
+                            rows={3}
+                            placeholder="Escribe observaciones, ideas o discusiones sobre el caso. Usa @ para mencionar."
+                            required
+                            style={{...styles.input, resize: 'vertical', minHeight: '80px', backgroundColor: 'var(--surface-color)'}}
+                        />
+                         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                            <button type="submit" disabled={loading || !newNote.trim()} style={{padding: '0.5rem 1.5rem'}}>
+                                {loading ? 'Guardando...' : 'Publicar Nota'}
+                            </button>
+                        </div>
+                    </div>
+                    {error && <p style={styles.error}>{error}</p>}
+                </form>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {notes.length > 0 ? (
                     notes.map(note => {
                         const author = note.team_members_with_profiles;
@@ -224,37 +230,52 @@ const InternalNotesManager: FC<InternalNotesManagerProps> = ({ notes, teamMember
                         const isEditingThisNote = editingNoteId === note.id;
 
                         return (
-                            <div key={note.id} className="note-container" style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                            <div key={note.id} className="card-hover" style={{ 
+                                backgroundColor: 'var(--surface-color)', 
+                                borderRadius: '12px', 
+                                padding: '1.25rem', 
+                                border: '1px solid var(--border-color)',
+                                display: 'flex',
+                                gap: '1rem',
+                                alignItems: 'flex-start'
+                            }}>
                                 <img 
                                     src={author?.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${author?.full_name || '?'}&radius=50`} 
                                     alt="avatar" 
-                                    style={{width: '40px', height: '40px', borderRadius: '50%', marginTop: '0.25rem'}} 
+                                    style={{width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--surface-hover-color)'}} 
                                 />
-                                <div style={{ flex: 1, backgroundColor: 'var(--surface-color)', padding: '1rem', borderRadius: '8px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                        <p style={{ margin: 0, fontWeight: 600 }}>{author?.full_name || 'Usuario'}</p>
-                                        {!isEditingThisNote && <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                            <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-light)' }}>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                                        <div>
+                                            <p style={{ margin: 0, fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-color)' }}>{author?.full_name || 'Usuario'}</p>
+                                            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-light)' }}>
                                                 {new Date(note.created_at).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' })}
                                             </p>
-                                            {canModify && (
-                                                <div className="note-actions">
-                                                    <button onClick={() => handleStartEdit(note)} style={{...styles.iconButton, border: 'none'}} title="Editar">{ICONS.edit}</button>
-                                                    <button onClick={() => setNoteToDelete(note)} style={{...styles.iconButton, color: 'var(--error-color)', border: 'none'}} title="Eliminar">{ICONS.delete}</button>
-                                                </div>
-                                            )}
-                                        </div>}
+                                        </div>
+                                        
+                                        {!isEditingThisNote && canModify && (
+                                            <div style={{display: 'flex', gap: '0.25rem'}}>
+                                                <button onClick={() => handleStartEdit(note)} style={styles.iconButton} title="Editar">{ICONS.edit}</button>
+                                                <button onClick={() => setNoteToDelete(note)} style={{...styles.iconButton, color: 'var(--error-color)'}} title="Eliminar">{ICONS.delete}</button>
+                                            </div>
+                                        )}
                                     </div>
+
                                     {isEditingThisNote ? (
-                                        <div>
-                                            <textarea value={editingNoteContent} onChange={(e) => setEditingNoteContent(e.target.value)} rows={4} style={{width: '100%'}} />
-                                            <div style={{display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem'}}>
-                                                <button onClick={handleCancelEdit} className="button-secondary">Cancelar</button>
-                                                <button onClick={handleSaveEdit} disabled={editLoading}>{editLoading ? 'Guardando...' : 'Guardar'}</button>
+                                        <div style={{marginTop: '0.5rem'}}>
+                                            <textarea 
+                                                value={editingNoteContent} 
+                                                onChange={(e) => setEditingNoteContent(e.target.value)} 
+                                                rows={3} 
+                                                style={{...styles.input, width: '100%', marginBottom: '0.5rem'}} 
+                                            />
+                                            <div style={{display: 'flex', gap: '0.5rem', justifyContent: 'flex-end'}}>
+                                                <button onClick={handleCancelEdit} className="button-secondary" style={{padding: '0.5rem 1rem'}}>Cancelar</button>
+                                                <button onClick={handleSaveEdit} disabled={editLoading} style={{padding: '0.5rem 1rem'}}>{editLoading ? 'Guardando...' : 'Guardar'}</button>
                                             </div>
                                         </div>
                                     ) : (
-                                        <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'var(--text-light)' }}>
+                                        <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'var(--text-color)', fontSize: '0.95rem', lineHeight: 1.5 }}>
                                             {note.note}
                                         </p>
                                     )}
@@ -263,21 +284,11 @@ const InternalNotesManager: FC<InternalNotesManagerProps> = ({ notes, teamMember
                         )
                     })
                 ) : (
-                    <p style={{ textAlign: 'center', color: 'var(--text-light)', padding: '2rem 0' }}>
-                        No hay notas internas para este paciente. Sé el primero en añadir una.
-                    </p>
+                    <div style={{textAlign: 'center', padding: '2rem', color: 'var(--text-light)', border: '2px dashed var(--border-color)', borderRadius: '12px'}}>
+                        <p>No hay notas internas para este paciente. Inicia la discusión arriba.</p>
+                    </div>
                 )}
             </div>
-             <style>{`
-                .note-actions {
-                    display: flex;
-                    opacity: 0;
-                    transition: opacity 0.2s;
-                }
-                .note-container:hover .note-actions {
-                    opacity: 1;
-                }
-            `}</style>
         </div>
     );
 };

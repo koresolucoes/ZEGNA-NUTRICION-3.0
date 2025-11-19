@@ -151,7 +151,7 @@ const ClientFormPage: FC<ClientFormPageProps> = ({ clientToEditId, onBack, refer
             ...prev, 
             subscription_start_date: newStartDate.toISOString().split('T')[0],
             subscription_end_date: newEndDate.toISOString().split('T')[0],
-            current_plan_id: null // It's a manual duration, not a specific plan
+            current_plan_id: null 
         }));
     };
 
@@ -215,7 +215,6 @@ const ClientFormPage: FC<ClientFormPageProps> = ({ clientToEditId, onBack, refer
 
         try {
             let personId = clientToEditId;
-            // Step 1: Insert or Update person data (without avatar)
             if (clientToEditId) {
                 const { error: dbError } = await supabase.from('persons').update(payload).eq('id', clientToEditId);
                 if (dbError) throw dbError;
@@ -234,7 +233,6 @@ const ClientFormPage: FC<ClientFormPageProps> = ({ clientToEditId, onBack, refer
 
             if (!personId) throw new Error("ID de paciente no disponible para subir avatar.");
 
-            // Step 2: Upload avatar if a new file was selected
             if (avatarFile) {
                 const fileExt = avatarFile.name.split('.').pop();
                 const filePath = `patient-avatars/${personId}/avatar.${fileExt}`;
@@ -250,7 +248,6 @@ const ClientFormPage: FC<ClientFormPageProps> = ({ clientToEditId, onBack, refer
                 
                 const newAvatarUrl = `${urlData.publicUrl}?t=${new Date().getTime()}`;
 
-                // Step 3: Update person record with the new avatar URL
                 const { error: avatarUpdateError } = await supabase
                     .from('persons')
                     .update({ avatar_url: newAvatarUrl })
@@ -259,7 +256,6 @@ const ClientFormPage: FC<ClientFormPageProps> = ({ clientToEditId, onBack, refer
                 if (avatarUpdateError) throw avatarUpdateError;
             }
 
-            // Step 4: Create audit log entry
             await supabase.from('logs').insert({
                 person_id: personId,
                 log_type: 'AUDITORÍA',
@@ -267,7 +263,6 @@ const ClientFormPage: FC<ClientFormPageProps> = ({ clientToEditId, onBack, refer
                 created_by_user_id: session.user.id,
             });
 
-            // Step 5: If this came from a referral, update the referral status
             if (referralData?.id) {
                 const { error: rpcError } = await supabase.rpc('update_referral_status', {
                     p_referral_id: referralData.id,
@@ -285,111 +280,180 @@ const ClientFormPage: FC<ClientFormPageProps> = ({ clientToEditId, onBack, refer
         }
     };
 
-    const sectionHeaderStyle: React.CSSProperties = { color: 'var(--primary-color)', fontSize: '1.1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem', marginTop: '2rem' };
-    const pageTitle = clientToEditId ? 'Editar Paciente' : referralData ? 'Aceptar Referido y Crear Paciente' : 'Agregar Paciente';
+    const sectionHeaderStyle: React.CSSProperties = { 
+        color: 'var(--primary-color)', 
+        fontSize: '1rem', 
+        borderBottom: '1px solid var(--border-color)', 
+        paddingBottom: '0.5rem', 
+        marginBottom: '1.5rem', 
+        marginTop: '2rem',
+        fontWeight: 600,
+        letterSpacing: '0.5px',
+        textTransform: 'uppercase'
+    };
+
+    const modalStyle: React.CSSProperties = {
+        backgroundColor: 'var(--surface-color)',
+        borderRadius: '16px',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', // High elevation shadow
+        width: '100%',
+        maxWidth: '850px',
+        margin: '2rem auto',
+        overflow: 'hidden',
+        border: '1px solid var(--border-color)',
+        display: 'flex',
+        flexDirection: 'column',
+    };
+
+    const headerStyle: React.CSSProperties = {
+        padding: '1.5rem 2rem',
+        backgroundColor: 'var(--surface-hover-color)',
+        borderBottom: '1px solid var(--border-color)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+    };
+
+    const footerStyle: React.CSSProperties = {
+        padding: '1.5rem 2rem',
+        backgroundColor: 'var(--surface-hover-color)',
+        borderTop: '1px solid var(--border-color)',
+        display: 'flex',
+        justifyContent: 'flex-end',
+        gap: '1rem'
+    };
 
     return (
-        <div className="fade-in" style={{ paddingBottom: '7rem' }}>
-            <div style={styles.pageHeader}>
-                <h1>{pageTitle}</h1>
-                <button onClick={onBack} className="button-secondary">{ICONS.back} Volver</button>
-            </div>
-            {referralData && (
-                 <div style={{ padding: '1rem', backgroundColor: 'var(--primary-light)', color: 'var(--primary-dark)', border: `1px solid var(--primary-color)`, borderRadius: '8px', marginBottom: '1.5rem'}}>
-                    <p style={{margin: 0}}><strong>Referido por:</strong> {referralData.sending_ally?.full_name || 'Colaborador'}</p>
-                    <p style={{margin: '0.25rem 0 0 0'}}><strong>Motivo:</strong> {referralData.notes}</p>
-                 </div>
-            )}
-            <form id="client-form" onSubmit={handleSubmit} style={{maxWidth: '700px'}}>
-                {error && <p style={styles.error}>{error}</p>}
-                
-                <h3 style={sectionHeaderStyle}>Datos Personales</h3>
-                 <div style={{display: 'flex', gap: '2rem', alignItems: 'center', marginBottom: '1.5rem'}}>
-                    <img
-                        src={avatarPreview || `https://api.dicebear.com/8.x/initials/svg?seed=${formData.full_name || '?'}&radius=50`}
-                        alt="Vista previa del avatar"
-                        style={{width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover'}}
-                    />
-                    <div style={{flex: 1}}>
-                        <label htmlFor="avatar">Foto de Perfil</label>
-                        <input id="avatar" name="avatar" type="file" onChange={handleFileChange} accept="image/*" />
+        <div className="fade-in" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', minHeight: '100vh', padding: '1rem' }}>
+            <div style={modalStyle}>
+                <div style={headerStyle}>
+                    <div>
+                        <h2 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-color)' }}>
+                            {clientToEditId ? 'Editar Expediente' : 'Nuevo Paciente'}
+                        </h2>
+                        <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.9rem', color: 'var(--text-light)' }}>
+                            {clientToEditId ? 'Actualiza la información del paciente' : 'Registra un nuevo paciente en la clínica'}
+                        </p>
                     </div>
+                    <button onClick={onBack} style={{ ...styles.iconButton, width: '32px', height: '32px' }}>
+                        {ICONS.close}
+                    </button>
                 </div>
 
-                <label htmlFor="full_name">Nombre del Paciente *</label>
-                <input id="full_name" name="full_name" type="text" value={formData.full_name} onChange={handleChange} required />
-                
-                 <div style={{display: 'flex', gap: '1rem'}}>
-                    <div style={{flex: 2}}>
-                       <label htmlFor="phone_number">Teléfono</label>
-                       <input id="phone_number" name="phone_number" type="tel" value={formData.phone_number} onChange={handleChange} placeholder="Se requieren al menos 4 dígitos"/>
-                    </div>
-                    <div style={{flex: 1}}>
-                       <label htmlFor="birth_date">Fecha de Nacimiento</label>
-                       <input id="birth_date" name="birth_date" type="date" value={formData.birth_date} onChange={handleChange} />
-                    </div>
-                     <div style={{flex: 1}}>
-                       <label htmlFor="gender">Género</label>
-                       <select id="gender" name="gender" value={formData.gender} onChange={handleChange}>
-                            <option value="female">Mujer</option>
-                            <option value="male">Hombre</option>
-                       </select>
-                    </div>
+                <div style={{ padding: '2rem', overflowY: 'auto', maxHeight: 'calc(100vh - 200px)' }}>
+                    {referralData && (
+                        <div style={{ padding: '1rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary-dark)', border: `1px solid var(--primary-color)`, borderRadius: '8px', marginBottom: '2rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                <span style={{fontSize: '1.2rem'}}>📩</span>
+                                <span style={{fontWeight: 600}}>Referido Entrante</span>
+                            </div>
+                            <p style={{ margin: 0, fontSize: '0.9rem' }}><strong>De:</strong> {referralData.sending_ally?.full_name || 'Colaborador'}</p>
+                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.9rem' }}><strong>Nota:</strong> "{referralData.notes}"</p>
+                        </div>
+                    )}
+
+                    <form id="client-form" onSubmit={handleSubmit}>
+                        {error && <p style={styles.error}>{error}</p>}
+
+                        <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start', marginBottom: '2rem' }}>
+                             <div style={{ position: 'relative', width: '100px', height: '100px', flexShrink: 0 }}>
+                                <img
+                                    src={avatarPreview || `https://api.dicebear.com/8.x/initials/svg?seed=${formData.full_name || '?'}&radius=50`}
+                                    alt="Avatar"
+                                    style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: '4px solid var(--surface-hover-color)' }}
+                                />
+                                <label htmlFor="avatar" style={{ position: 'absolute', bottom: 0, right: 0, backgroundColor: 'var(--primary-color)', color: 'white', padding: '6px', borderRadius: '50%', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}>
+                                    {ICONS.edit}
+                                </label>
+                                <input id="avatar" name="avatar" type="file" onChange={handleFileChange} accept="image/*" style={{ display: 'none' }} />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <label htmlFor="full_name">Nombre Completo *</label>
+                                <input id="full_name" name="full_name" type="text" value={formData.full_name} onChange={handleChange} required style={{ fontSize: '1.1rem', fontWeight: 500 }} placeholder="Ej. Juan Pérez" />
+                            </div>
+                        </div>
+
+                        <h3 style={sectionHeaderStyle}>Información Personal</h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+                            <div>
+                                <label htmlFor="birth_date">Fecha de Nacimiento</label>
+                                <input id="birth_date" name="birth_date" type="date" value={formData.birth_date} onChange={handleChange} />
+                            </div>
+                            <div>
+                                <label htmlFor="gender">Género</label>
+                                <select id="gender" name="gender" value={formData.gender} onChange={handleChange}>
+                                    <option value="female">Mujer</option>
+                                    <option value="male">Hombre</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label htmlFor="phone_number">Teléfono</label>
+                                <input id="phone_number" name="phone_number" type="tel" value={formData.phone_number} onChange={handleChange} placeholder="55 1234 5678" />
+                            </div>
+                        </div>
+
+                        <h3 style={sectionHeaderStyle}>Identificación y Contacto</h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                            <div>
+                                <label htmlFor="curp">CURP</label>
+                                <input id="curp" name="curp" type="text" value={formData.curp} onChange={handleChange} />
+                            </div>
+                            <div>
+                                <label htmlFor="folio">Folio Interno</label>
+                                <input id="folio" name="folio" type="text" value={formData.folio || ''} readOnly style={{ backgroundColor: 'var(--surface-hover-color)', cursor: 'not-allowed', color: 'var(--text-light)' }} />
+                            </div>
+                        </div>
+                        
+                        <label htmlFor="address">Domicilio</label>
+                        <textarea id="address" name="address" value={formData.address} onChange={handleChange} rows={2} placeholder="Calle, Número, Colonia..." />
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
+                            <div>
+                                <label>Contacto de Emergencia</label>
+                                <input name="emergency_contact_name" value={formData.emergency_contact_name} onChange={handleChange} placeholder="Nombre del contacto" />
+                            </div>
+                            <div>
+                                <label>Teléfono de Emergencia</label>
+                                <input name="emergency_contact_phone" type="tel" value={formData.emergency_contact_phone} onChange={handleChange} placeholder="Teléfono del contacto" />
+                            </div>
+                        </div>
+
+                        <h3 style={sectionHeaderStyle}>Perfil Clínico</h3>
+                        <label htmlFor="health_goal">Objetivo de Salud Principal</label>
+                        <input id="health_goal" name="health_goal" type="text" value={formData.health_goal} onChange={handleChange} placeholder="Ej: Control de peso, mejora de rendimiento..." />
+                        
+                        <label htmlFor="family_history">Antecedentes Heredo-familiares</label>
+                        <textarea id="family_history" name="family_history" value={formData.family_history} onChange={handleChange} rows={3} placeholder="Diabetes, Hipertensión, etc. en familiares directos." />
+
+                        <h3 style={sectionHeaderStyle}>Suscripción y Plan</h3>
+                        <div style={{ padding: '1.5rem', backgroundColor: 'var(--surface-hover-color)', borderRadius: '8px' }}>
+                            <label htmlFor="service_plan">Asignar Plan (Opcional)</label>
+                            <select id="service_plan" value={formData.current_plan_id || ''} onChange={handlePlanSelection} style={{ marginBottom: '1rem' }}>
+                                <option value="">-- Seleccionar Plan --</option>
+                                {servicePlans.map(plan => (
+                                    <option key={plan.id} value={plan.id}>{plan.name} ({plan.duration_days} días)</option>
+                                ))}
+                            </select>
+
+                            <label htmlFor="subscription_end_date">Válido Hasta</label>
+                            <input id="subscription_end_date" name="subscription_end_date" type="date" value={formData.subscription_end_date || ''} onChange={handleChange} style={{ marginBottom: '1rem' }} />
+                            
+                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                <button type="button" className="button-secondary" onClick={() => handleSetPlanDuration(1, 'month')} style={{fontSize: '0.8rem', padding: '6px 12px'}}>+1 Mes</button>
+                                <button type="button" className="button-secondary" onClick={() => handleSetPlanDuration(3, 'month')} style={{fontSize: '0.8rem', padding: '6px 12px'}}>+3 Meses</button>
+                                <button type="button" className="button-secondary" onClick={() => handleSetPlanDuration(1, 'year')} style={{fontSize: '0.8rem', padding: '6px 12px'}}>+1 Año</button>
+                                <button type="button" className="button-secondary" onClick={() => handleSetPlanDuration(0, null)} style={{fontSize: '0.8rem', padding: '6px 12px', color: 'var(--error-color)', borderColor: 'var(--error-color)'}}>Sin Plan</button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
 
-                <h3 style={sectionHeaderStyle}>Identificación y Contacto (NOM-004)</h3>
-                <div style={{display: 'flex', gap: '1rem'}}>
-                    <div style={{flex: 1}}>
-                        <label htmlFor="curp">CURP</label>
-                        <input id="curp" name="curp" type="text" value={formData.curp} onChange={handleChange} />
-                    </div>
-                    <div style={{flex: 1}}>
-                        <label htmlFor="folio">Folio (Generado)</label>
-                        <input id="folio" name="folio" type="text" value={formData.folio || ''} readOnly style={{ backgroundColor: 'var(--background-color)', cursor: 'not-allowed' }} />
-                    </div>
+                <div style={footerStyle}>
+                    <button type="button" onClick={onBack} className="button-secondary" disabled={loading}>Cancelar</button>
+                    <button type="submit" form="client-form" disabled={loading} style={{ minWidth: '150px' }}>
+                        {loading ? 'Guardando...' : 'Guardar Paciente'}
+                    </button>
                 </div>
-                <label htmlFor="address">Domicilio</label>
-                <textarea id="address" name="address" value={formData.address} onChange={handleChange} rows={2} />
-                <div style={{display: 'flex', gap: '1rem'}}>
-                    <div style={{flex: 1}}>
-                        <label>Contacto de Emergencia</label>
-                        <input name="emergency_contact_name" value={formData.emergency_contact_name} onChange={handleChange} placeholder="Nombre"/>
-                    </div>
-                     <div style={{flex: 1}}>
-                        <label>Teléfono de Emergencia</label>
-                        <input name="emergency_contact_phone" type="tel" value={formData.emergency_contact_phone} onChange={handleChange} placeholder="Teléfono"/>
-                    </div>
-                </div>
-
-                <h3 style={sectionHeaderStyle}>Historial Clínico</h3>
-                <label htmlFor="health_goal">Objetivo de Salud</label>
-                <input id="health_goal" name="health_goal" type="text" value={formData.health_goal} onChange={handleChange} placeholder="Ej: Pérdida de peso, control de glucosa..." />
-                <label htmlFor="family_history">Antecedentes Heredo-familiares</label>
-                <textarea id="family_history" name="family_history" value={formData.family_history} onChange={handleChange} rows={3} placeholder="Enfermedades crónicas en familiares directos (diabetes, hipertensión, etc.)" />
-
-                <h3 style={sectionHeaderStyle}>Plan de Servicio</h3>
-                <label htmlFor="service_plan">Asignar Plan (opcional)</label>
-                <select id="service_plan" value={formData.current_plan_id || ''} onChange={handlePlanSelection} style={{marginBottom: '0.5rem'}}>
-                    <option value="">-- Seleccionar para autocompletar fecha --</option>
-                    {servicePlans.map(plan => (
-                        <option key={plan.id} value={plan.id}>{plan.name} ({plan.duration_days} días)</option>
-                    ))}
-                </select>
-
-                <label htmlFor="subscription_end_date">Plan Válido Hasta</label>
-                <input id="subscription_end_date" name="subscription_end_date" type="date" value={formData.subscription_end_date || ''} onChange={handleChange} style={{marginBottom: '0.5rem'}}/>
-                <div style={styles.planDurationButtons}>
-                    <button type="button" className="button-secondary" onClick={() => handleSetPlanDuration(1, 'month')}>+1 mes</button>
-                    <button type="button" className="button-secondary" onClick={() => handleSetPlanDuration(3, 'month')}>+3 meses</button>
-                    <button type="button" className="button-secondary" onClick={() => handleSetPlanDuration(1, 'year')}>+1 año</button>
-                    <button type="button" className="button-secondary" onClick={() => handleSetPlanDuration(0, null)}>Sin Plan</button>
-                </div>
-            </form>
-            <div style={styles.floatingActions}>
-                <button type="button" onClick={onBack} className="button-secondary">Cancelar</button>
-                <button type="submit" form="client-form" disabled={loading} style={styles.floatingSaveButton} aria-label={clientToEditId ? 'Guardar Cambios' : 'Guardar Paciente'}>
-                    {loading ? '...' : ICONS.save}
-                </button>
             </div>
         </div>
     );

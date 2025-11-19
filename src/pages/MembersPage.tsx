@@ -119,7 +119,7 @@ const AfiliadosPage: FC<{ isMobile: boolean; onViewDetails: (afiliadoId: string)
             onClick={() => onViewDetails(person.id)}
             style={{
                 backgroundColor: 'var(--surface-color)',
-                borderRadius: '12px',
+                borderRadius: '16px',
                 border: '1px solid var(--border-color)',
                 display: 'flex',
                 flexDirection: 'column',
@@ -135,22 +135,23 @@ const AfiliadosPage: FC<{ isMobile: boolean; onViewDetails: (afiliadoId: string)
                 <PlanStatusIndicator planEndDate={person.subscription_end_date} />
             </div>
 
-            <div style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', paddingTop: '2.5rem' }}>
+            {/* Content - Increased padding top to avoid overlap */}
+            <div style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', paddingTop: '3.5rem' }}>
                  <img 
                     src={person.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${person.full_name}&radius=50`} 
                     alt="Avatar" 
                     style={{
-                        width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', 
+                        width: '64px', height: '64px', minWidth: '64px', borderRadius: '50%', objectFit: 'cover', aspectRatio: '1/1', objectPosition: 'center',
                         border: '3px solid var(--surface-hover-color)', flexShrink: 0
                     }} 
                 />
                 <div style={{flex: 1, minWidth: 0}}>
-                     <h3 style={{margin: 0, fontSize: '1.1rem', color: 'var(--text-color)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}} title={person.full_name}>
+                     <h3 style={{margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-color)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}} title={person.full_name}>
                         {person.full_name}
                     </h3>
-                    <div style={{display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '0.25rem'}}>
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '0.5rem'}}>
                         {person.folio && (
-                            <span style={{fontSize: '0.8rem', color: 'var(--text-light)', backgroundColor: 'var(--surface-hover-color)', padding: '2px 6px', borderRadius: '4px', alignSelf: 'flex-start'}}>
+                            <span style={{fontSize: '0.8rem', color: 'var(--text-light)', backgroundColor: 'var(--surface-hover-color)', padding: '2px 8px', borderRadius: '6px', alignSelf: 'flex-start', fontWeight: 500}}>
                                 Folio: {person.folio}
                             </span>
                         )}
@@ -169,15 +170,35 @@ const AfiliadosPage: FC<{ isMobile: boolean; onViewDetails: (afiliadoId: string)
                 backgroundColor: 'var(--surface-hover-color)', 
                 borderTop: '1px solid var(--border-color)',
                 display: 'flex',
-                gap: '0.5rem'
+                gap: '0.75rem'
             }}>
-                <button onClick={(e) => { e.stopPropagation(); onViewDetails(person.id); }} className="button-secondary" style={{flex: 1, padding: '6px', fontSize: '0.85rem'}}>
-                    Ver Detalles
+                <button onClick={(e) => { e.stopPropagation(); onEditAfiliado(person.id); }} className="button-secondary" style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.85rem'}}>
+                    {ICONS.edit} Editar
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); onEditAfiliado(person.id); }} style={{...styles.iconButton, backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)'}} title="Editar">{ICONS.edit}</button>
-                <button onClick={(e) => { e.stopPropagation(); openModal('delete', person); }} style={{...styles.iconButton, backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', color: 'var(--error-color)'}} title="Eliminar">{ICONS.delete}</button>
+                <button onClick={(e) => { e.stopPropagation(); openModal('delete', person); }} className="button-secondary" style={{flex: 1, color: 'var(--error-color)', borderColor: 'var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.85rem'}} title="Eliminar">
+                    {ICONS.delete} Eliminar
+                </button>
             </div>
         </div>
+    );
+
+    const TableActionButton: FC<{ onClick: (e: React.MouseEvent) => void, icon: React.ReactNode, title: string, danger?: boolean }> = ({ onClick, icon, title, danger }) => (
+        <button 
+            onClick={onClick} 
+            title={title}
+            style={{
+                ...styles.iconButton,
+                width: '32px',
+                height: '32px',
+                padding: '6px',
+                borderRadius: '6px',
+                backgroundColor: 'var(--surface-hover-color)',
+                border: '1px solid var(--border-color)',
+                color: danger ? 'var(--error-color)' : 'var(--text-color)',
+            }}
+        >
+            {icon}
+        </button>
     );
 
     return (
@@ -280,21 +301,19 @@ const AfiliadosPage: FC<{ isMobile: boolean; onViewDetails: (afiliadoId: string)
                                         {afiliados.map(m => (
                                             <tr key={m.id} className="table-row-hover" onClick={() => onViewDetails(m.id)} style={{ cursor: 'pointer' }}>
                                                 <td style={styles.td}>
-                                                    <img src={m.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${m.full_name}&radius=50`} alt="Avatar" style={{width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover'}} />
+                                                    <img src={m.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${m.full_name}&radius=50`} alt="Avatar" style={{width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', aspectRatio: '1/1', objectPosition: 'center'}} />
                                                 </td>
                                                 <td style={styles.td}>
-                                                    <div style={{fontWeight: 500, color: 'var(--text-color)'}}>{m.full_name}</div>
+                                                    <div style={{fontWeight: 600, color: 'var(--text-color)'}}>{m.full_name}</div>
                                                     {isMobile && <div style={{fontSize: '0.8rem', color: 'var(--text-light)'}}>{m.phone_number}</div>}
                                                 </td>
                                                 {!isMobile && <td style={styles.td}>{m.phone_number || '-'}</td>}
                                                 {!isMobile && <td style={styles.td}><code style={{backgroundColor: 'var(--surface-hover-color)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85rem'}}>{m.folio || '-'}</code></td>}
                                                 <td style={styles.td}><PlanStatusIndicator planEndDate={m.subscription_end_date} /></td>
                                                 <td style={styles.td} onClick={(e) => e.stopPropagation()}>
-                                                    <div style={styles.actionButtons}>
-                                                        <button onClick={() => onViewDetails(m.id)} style={styles.iconButton} title="Ver Detalles">{ICONS.details}</button>
-                                                        <button onClick={() => onEditAfiliado(m.id)} style={styles.iconButton} title="Editar">{ICONS.edit}</button>
-                                                        <button onClick={() => openModal('transfer', m)} style={styles.iconButton} title="Transferir">{ICONS.transfer}</button>
-                                                        <button onClick={() => openModal('delete', m)} style={{...styles.iconButton, color: 'var(--error-color)'}} title="Eliminar">{ICONS.delete}</button>
+                                                    <div style={{display: 'flex', gap: '0.5rem'}}>
+                                                        <TableActionButton onClick={() => onEditAfiliado(m.id)} icon={ICONS.edit} title="Editar" />
+                                                        <TableActionButton onClick={() => openModal('delete', m)} icon={ICONS.delete} title="Eliminar" danger />
                                                     </div>
                                                 </td>
                                             </tr>

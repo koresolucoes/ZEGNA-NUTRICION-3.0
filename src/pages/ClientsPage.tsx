@@ -120,7 +120,7 @@ const ClientsPage: FC<{ isMobile: boolean; onViewDetails: (personId: string) => 
             onClick={() => onViewDetails(person.id)}
             style={{
                 backgroundColor: 'var(--surface-color)',
-                borderRadius: '12px',
+                borderRadius: '16px',
                 border: '1px solid var(--border-color)',
                 display: 'flex',
                 flexDirection: 'column',
@@ -131,27 +131,28 @@ const ClientsPage: FC<{ isMobile: boolean; onViewDetails: (personId: string) => 
                 boxShadow: 'var(--shadow)'
             }}
         >
-            {/* Top Section: Status Badge (Absolute to not shift layout, but with safe padding) */}
+            {/* Top Section: Status Badge (Absolute) */}
             <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 2 }}>
                 <PlanStatusIndicator planEndDate={person.subscription_end_date} />
             </div>
 
-            <div style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', paddingTop: '2.5rem' }}>
+            {/* Content - Increased padding top to avoid overlap */}
+            <div style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', paddingTop: '3.5rem' }}>
                  <img 
                     src={person.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${person.full_name}&radius=50`} 
                     alt="Avatar" 
                     style={{
-                        width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', 
+                        width: '64px', height: '64px', minWidth: '64px', borderRadius: '50%', objectFit: 'cover', aspectRatio: '1/1', objectPosition: 'center',
                         border: '3px solid var(--surface-hover-color)', flexShrink: 0
                     }} 
                 />
                 <div style={{flex: 1, minWidth: 0}}>
-                     <h3 style={{margin: 0, fontSize: '1.1rem', color: 'var(--text-color)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}} title={person.full_name}>
+                     <h3 style={{margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-color)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}} title={person.full_name}>
                         {person.full_name}
                     </h3>
-                    <div style={{display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '0.25rem'}}>
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '0.5rem'}}>
                         {person.folio && (
-                            <span style={{fontSize: '0.8rem', color: 'var(--text-light)', backgroundColor: 'var(--surface-hover-color)', padding: '2px 6px', borderRadius: '4px', alignSelf: 'flex-start'}}>
+                            <span style={{fontSize: '0.8rem', color: 'var(--text-light)', backgroundColor: 'var(--surface-hover-color)', padding: '2px 8px', borderRadius: '6px', alignSelf: 'flex-start', fontWeight: 500}}>
                                 Folio: {person.folio}
                             </span>
                         )}
@@ -170,15 +171,35 @@ const ClientsPage: FC<{ isMobile: boolean; onViewDetails: (personId: string) => 
                 backgroundColor: 'var(--surface-hover-color)', 
                 borderTop: '1px solid var(--border-color)',
                 display: 'flex',
-                gap: '0.5rem'
+                gap: '0.75rem'
             }}>
-                 <button onClick={(e) => { e.stopPropagation(); onViewDetails(person.id); }} className="button-secondary" style={{flex: 1, padding: '6px', fontSize: '0.85rem'}}>
-                    Ver Expediente
+                <button onClick={(e) => { e.stopPropagation(); onEditClient(person.id); }} className="button-secondary" style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.85rem'}}>
+                    {ICONS.edit} Editar
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); onEditClient(person.id); }} style={{...styles.iconButton, backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)'}} title="Editar">{ICONS.edit}</button>
-                <button onClick={(e) => { e.stopPropagation(); openModal('delete', person); }} style={{...styles.iconButton, backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', color: 'var(--error-color)'}} title="Eliminar">{ICONS.delete}</button>
+                <button onClick={(e) => { e.stopPropagation(); openModal('delete', person); }} className="button-secondary" style={{flex: 1, color: 'var(--error-color)', borderColor: 'var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.85rem'}} title="Eliminar">
+                    {ICONS.delete} Eliminar
+                </button>
             </div>
         </div>
+    );
+
+    const TableActionButton: FC<{ onClick: (e: React.MouseEvent) => void, icon: React.ReactNode, title: string, danger?: boolean }> = ({ onClick, icon, title, danger }) => (
+        <button 
+            onClick={onClick} 
+            title={title}
+            style={{
+                ...styles.iconButton,
+                width: '32px',
+                height: '32px',
+                padding: '6px',
+                borderRadius: '6px',
+                backgroundColor: 'var(--surface-hover-color)',
+                border: '1px solid var(--border-color)',
+                color: danger ? 'var(--error-color)' : 'var(--text-color)',
+            }}
+        >
+            {icon}
+        </button>
     );
 
     return (
@@ -282,21 +303,19 @@ const ClientsPage: FC<{ isMobile: boolean; onViewDetails: (personId: string) => 
                                         {clients.map(c => (
                                             <tr key={c.id} className="table-row-hover" onClick={() => onViewDetails(c.id)} style={{ cursor: 'pointer' }}>
                                                 <td style={styles.td}>
-                                                    <img src={c.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${c.full_name}&radius=50`} alt="Avatar" style={{width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover'}} />
+                                                    <img src={c.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${c.full_name}&radius=50`} alt="Avatar" style={{width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', aspectRatio: '1/1', objectPosition: 'center'}} />
                                                 </td>
                                                 <td style={styles.td}>
-                                                    <div style={{fontWeight: 500, color: 'var(--text-color)'}}>{c.full_name}</div>
+                                                    <div style={{fontWeight: 600, color: 'var(--text-color)'}}>{c.full_name}</div>
                                                     {isMobile && <div style={{fontSize: '0.8rem', color: 'var(--text-light)'}}>{c.phone_number}</div>}
                                                 </td>
                                                 {!isMobile && <td style={styles.td}>{c.phone_number || '-'}</td>}
                                                 {!isMobile && <td style={styles.td}><code style={{backgroundColor: 'var(--surface-hover-color)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85rem'}}>{c.folio || '-'}</code></td>}
                                                 <td style={styles.td}><PlanStatusIndicator planEndDate={c.subscription_end_date} /></td>
                                                 <td style={styles.td} onClick={(e) => e.stopPropagation()}>
-                                                    <div style={styles.actionButtons}>
-                                                        <button onClick={() => onViewDetails(c.id)} style={styles.iconButton} title="Ver Expediente">{ICONS.details}</button>
-                                                        <button onClick={() => onEditClient(c.id)} style={styles.iconButton} title="Editar">{ICONS.edit}</button>
-                                                        <button onClick={() => openModal('transfer', c)} style={styles.iconButton} title="Transferir">{ICONS.transfer}</button>
-                                                        <button onClick={() => openModal('delete', c)} style={{...styles.iconButton, color: 'var(--error-color)'}} title="Eliminar">{ICONS.delete}</button>
+                                                    <div style={{display: 'flex', gap: '0.5rem'}}>
+                                                        <TableActionButton onClick={() => onEditClient(c.id)} icon={ICONS.edit} title="Editar" />
+                                                        <TableActionButton onClick={() => openModal('delete', c)} icon={ICONS.delete} title="Eliminar" danger />
                                                     </div>
                                                 </td>
                                             </tr>
