@@ -115,186 +115,322 @@ const ClinicNetworkPage: FC<{ navigate: (page: string, context?: any) => void; }
         if (modal.type === 'deletePartnership') {
             handlePartnershipUpdate(modal.data.id, 'revoked');
         } else if (modal.type === 'deleteReferral') {
-            // Clinics can delete referrals they are part of
             supabase.from('referrals').delete().eq('id', modal.data.id).then(({error}) => { if (error) setError(error.message) });
         }
         setModal({ type: null });
     };
 
-    // --- Memoized Data for Tabs ---
     const directoryClinics = useMemo(() => allClinics.filter(c => c.id !== myClinic?.id && (c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.address?.toLowerCase().includes(searchTerm.toLowerCase()))), [allClinics, myClinic, searchTerm]);
     const activePartnerships = useMemo(() => partnerships.filter(p => p.status === 'active'), [partnerships]);
     const pendingPartnerships = useMemo(() => partnerships.filter(p => p.status === 'pending' && p.responder_id === myClinic?.id), [partnerships, myClinic]);
     
-    // --- Render Methods ---
     const StatusBadge: FC<{ status: string }> = ({ status }) => (
-        <span style={{ padding: '4px 10px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 500, border: '1px solid', textTransform: 'capitalize', ...{
-            pending: { backgroundColor: 'rgba(234, 179, 8, 0.15)', color: '#EAB308', borderColor: '#EAB308' },
-            active: { backgroundColor: 'var(--primary-light)', color: 'var(--primary-color)', borderColor: 'var(--primary-color)' },
-            accepted: { backgroundColor: 'var(--primary-light)', color: 'var(--primary-color)', borderColor: 'var(--primary-color)' },
-            rejected: { backgroundColor: 'var(--error-bg)', color: 'var(--error-color)', borderColor: 'var(--error-color)' },
-            revoked: { backgroundColor: 'var(--error-bg)', color: 'var(--error-color)', borderColor: 'var(--error-color)' },
-        }[status] }}>{status}</span>
+        <span style={{ 
+            padding: '4px 12px', 
+            borderRadius: '20px', 
+            fontSize: '0.75rem', 
+            fontWeight: 600, 
+            textTransform: 'capitalize', 
+            backgroundColor: status === 'active' ? 'rgba(16, 185, 129, 0.2)' : status === 'pending' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+            color: status === 'active' ? '#10B981' : status === 'pending' ? '#F59E0B' : '#EF4444',
+            border: `1px solid ${status === 'active' ? 'rgba(16, 185, 129, 0.3)' : status === 'pending' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
+        }}>
+             {status === 'active' ? 'Activo' : status === 'pending' ? 'Pendiente' : status === 'revoked' ? 'Revocado' : status}
+        </span>
     );
     
-    const actionButtonStyle: React.CSSProperties = {
-        background: 'none', border: 'none', color: 'var(--text-light)', cursor: 'pointer',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem',
-        padding: '0.5rem', borderRadius: '8px', flex: 1, fontSize: '0.75rem',
-        textAlign: 'center', lineHeight: 1.2
+    // --- Custom Styles ---
+    const cardStyle: React.CSSProperties = {
+        backgroundColor: 'var(--surface-color)',
+        borderRadius: '16px',
+        padding: '0',
+        display: 'flex',
+        flexDirection: 'column',
+        border: '1px solid var(--border-color)',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+        position: 'relative',
+        transition: 'transform 0.2s, box-shadow 0.2s',
+        overflow: 'hidden'
     };
+
+    const cardHeaderStyle: React.CSSProperties = {
+        display: 'flex',
+        gap: '1rem',
+        padding: '1.5rem',
+        alignItems: 'flex-start'
+    };
+
+    const cardActionsStyle: React.CSSProperties = {
+        display: 'flex',
+        backgroundColor: 'var(--surface-hover-color)',
+        borderTop: '1px solid var(--border-color)',
+        padding: '0.75rem',
+        gap: '0.5rem'
+    };
+
+    const actionButtonStyle = (primary: boolean = false): React.CSSProperties => ({
+        flex: 1,
+        padding: '0.6rem',
+        borderRadius: '8px',
+        border: '1px solid transparent',
+        cursor: 'pointer',
+        fontSize: '0.85rem',
+        fontWeight: 600,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '0.5rem',
+        backgroundColor: primary ? 'var(--primary-color)' : 'transparent',
+        color: primary ? '#ffffff' : 'var(--text-color)',
+        transition: 'all 0.2s',
+        borderColor: primary ? 'transparent' : 'var(--border-color)'
+    });
 
     const renderDirectory = () => (
         <>
-            <div style={{...styles.filterBar, maxWidth: '500px'}}><div style={styles.searchInputContainer}><span style={styles.searchInputIcon}>🔍</span><input type="text" placeholder="Buscar por nombre o dirección..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={styles.searchInput} /></div></div>
-            <div className="info-grid">{directoryClinics.map(clinic => {
+            <div style={{...styles.filterBar, marginBottom: '2rem', padding: 0, border: 'none', background: 'transparent', boxShadow: 'none'}}>
+                <div style={{...styles.searchInputContainer, maxWidth: '100%'}}>
+                    <span style={styles.searchInputIcon}>🔍</span>
+                    <input 
+                        type="text" 
+                        placeholder="Buscar clínica..." 
+                        value={searchTerm} 
+                        onChange={e => setSearchTerm(e.target.value)} 
+                        style={{
+                            ...styles.searchInput, 
+                            backgroundColor: 'var(--surface-color)', 
+                            borderColor: 'var(--border-color)', 
+                            borderRadius: '12px', 
+                            paddingLeft: '2.5rem',
+                            height: '50px',
+                            fontSize: '1rem'
+                        }} 
+                    />
+                </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                {directoryClinics.map(clinic => {
                  const partnership = partnerships.find(p => (p.requester_id === myClinic?.id && p.responder_id === clinic.id) || (p.requester_id === clinic.id && p.responder_id === myClinic?.id));
                  const status = partnership?.status;
                  const isMyRequest = partnership?.requester_id === myClinic?.id;
-                 let actionButtons;
-
-                 switch (status) {
-                    case 'active':
-                        actionButtons = (
-                            <button onClick={() => setModal({ type: 'sendReferral', data: { receivingClinic: clinic } })} style={{...actionButtonStyle, color: 'var(--primary-color)'}} className="nav-item-hover">{ICONS.send}<span>Referir</span></button>
-                        );
-                        break;
-                    case 'pending':
-                        if (isMyRequest) {
-                            actionButtons = <button disabled style={{...actionButtonStyle, opacity: 0.7}}>{ICONS.clock}<span>Pendiente</span></button>;
-                        } else {
-                            actionButtons = (
-                                <>
-                                    <button onClick={() => handlePartnershipUpdate(partnership!.id, 'active')} style={{...actionButtonStyle, color: 'var(--primary-color)'}} className="nav-item-hover">{ICONS.check}<span>Aceptar</span></button>
-                                    <button onClick={() => handlePartnershipUpdate(partnership!.id, 'rejected')} style={{...actionButtonStyle, color: 'var(--error-color)'}} className="nav-item-hover">{ICONS.close}<span>Rechazar</span></button>
-                                </>
-                            );
-                        }
-                        break;
-                    case 'revoked':
-                    case 'rejected':
-                        actionButtons = <button onClick={() => handlePartnershipRequest(clinic.id)} style={{...actionButtonStyle, color: 'var(--primary-color)'}} className="nav-item-hover">{ICONS.add}<span>Re-solicitar</span></button>;
-                        break;
-                    default: // no partnership
-                        actionButtons = <button onClick={() => handlePartnershipRequest(clinic.id)} style={{...actionButtonStyle, color: 'var(--primary-color)'}} className="nav-item-hover">{ICONS.network}<span>Conectar</span></button>;
-                        break;
-                }
 
                 return (
-                    <div key={clinic.id} className="info-card" style={{display: 'flex', flexDirection: 'column', alignItems: 'stretch', padding: 0}}>
-                        <div style={{padding: '1rem', flex: 1}}>
-                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                                <img src={clinic.logo_url || `https://api.dicebear.com/8.x/initials/svg?seed=${clinic.name?.charAt(0) || 'C'}&radius=50`} alt="logo" style={{width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0}} />
-                                <div style={{flex: 1, minWidth: 0, overflow: 'hidden'}}>
-                                    <h4 style={{ margin: 0, color: 'var(--primary-color)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{clinic.name}</h4>
-                                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.9rem', color: 'var(--text-light)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{clinic.address}</p>
-                                </div>
+                    <div key={clinic.id} style={cardStyle} className="card-hover">
+                        <div style={cardHeaderStyle}>
+                             <img 
+                                src={clinic.logo_url || `https://api.dicebear.com/8.x/initials/svg?seed=${clinic.name?.charAt(0) || 'C'}&radius=50`} 
+                                alt="logo" 
+                                style={{width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid var(--border-color)'}} 
+                            />
+                            <div style={{overflow: 'hidden', flex: 1}}>
+                                <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', color: 'var(--text-color)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{clinic.name}</h4>
+                                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-light)', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{clinic.address || 'Sin dirección'}</p>
                             </div>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-around', padding: '0.5rem', borderTop: '1px solid var(--border-color)', gap: '0.5rem' }}>
-                            {actionButtons}
-                            <button onClick={() => setModal({ type: 'viewDetails', data: clinic })} style={actionButtonStyle} className="nav-item-hover">
-                                {ICONS.details}
-                                <span>Detalles</span>
+                        
+                        <div style={cardActionsStyle}>
+                            <button onClick={() => setModal({ type: 'viewDetails', data: clinic })} style={actionButtonStyle()}>
+                                {ICONS.details} Detalles
                             </button>
+                            {status === 'active' ? (
+                                 <button onClick={() => setModal({ type: 'sendReferral', data: { receivingClinic: clinic } })} style={actionButtonStyle(true)}>
+                                    {ICONS.send} Referir
+                                </button>
+                            ) : status === 'pending' ? (
+                                 <button disabled style={{...actionButtonStyle(), opacity: 0.7, cursor: 'default', backgroundColor: 'var(--surface-hover-color)'}}>
+                                    {isMyRequest ? 'Enviada' : 'Pendiente'}
+                                </button>
+                            ) : (
+                                 <button onClick={() => handlePartnershipRequest(clinic.id)} style={actionButtonStyle(true)}>
+                                    {status === 'revoked' || status === 'rejected' ? 'Reconectar' : 'Conectar'}
+                                </button>
+                            )}
                         </div>
                     </div>
                 )
-            })}</div>
+            })}
+            </div>
         </>
     );
 
     const renderPartnerships = () => (
-        <>
-            <h3 style={{fontSize: '1.2rem'}}>Solicitudes Pendientes</h3>
-            {pendingPartnerships.length > 0 ? <div className="info-grid">{pendingPartnerships.map(p => <div key={p.id} className="info-card"><div><h4>{p.requester.name}</h4></div><div className="card-actions"><button onClick={() => handlePartnershipUpdate(p.id, 'active')}>Aceptar</button><button onClick={() => handlePartnershipUpdate(p.id, 'rejected')} className="button-secondary">Rechazar</button></div></div>)}</div> : <p>No hay solicitudes pendientes.</p>}
-            <h3 style={{fontSize: '1.2rem', marginTop: '2rem'}}>Vínculos Activos</h3>
-            {activePartnerships.length > 0 ? <div className="info-grid">{activePartnerships.map(p => { const otherClinic = p.requester_id === myClinic?.id ? p.responder : p.requester; return <div key={p.id} className="info-card"><div><h4>{otherClinic.name}</h4></div><div className="card-actions"><button onClick={() => setModal({ type: 'deletePartnership', data: p })} className="button-danger">Revocar</button></div></div> })}</div> : <p>No tienes vínculos activos.</p>}
-        </>
+        <div style={{display: 'flex', flexDirection: 'column', gap: '3rem'}}>
+            {pendingPartnerships.length > 0 && (
+                <div>
+                    <h3 style={{fontSize: '1.2rem', marginBottom: '1.5rem', color: 'var(--accent-color)', display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                        <span style={{fontSize: '1.5rem'}}>🔔</span> Solicitudes Recibidas
+                    </h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                        {pendingPartnerships.map(p => (
+                            <div key={p.id} style={{ backgroundColor: 'var(--surface-color)', borderRadius: '16px', padding: '1.5rem', border: '1px solid var(--accent-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 12px rgba(245, 158, 11, 0.1)' }}>
+                                <span style={{fontWeight: 700, fontSize: '1.1rem'}}>{p.requester.name}</span>
+                                <div style={{display: 'flex', gap: '0.75rem'}}>
+                                    <button onClick={() => handlePartnershipUpdate(p.id, 'active')} className="button-primary" style={{padding: '0.6rem 1.2rem', fontSize: '0.9rem'}}>Aceptar</button>
+                                    <button onClick={() => handlePartnershipUpdate(p.id, 'rejected')} className="button-secondary" style={{padding: '0.6rem 1.2rem', fontSize: '0.9rem', color: 'var(--error-color)', borderColor: 'var(--error-color)'}}>Rechazar</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <div>
+                <h3 style={{fontSize: '1.5rem', marginBottom: '1.5rem', color: 'var(--text-color)'}}>Vínculos Activos</h3>
+                {activePartnerships.length > 0 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                        {activePartnerships.map(p => { 
+                            const otherClinic = p.requester_id === myClinic?.id ? p.responder : p.requester; 
+                            return (
+                                <div key={p.id} style={cardStyle} className="card-hover">
+                                    <div style={cardHeaderStyle}>
+                                         <div style={{width: '56px', height: '56px', borderRadius: '16px', backgroundColor: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 800, color: 'var(--primary-dark)', fontSize: '1.2rem'}}>
+                                             {otherClinic.name.charAt(0)}
+                                         </div>
+                                         <div style={{flex: 1, overflow: 'hidden'}}>
+                                             <h4 style={{margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-color)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{otherClinic.name}</h4>
+                                             <p style={{margin: 0, fontSize: '0.9rem', color: 'var(--text-light)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{otherClinic.email || 'Sin contacto'}</p>
+                                         </div>
+                                    </div>
+                                    
+                                    <div style={cardActionsStyle}>
+                                        <button onClick={() => setModal({ type: 'sendReferral', data: { receivingClinic: otherClinic } })} style={actionButtonStyle(true)}>
+                                            {ICONS.send} Referir
+                                        </button>
+                                        <button onClick={() => setModal({ type: 'deletePartnership', data: p })} style={{...actionButtonStyle(), color: 'var(--error-color)', borderColor: 'transparent'}}>
+                                            {ICONS.delete} Revocar
+                                        </button>
+                                    </div>
+                                </div> 
+                            )
+                        })}
+                    </div>
+                ) : (
+                    <div style={{textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-light)', border: '2px dashed var(--border-color)', borderRadius: '16px'}}>
+                        <div style={{fontSize: '3rem', marginBottom: '1rem', opacity: 0.5}}>{ICONS.network}</div>
+                        <p style={{fontSize: '1.1rem'}}>No tienes vínculos activos.</p>
+                        <button onClick={() => setActiveTab('directory')} style={{marginTop: '1rem', background: 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', fontWeight: 600}}>Explorar Directorio →</button>
+                    </div>
+                )}
+            </div>
+        </div>
     );
     
     const renderReferrals = (type: 'received' | 'sent') => {
         const referrals = type === 'received' ? receivedReferrals : sentReferrals;
         return (
             <div className="fade-in">
-                <div style={{...styles.filterBar, maxWidth: '400px'}}>
+                <div style={{...styles.filterBar, marginBottom: '2rem', padding: 0, border: 'none', background: 'transparent', boxShadow: 'none', maxWidth: '500px'}}>
                      <div style={styles.searchInputContainer}>
                         <span style={styles.searchInputIcon}>🔍</span>
-                        <input type="text" placeholder="Buscar por paciente..." value={referralSearchTerm} onChange={e => setReferralSearchTerm(e.target.value)} style={styles.searchInput} />
+                        <input type="text" placeholder="Buscar por paciente..." value={referralSearchTerm} onChange={e => setReferralSearchTerm(e.target.value)} style={{...styles.searchInput, backgroundColor: 'var(--surface-color)', borderColor: 'var(--border-color)', borderRadius: '12px', paddingLeft: '2.5rem', height: '50px', fontSize: '1rem'}} />
                     </div>
                 </div>
                 {referrals.length > 0 ? (
-                    <div className="info-grid">
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
                         {referrals.map(r => {
                             const partnerClinic = type === 'received' ? r.sending_clinic : r.receiving_clinic;
                             const patientInfo = r.patient_info as any;
                             const personData = (r as any).persons;
                             const age = patientInfo?.age || (personData?.birth_date ? calculateAge(personData.birth_date) : 'N/A');
-                            const gender = patientInfo?.gender || (personData?.gender === 'male' ? 'Hombre' : personData?.gender === 'female' ? 'Mujer' : 'N/A');
 
                             return (
-                                <div key={r.id} className="info-card" style={{ display: 'flex', flexDirection: 'column', padding: 0, alignItems: 'stretch' }}>
-                                    <div style={{ padding: '1rem', flex: 1 }}>
-                                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem'}}>
-                                            <h4 style={{ margin: 0, color: 'var(--primary-color)' }}>{patientInfo.name}</h4>
+                                <div key={r.id} style={cardStyle} className="card-hover">
+                                    <div style={{padding: '1.5rem'}}>
+                                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem'}}>
+                                            <h4 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary-color)' }}>{patientInfo.name}</h4>
                                             <StatusBadge status={r.status} />
                                         </div>
-                                        <p style={{margin: '0.25rem 0', fontSize: '0.9rem'}}><strong>Tel:</strong> {patientInfo.phone || personData?.phone_number || '-'}</p>
-                                        <p style={{margin: '0.25rem 0 0.75rem 0', fontSize: '0.9rem'}}><strong>{type === 'received' ? 'De:' : 'Para:'}</strong> {partnerClinic?.name || 'N/A'}</p>
+                                        <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.9rem', color: 'var(--text-light)' }}>{age}</p>
                                         
-                                        <p style={{margin: 0, fontSize: '0.85rem', color: 'var(--text-light)', borderTop: '1px solid var(--border-color)', paddingTop: '0.5rem'}}><em>{r.notes || 'Sin notas.'}</em></p>
-
-                                        <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem', marginTop: '0.75rem', fontSize: '0.8rem', color: 'var(--text-light)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.25rem' }}>
-                                            <span><strong>Edad:</strong> {age}</span>
-                                            <span><strong>Género:</strong> {gender}</span>
-                                            <span><strong>Objetivo:</strong> {personData?.health_goal || 'N/A'}</span>
+                                        <div style={{marginBottom: '1rem', padding: '1rem', backgroundColor: 'var(--surface-hover-color)', borderRadius: '12px', fontSize: '0.9rem', border: '1px solid var(--border-color)'}}>
+                                            <p style={{margin: '0 0 0.5rem 0'}}><strong>{type === 'received' ? 'De:' : 'Para:'}</strong> {partnerClinic?.name || 'N/A'}</p>
+                                            <p style={{margin: 0, fontStyle: 'italic', color: 'var(--text-light)'}}>"{r.notes || 'Sin notas.'}"</p>
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-around', padding: '0.5rem', borderTop: '1px solid var(--border-color)', gap: '0.25rem' }}>
-                                        {type === 'received' && r.status === 'pending' && (
+
+                                    <div style={cardActionsStyle}>
+                                        {type === 'received' && r.status === 'pending' ? (
                                             <>
-                                                <button onClick={(e) => { e.stopPropagation(); navigate('afiliado-form', { referralData: r }); }} style={{...actionButtonStyle, color: 'var(--primary-color)'}} className="nav-item-hover">{ICONS.check}<span>Aceptar</span></button>
-                                                <button onClick={(e) => { e.stopPropagation(); handleReferralStatusUpdate(r.id, 'rejected'); }} style={{...actionButtonStyle, color: 'var(--error-color)'}} className="nav-item-hover">{ICONS.close}<span>Rechazar</span></button>
+                                                <button onClick={(e) => { e.stopPropagation(); navigate('client-form', { referralData: r }); }} style={actionButtonStyle(true)}>
+                                                    {ICONS.check} Aceptar
+                                                </button>
+                                                <button onClick={(e) => { e.stopPropagation(); handleReferralStatusUpdate(r.id, 'rejected'); }} style={{...actionButtonStyle(), color: 'var(--error-color)'}}>
+                                                    {ICONS.close} Rechazar
+                                                </button>
                                             </>
+                                        ) : (
+                                            <button onClick={(e) => { e.stopPropagation(); setModal({ type: 'deleteReferral', data: r }); }} style={{...actionButtonStyle(), color: 'var(--text-light)'}}>
+                                                {ICONS.delete} Eliminar
+                                            </button>
                                         )}
-                                        <button onClick={(e) => { e.stopPropagation(); setModal({ type: 'deleteReferral', data: r }); }} style={{...actionButtonStyle, color: 'var(--error-color)'}} className="nav-item-hover">{ICONS.delete}<span>Eliminar</span></button>
                                     </div>
                                 </div>
                             )
                         })}
                     </div>
-                ) : <p>No se encontraron referidos con los filtros aplicados.</p>}
+                ) : (
+                     <div style={{textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-light)', border: '2px dashed var(--border-color)', borderRadius: '16px'}}>
+                        <p style={{fontSize: '1.1rem'}}>No se encontraron referidos.</p>
+                    </div>
+                )}
             </div>
         );
     };
 
+    const TabButton = ({ id, label, active }: { id: string, label: string, active: boolean }) => (
+        <button
+            onClick={() => setActiveTab(id)}
+            style={{
+                padding: '0.75rem 1.5rem',
+                borderRadius: '50px',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '0.95rem',
+                backgroundColor: active ? 'var(--primary-color)' : 'var(--surface-hover-color)',
+                color: active ? '#ffffff' : 'var(--text-light)',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s',
+                boxShadow: active ? '0 4px 12px rgba(56, 189, 248, 0.3)' : 'none',
+            }}
+        >
+            {label}
+        </button>
+    );
 
     return (
-        <div className="fade-in">
+        <div className="fade-in" style={{paddingBottom: '4rem'}}>
             {modal.type === 'sendReferral' && <SendReferralToClinicModal isOpen={true} onClose={() => setModal({ type: null, data: null })} onSuccess={() => { setModal({ type: null, data: null }); fetchData(); }} activePartners={activePartnerships} persons={persons} myClinic={myClinic!} initialClinic={modal.data?.receivingClinic} />}
             {modal.type === 'viewDetails' && <ClinicDetailsModal isOpen={true} onClose={() => setModal({type: null})} clinic={modal.data} />}
             {modal.type?.startsWith('delete') && <ConfirmationModal isOpen={true} onClose={() => setModal({type: null})} onConfirm={handleConfirm} title="Confirmar Acción" message={<p>¿Estás seguro? Esta acción no se puede deshacer.</p>} />}
 
-            <div style={styles.pageHeader}><h1 style={{margin:0}}>Red de Clínicas</h1><button onClick={() => setModal({ type: 'sendReferral' })}>{ICONS.send} Enviar Referido</button></div>
-            <nav className="tabs">
-                <button className={`tab-button ${activeTab === 'directory' ? 'active' : ''}`} onClick={() => setActiveTab('directory')}>Directorio de Clínicas</button>
-                <button className={`tab-button ${activeTab === 'partnerships' ? 'active' : ''}`} onClick={() => setActiveTab('partnerships')}>Mis Vínculos</button>
-                <button className={`tab-button ${activeTab === 'received' ? 'active' : ''}`} onClick={() => setActiveTab('received')}>Referidos Recibidos</button>
-                <button className={`tab-button ${activeTab === 'sent' ? 'active' : ''}`} onClick={() => setActiveTab('sent')}>Referidos Enviados</button>
-            </nav>
-            
-            <div style={{marginTop: '1.5rem'}}>
-                {loading && <SkeletonLoader type="card" count={6} />}
-                {error && <p style={styles.error}>{error}</p>}
-                {!loading && !error && (
-                    <>
-                        {activeTab === 'directory' && renderDirectory()}
-                        {activeTab === 'partnerships' && renderPartnerships()}
-                        {activeTab === 'received' && renderReferrals('received')}
-                        {activeTab === 'sent' && renderReferrals('sent')}
-                    </>
-                )}
+            <div style={{...styles.pageHeader, marginBottom: '2.5rem'}}>
+                <div>
+                    <h1 style={{margin: '0 0 0.5rem 0', fontSize: '2rem', fontWeight: 800, letterSpacing: '-1px'}}>Red de Clínicas</h1>
+                    <p style={{margin: 0, color: 'var(--text-light)'}}>Colabora y gestiona referidos con otras instituciones.</p>
+                </div>
+                <button onClick={() => setModal({ type: 'sendReferral' })} className="button-primary" style={{display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.5rem', fontSize: '1rem', borderRadius: '12px'}}>
+                    {ICONS.send} Enviar Referido
+                </button>
             </div>
+            
+            <div style={{display: 'flex', gap: '0.75rem', marginBottom: '3rem', flexWrap: 'wrap', borderBottom: '1px solid var(--border-color)', paddingBottom: '1.5rem'}}>
+                <TabButton id="directory" label="Directorio Global" active={activeTab === 'directory'} />
+                <TabButton id="partnerships" label="Mis Vínculos" active={activeTab === 'partnerships'} />
+                <TabButton id="received" label="Recibidos" active={activeTab === 'received'} />
+                <TabButton id="sent" label="Enviados" active={activeTab === 'sent'} />
+            </div>
+            
+            {loading && <SkeletonLoader type="card" count={3} />}
+            {error && <p style={styles.error}>{error}</p>}
+            {!loading && !error && (
+                <>
+                    {activeTab === 'directory' && renderDirectory()}
+                    {activeTab === 'partnerships' && renderPartnerships()}
+                    {activeTab === 'received' && renderReferrals('received')}
+                    {activeTab === 'sent' && renderReferrals('sent')}
+                </>
+            )}
         </div>
     );
 };

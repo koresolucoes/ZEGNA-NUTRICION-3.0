@@ -57,6 +57,20 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
     const [clients, setClients] = useState<Pick<Person, 'id' | 'full_name' | 'avatar_url'>[]>([]);
     const [afiliados, setAfiliados] = useState<Pick<Person, 'id' | 'full_name' | 'avatar_url'>[]>([]);
 
+    // State for collapsible sidebar categories
+    const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
+        'gestion-clinica': true,
+        'administracion': true,
+        'red': false,
+        'recursos': false,
+        'crecimiento': false,
+        'mi-clinica': false
+    });
+
+    const toggleCategory = (key: string) => {
+        setOpenCategories(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+
     const fetchPersons = useCallback(async () => {
         if (!clinic) return;
         const { data, error } = await supabase
@@ -192,107 +206,153 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
         }
     }
 
-    // --- Navbar Components ---
-
-    const NavDropdown: FC<{ title: string; icon: React.ReactNode; children: React.ReactNode; id: string }> = ({ title, icon, children, id }) => {
-        const isOpen = activeDropdown === id;
+    const NavItem: FC<{ name: string, pageName: string, icon?: React.ReactNode, isSubItem?: boolean, context?: any }> = ({ name, pageName, icon, isSubItem = false, context }) => {
+        const isActive = (view.page === pageName) && (context?.initialTab ? view.context?.initialTab === context.initialTab : true);
         
+        // Style changes for new visual design
+        const containerStyle: React.CSSProperties = {
+            ...styles.navItem,
+            backgroundColor: isActive ? 'var(--primary-light)' : 'transparent',
+            color: isActive ? 'var(--primary-color)' : 'var(--text-color)',
+            fontWeight: isActive ? 600 : 500,
+            borderRadius: '12px', // More rounded
+            padding: '0.65rem 1rem',
+            marginBottom: '0.25rem',
+            transition: 'all 0.2s ease',
+            ...(isSubItem && { paddingLeft: '2.75rem', fontSize: '0.9rem', color: isActive ? 'var(--primary-color)' : 'var(--text-light)' })
+        };
+
         return (
-            <div 
-                onMouseEnter={() => handleMouseEnter(id)} 
-                onMouseLeave={handleMouseLeave}
-                style={{ position: 'relative', height: '100%', display: 'flex', alignItems: 'center' }}
+            <div
+                onClick={() => navigate(pageName, context)}
+                style={containerStyle}
+                className="nav-item-hover"
+                role="button"
+                aria-label={`Navegar a ${name}`}
             >
-                <button
-                    style={{
-                        background: 'transparent',
-                        border: 'none',
+                {icon && (
+                    <span style={{
+                        color: isActive ? 'var(--primary-color)' : 'var(--text-light)', 
+                        fontSize: isSubItem ? '1rem' : '1.2rem',
+                        minWidth: '24px',
                         display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        padding: '0.5rem 1rem',
-                        cursor: 'pointer',
-                        color: isOpen ? 'var(--primary-color)' : 'var(--text-color)',
-                        fontWeight: 500,
-                        height: '40px',
-                        borderRadius: '8px',
-                        transition: 'all 0.2s'
-                    }}
-                    className="nav-item-hover"
-                >
-                    <span style={{fontSize: '1.1rem'}}>{icon}</span>
-                    {title}
-                    <span style={{ fontSize: '0.7rem', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>{ICONS.chevronDown}</span>
-                </button>
-                
-                {isOpen && (
-                    <div className="fade-in" style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        backgroundColor: 'var(--surface-color)',
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                        borderRadius: '12px',
-                        padding: '0.5rem',
-                        minWidth: '220px',
-                        border: '1px solid var(--border-color)',
-                        zIndex: 1000,
-                        marginTop: '5px'
+                        justifyContent: 'center'
                     }}>
-                        {children}
-                    </div>
+                        {icon}
+                    </span>
+                )}
+                <span style={{ flex: 1 }}>{name}</span>
+                {isActive && !isSubItem && (
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--primary-color)' }} />
                 )}
             </div>
         );
     };
+    
+    const CollapsibleCategory: FC<{
+        name: string;
+        icon: React.ReactNode;
+        categoryKey: string;
+        pageNames: string[];
+        children: React.ReactNode;
+    }> = ({ name, icon, categoryKey, pageNames, children }) => {
+        const isActive = pageNames.some(page => view.page.startsWith(page));
+        const isOpen = openCategories[categoryKey];
 
-    const NavItem: FC<{ name: string, pageName: string, icon?: React.ReactNode, context?: any }> = ({ name, pageName, icon, context }) => {
-        const isActive = (view.page === pageName) && (context?.initialTab ? view.context?.initialTab === context.initialTab : true);
         return (
-            <div
-                onClick={() => navigate(pageName, context)}
-                style={{
-                    padding: '0.75rem 1rem',
-                    cursor: 'pointer',
-                    color: isActive ? 'var(--primary-color)' : 'var(--text-color)',
-                    fontWeight: isActive ? 600 : 500,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    borderRadius: '8px',
-                    fontSize: '0.9rem',
-                    backgroundColor: isActive ? 'var(--surface-hover-color)' : 'transparent'
-                }}
-                className="nav-item-hover"
-            >
-                {icon && <span style={{fontSize: '1.1rem'}}>{icon}</span>}
-                {name}
+            <div style={{ marginBottom: '0.5rem' }}>
+                <div
+                    onClick={() => toggleCategory(categoryKey)}
+                    style={{
+                        ...styles.navItem,
+                        justifyContent: 'space-between',
+                        backgroundColor: 'transparent',
+                        color: isActive ? 'var(--primary-color)' : 'var(--text-color)',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        padding: '0.75rem 1rem',
+                        borderRadius: '12px',
+                        opacity: isOpen ? 1 : 0.8
+                    }}
+                    className="nav-item-hover"
+                    role="button"
+                    aria-expanded={isOpen}
+                >
+                    <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+                        {icon && <span style={{color: isActive ? 'var(--primary-color)' : 'var(--text-light)', fontSize: '1.2rem', minWidth: '24px', display: 'flex', justifyContent: 'center'}}>{icon}</span>}
+                        {name}
+                    </div>
+                    <span style={{ 
+                        fontSize: '0.8rem', 
+                        transition: 'transform 0.3s ease', 
+                        transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                        color: 'var(--text-light)'
+                    }}>
+                        {ICONS.chevronDown}
+                    </span>
+                </div>
+                <div style={{
+                    maxHeight: isOpen ? '500px' : '0',
+                    overflow: 'hidden',
+                    transition: 'max-height 0.3s ease-in-out',
+                    opacity: isOpen ? 1 : 0,
+                    transform: isOpen ? 'translateY(0)' : 'translateY(-10px)',
+                }}>
+                    {children}
+                </div>
             </div>
         );
     };
 
-    // Mobile Drawer Items
-    const MobileNavItem: FC<{name: string, pageName: string, icon?: React.ReactNode, isSubItem?: boolean, context?: any}> = ({ name, pageName, icon, isSubItem = false, context }) => {
-        const isActive = (view.page === pageName) && (context?.initialTab ? view.context?.initialTab === context.initialTab : true);
-        return (
-        <div
-            onClick={() => navigate(pageName, context)}
-            style={{
-                ...styles.navItem, 
-                backgroundColor: isActive ? 'var(--primary-light)' : 'transparent', 
-                color: isActive ? 'var(--primary-color)' : 'var(--text-light)',
-                fontWeight: isActive ? 700 : 500,
-                ...(isSubItem && {paddingLeft: '3rem', fontSize: '0.9rem'})
-            }}
-            className="nav-item-hover"
-        >
-            {icon && <span style={{color: isActive ? 'var(--primary-color)' : 'var(--text-light)', fontSize: '1.2rem'}}>{icon}</span>}
-            {name}
-        </div>
-    )};
-
     const pagesWithoutFab = ['client-form', 'afiliado-form', 'aliado-form', 'consultation-form', 'log-form', 'profile-form', 'settings', 'calculators', 'agenda', 'queue', 'client-detail', 'afiliado-detail', 'chat', 'finanzas', 'clinic-settings', 'affiliates', 'user-guide'];
     const isFabHidden = pagesWithoutFab.includes(view.page);
+
+    // Sidebar Footer - User Profile Widget
+    const UserProfileWidget = () => (
+        <div style={{
+            padding: '1rem',
+            marginTop: 'auto', // Pushes to bottom
+            borderTop: '1px solid var(--border-color)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            cursor: 'pointer',
+            borderRadius: '12px',
+            transition: 'background-color 0.2s',
+        }}
+        className="nav-item-hover"
+        onClick={(e) => { e.stopPropagation(); navigate('settings', { initialTab: 'account' }); }}
+        >
+            <img 
+                src={profile?.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${session.user.email}`} 
+                alt="Profile" 
+                style={{width: '40px', height: '40px', borderRadius: '50%', border: '2px solid var(--surface-color)', objectFit: 'cover', flexShrink: 0}}
+            />
+            <div style={{flex: 1, minWidth: 0}}>
+                <p style={{margin: 0, fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-color)'}}>
+                    {profile?.full_name || 'Usuario'}
+                </p>
+                <p style={{margin: 0, fontSize: '0.75rem', color: 'var(--text-light)', textTransform: 'capitalize'}}>
+                    {role === 'admin' ? 'Administrador' : role}
+                </p>
+            </div>
+            <button 
+                onClick={(e) => { e.stopPropagation(); supabase.auth.signOut(); }}
+                style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-light)',
+                    padding: '0.5rem',
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                }}
+                title="Cerrar Sesión"
+                className="icon-button"
+            >
+                {ICONS.logout}
+            </button>
+        </div>
+    );
 
     return (
         <div style={{ ...styles.dashboardLayout, flexDirection: 'column' }}>
@@ -312,177 +372,139 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                 />
             )}
             
-            {/* --- TOP NAVBAR --- */}
-            <header style={{
-                height: '70px',
-                backgroundColor: 'var(--surface-color)',
-                borderBottom: '1px solid var(--border-color)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '0 1.5rem',
-                position: 'sticky',
-                top: 0,
-                zIndex: 1000,
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-            }}>
-                {/* Logo & Brand */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                     {isMobile && (
+            {/* --- MOBILE HEADER --- */}
+            {isMobile && (
+                <header style={{
+                    height: '64px',
+                    backgroundColor: 'var(--surface-color)',
+                    borderBottom: '1px solid var(--border-color)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0 1rem',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                }}>
+                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <button onClick={() => setIsMobileMenuOpen(true)} style={{...styles.hamburger, padding: '0.5rem', marginRight: '-0.5rem'}}>
                             {ICONS.menu}
                         </button>
-                    )}
-                    <div 
-                        onClick={() => navigate('home')}
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}
-                    >
-                        <div style={{
-                            width: '36px', height: '36px', borderRadius: '10px', 
-                            background: 'linear-gradient(135deg, var(--primary-color), var(--primary-dark))',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: 'white', fontSize: '1.1rem', fontWeight: 800,
-                        }}>
-                             {clinic?.name ? clinic.name.charAt(0).toUpperCase() : 'Z'}
-                        </div>
-                        {!isMobile && (
-                            <h2 style={{ color: 'var(--text-color)', fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <div style={{
+                                width: '32px', height: '32px', borderRadius: '8px', 
+                                background: 'linear-gradient(135deg, var(--primary-color), var(--primary-dark))',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: 'white', fontSize: '1rem', fontWeight: 800,
+                            }}>
+                                {clinic?.name ? clinic.name.charAt(0).toUpperCase() : 'Z'}
+                            </div>
+                             <h2 style={{ color: 'var(--text-color)', fontSize: '1rem', fontWeight: 700, margin: 0 }}>
                                 {clinic?.name || 'Zegna'}
                             </h2>
-                        )}
+                        </div>
                     </div>
-                </div>
-
-                {/* Desktop Navigation */}
-                {!isMobile && (
-                    <nav style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', height: '100%' }}>
-                        <div onClick={() => navigate('home')} className="nav-item-hover" style={{padding: '0.5rem 1rem', cursor: 'pointer', borderRadius: '8px', color: view.page === 'home' ? 'var(--primary-color)' : 'var(--text-color)', fontWeight: 500, display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
-                            {ICONS.home} Inicio
-                        </div>
-                        
-                        <NavDropdown title="Pacientes" icon={ICONS.users} id="patients">
-                            <NavItem name="Lista de Pacientes" pageName="clients" icon={ICONS.user} />
-                            <NavItem name="Lista de Afiliados" pageName="afiliados" icon={ICONS.users} />
-                            <NavItem name="Sala de Espera" pageName="queue" icon={ICONS.clock} />
-                        </NavDropdown>
-                        
-                        <div onClick={() => navigate('agenda')} className="nav-item-hover" style={{padding: '0.5rem 1rem', cursor: 'pointer', borderRadius: '8px', color: view.page === 'agenda' ? 'var(--primary-color)' : 'var(--text-color)', fontWeight: 500, display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
-                            {ICONS.calendar} Agenda
-                        </div>
-
-                        <NavDropdown title="Gestión" icon={ICONS.briefcase} id="management">
-                            <NavItem name="Finanzas" pageName="finanzas" icon={ICONS.dollar} />
-                            <NavItem name="Mensajes" pageName="chat" icon={ICONS.chat} />
-                        </NavDropdown>
-
-                        <NavDropdown title="Red" icon={ICONS.network} id="network">
-                            <NavItem name="Mis Colaboradores" pageName="aliados" icon={ICONS.users} />
-                            <NavItem name="Clínicas Aliadas" pageName="clinic-network" icon={ICONS.clinic} />
-                            <NavItem name="Programa Afiliados" pageName="affiliates" icon={ICONS.sparkles} />
-                        </NavDropdown>
-
-                        <NavDropdown title="Recursos" icon={ICONS.book} id="resources">
-                             <NavItem name="Biblioteca" pageName="knowledge-base" icon={ICONS.book} />
-                             <NavItem name="Herramientas" pageName="calculators" icon={ICONS.calculator} />
-                             <NavItem name="Guía de Uso" pageName="user-guide" icon={ICONS.book} />
-                        </NavDropdown>
-                    </nav>
-                )}
-
-                {/* User Profile & Admin */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <button onClick={() => setQuickConsultModalOpen(true)} style={{...styles.iconButton, backgroundColor: 'var(--primary-light)', color: 'var(--primary-color)', borderRadius: '50%', width: '36px', height: '36px'}} title="Consulta Rápida">
                         +
                     </button>
-                    
-                    {!isMobile && (
-                        <NavDropdown 
-                            title="" 
-                            id="profile" 
-                            icon={
-                                <img 
-                                    src={profile?.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${session.user.email}`} 
-                                    alt="Profile" 
-                                    style={{width: '32px', height: '32px', borderRadius: '50%', border: '2px solid var(--border-color)'}}
-                                />
-                            }
-                        >
-                             <div style={{padding: '0.5rem 1rem', borderBottom: '1px solid var(--border-color)', marginBottom: '0.5rem'}}>
-                                 <p style={{margin: 0, fontWeight: 600, fontSize: '0.9rem'}}>{profile?.full_name || 'Usuario'}</p>
-                                 <p style={{margin: 0, fontSize: '0.75rem', color: 'var(--text-light)'}}>{role}</p>
-                             </div>
-                             <NavItem name="Mi Perfil" pageName="profile" icon={ICONS.user} />
-                             <NavItem name="Configuración" pageName="settings" icon={ICONS.settings} context={{ initialTab: 'account' }} />
-                             {role === 'admin' && (
-                                <div style={{borderTop: '1px solid var(--border-color)', marginTop: '0.5rem', paddingTop: '0.5rem'}}>
-                                    <p style={{padding: '0 1rem', fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-light)', fontWeight: 700}}>Administración</p>
-                                    <NavItem name="Mi Clínica" pageName="clinic-settings" icon={ICONS.clinic} />
-                                    <NavItem name="Servicios" pageName="services" icon={ICONS.briefcase} />
-                                    <NavItem name="Suscripción" pageName="billing" icon={ICONS.dollar} />
-                                </div>
-                             )}
-                             <div onClick={() => navigate('settings')} style={{marginTop: '0.5rem', padding: '0.75rem 1rem', cursor: 'pointer', color: 'var(--error-color)', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.9rem'}} className="nav-item-hover">
-                                 {ICONS.logout} Cerrar Sesión
-                             </div>
-                        </NavDropdown>
-                    )}
-                </div>
-            </header>
-
-            {/* --- MOBILE DRAWER --- */}
-            {isMobile && isMobileMenuOpen && (
-                <>
-                    <div style={{...styles.modalOverlay, zIndex: 1050, justifyContent: 'flex-start', alignItems: 'flex-start'}} onClick={() => setIsMobileMenuOpen(false)}></div>
-                    <div style={{
-                        position: 'fixed', top: 0, left: 0, bottom: 0, width: '80%', maxWidth: '300px',
-                        backgroundColor: 'var(--surface-color)', zIndex: 1100, boxShadow: '4px 0 15px rgba(0,0,0,0.1)',
-                        display: 'flex', flexDirection: 'column', animation: 'slideIn 0.3s ease-out'
-                    }}>
-                        <div style={{padding: '1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                             <h2 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--primary-color)' }}>Zegna Nutrición</h2>
-                             <button onClick={() => setIsMobileMenuOpen(false)} style={{background: 'none', border: 'none', fontSize: '1.5rem', color: 'var(--text-light)'}}>&times;</button>
-                        </div>
-                        <div style={{flex: 1, overflowY: 'auto', padding: '1rem'}}>
-                            <MobileNavItem name="Dashboard" pageName="home" icon={ICONS.home} />
-                            <MobileNavItem name="Agenda" pageName="agenda" icon={ICONS.calendar} />
-                            
-                            <p style={{fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-light)', fontWeight: 700, margin: '1rem 0 0.5rem 1rem'}}>Pacientes</p>
-                            <MobileNavItem name="Lista de Pacientes" pageName="clients" icon={ICONS.users} />
-                            <MobileNavItem name="Lista de Afiliados" pageName="afiliados" icon={ICONS.users} />
-                            <MobileNavItem name="Sala de Espera" pageName="queue" icon={ICONS.clock} />
-
-                            <p style={{fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-light)', fontWeight: 700, margin: '1rem 0 0.5rem 1rem'}}>Gestión</p>
-                            <MobileNavItem name="Finanzas" pageName="finanzas" icon={ICONS.dollar} />
-                            <MobileNavItem name="Mensajes" pageName="chat" icon={ICONS.chat} />
-                            
-                            <p style={{fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-light)', fontWeight: 700, margin: '1rem 0 0.5rem 1rem'}}>Recursos y Red</p>
-                            <MobileNavItem name="Biblioteca" pageName="knowledge-base" icon={ICONS.book} />
-                            <MobileNavItem name="Herramientas" pageName="calculators" icon={ICONS.calculator} />
-                            <MobileNavItem name="Colaboradores" pageName="aliados" icon={ICONS.network} />
-                            <MobileNavItem name="Red de Clínicas" pageName="clinic-network" icon={ICONS.clinic} />
-
-                            {role === 'admin' && (
-                                <>
-                                    <p style={{fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-light)', fontWeight: 700, margin: '1rem 0 0.5rem 1rem'}}>Administración</p>
-                                    <MobileNavItem name="Configuración Clínica" pageName="clinic-settings" icon={ICONS.settings} />
-                                    <MobileNavItem name="Servicios" pageName="services" icon={ICONS.briefcase} />
-                                    <MobileNavItem name="Suscripción" pageName="billing" icon={ICONS.dollar} />
-                                </>
-                            )}
-                        </div>
-                        <div style={{padding: '1rem', borderTop: '1px solid var(--border-color)'}}>
-                             <MobileNavItem name="Mi Perfil" pageName="profile" icon={ICONS.user} />
-                             <div onClick={() => navigate('settings')} style={{padding: '0.75rem 1rem', display: 'flex', gap: '0.75rem', alignItems: 'center', color: 'var(--text-light)'}}>
-                                 {ICONS.logout} Cerrar Sesión
-                             </div>
-                        </div>
-                    </div>
-                    <style>{`@keyframes slideIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }`}</style>
-                </>
+                </header>
             )}
 
+            {/* --- DESKTOP SIDEBAR --- */}
+            <aside style={{
+                ...styles.sidebar,
+                ...(isMobile ? {
+                    transform: isMobileMenuOpen ? 'translateX(0)' : 'translateX(-100%)',
+                    position: 'fixed',
+                    boxShadow: isMobileMenuOpen ? '4px 0 15px rgba(0,0,0,0.1)' : 'none'
+                } : {
+                    transform: 'none',
+                    position: 'fixed',
+                    boxShadow: '1px 0 0 var(--border-color)'
+                })
+            }}>
+                 {/* Sidebar Header */}
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0 0.5rem 1.5rem 0.5rem', marginBottom: '1rem' }}>
+                     {isMobile && (
+                         <button onClick={() => setIsMobileMenuOpen(false)} style={{...styles.iconButton, marginRight: '0.5rem'}}>{ICONS.back}</button>
+                     )}
+                    <div style={{
+                        width: '40px', height: '40px', borderRadius: '12px', 
+                        background: 'linear-gradient(135deg, var(--primary-color), var(--primary-dark))',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: 'white', fontSize: '1.2rem', fontWeight: 800,
+                        boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
+                    }}>
+                            {clinic?.name ? clinic.name.charAt(0).toUpperCase() : 'Z'}
+                    </div>
+                    <div style={{ overflow: 'hidden' }}>
+                        <h2 style={{ color: 'var(--text-color)', fontSize: '1rem', fontWeight: 700, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {clinic?.name || 'Zegna Nutrición'}
+                        </h2>
+                         <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-light)' }}>Panel de Control</p>
+                    </div>
+                </div>
 
-            <main style={{ flex: 1, padding: isMobile ? '1rem' : '2rem', maxWidth: '1600px', margin: '0 auto', width: '100%', overflowX: 'hidden' }}>
+                {/* Navigation Content */}
+                <nav style={{flex: 1, overflowY: 'auto', paddingRight: '0.5rem'}} className="hide-scrollbar">
+                    <NavItem name="Dashboard" pageName="home" icon={ICONS.home} />
+                    
+                    <CollapsibleCategory name="Gestión Clínica" icon={ICONS.users} categoryKey="gestion-clinica" pageNames={['clients', 'afiliados', 'agenda', 'queue']}>
+                        <NavItem name="Pacientes" pageName="clients" isSubItem />
+                        <NavItem name="Afiliados" pageName="afiliados" isSubItem />
+                        <NavItem name="Agenda" pageName="agenda" isSubItem />
+                        <NavItem name="Sala de Espera" pageName="queue" isSubItem />
+                    </CollapsibleCategory>
+                    
+                     <CollapsibleCategory name="Administración" icon={ICONS.dollar} categoryKey="administracion" pageNames={['finanzas', 'chat']}>
+                        <NavItem name="Finanzas" pageName="finanzas" isSubItem />
+                        <NavItem name="Conversaciones" pageName="chat" isSubItem />
+                    </CollapsibleCategory>
+
+                    <CollapsibleCategory name="Red & Comunidad" icon={ICONS.network} categoryKey="red" pageNames={['aliados', 'clinic-network', 'affiliates']}>
+                        <NavItem name="Colaboradores" pageName="aliados" isSubItem />
+                        <NavItem name="Red de Clínicas" pageName="clinic-network" isSubItem />
+                        <NavItem name="Programa Afiliados" pageName="affiliates" isSubItem />
+                    </CollapsibleCategory>
+                    
+                     <CollapsibleCategory name="Recursos" icon={ICONS.book} categoryKey="recursos" pageNames={['knowledge-base', 'calculators', 'user-guide']}>
+                        <NavItem name="Biblioteca" pageName="knowledge-base" isSubItem />
+                        <NavItem name="Herramientas" pageName="calculators" isSubItem />
+                        <NavItem name="Guía de Uso" pageName="user-guide" isSubItem />
+                    </CollapsibleCategory>
+
+                    {role === 'admin' && (
+                        <CollapsibleCategory name="Configuración" icon={ICONS.settings} categoryKey="mi-clinica" pageNames={['clinic-settings', 'services', 'service-plans', 'displays', 'billing']}>
+                            <NavItem name="Datos de la Clínica" pageName="clinic-settings" isSubItem />
+                            <NavItem name="Servicios" pageName="services" isSubItem />
+                            <NavItem name="Planes de Servicio" pageName="service-plans" isSubItem />
+                            <NavItem name="Pantallas" pageName="displays" isSubItem />
+                            <NavItem name="Suscripción" pageName="billing" isSubItem />
+                        </CollapsibleCategory>
+                    )}
+
+                </nav>
+                 
+                 {/* User Profile Widget at Bottom */}
+                 <UserProfileWidget />
+            </aside>
+
+            {isMobile && isMobileMenuOpen && (
+                 <div style={{...styles.modalOverlay, zIndex: 1050}} onClick={() => setIsMobileMenuOpen(false)}></div>
+            )}
+
+            {/* --- MAIN CONTENT AREA --- */}
+            <main style={{
+                flex: 1,
+                padding: isMobile ? '1rem' : '2rem',
+                maxWidth: '1600px',
+                margin: '0 auto',
+                width: '100%',
+                overflowX: 'hidden',
+                marginLeft: isMobile ? 0 : '260px', // Adjusted for sidebar width
+                transition: 'margin-left 0.3s ease'
+            }}>
                 {renderContent()}
             </main>
             

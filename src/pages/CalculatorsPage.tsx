@@ -1,6 +1,8 @@
+
 import React, { FC, useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../supabase';
 import { styles } from '../constants';
+import { ICONS } from './AuthPage';
 import { FoodEquivalent, Person, DietPlanHistoryItem, ClinicalReference, ConsultationWithLabs, KnowledgeResource } from '../types';
 import DietPlanner from '../components/calculators/DietPlanner';
 import QuickTools from '../components/calculators/QuickTools';
@@ -8,6 +10,7 @@ import ClinicalReferences from '../components/calculators/ClinicalReferences';
 import EquivalentsTableManager from '../components/calculators/EquivalentsTableManager';
 import PlanHistory from '../components/calculators/PlanHistory';
 import { useClinic } from '../contexts/ClinicContext';
+import SkeletonLoader from '../components/shared/SkeletonLoader';
 
 interface CalculatorsPageProps {
     isMobile: boolean;
@@ -77,6 +80,7 @@ const CalculatorsPage: FC<CalculatorsPageProps> = ({ isMobile, initialPlanToLoad
     useEffect(() => {
         if (initialPersonToLoad) {
             setSelectedPersonId(initialPersonToLoad.id);
+            setSearchTerm(initialPersonToLoad.full_name);
         }
     }, [initialPersonToLoad]);
 
@@ -98,11 +102,6 @@ const CalculatorsPage: FC<CalculatorsPageProps> = ({ isMobile, initialPlanToLoad
         }
     }, [initialPlanToLoad]);
     
-    useEffect(() => {
-        const person = persons.find(p => p.id === selectedPersonId);
-        setSearchTerm(person?.full_name || '');
-    }, [selectedPersonId, persons]);
-
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -132,11 +131,12 @@ const CalculatorsPage: FC<CalculatorsPageProps> = ({ isMobile, initialPlanToLoad
     
     const filteredPersons = useMemo(() => {
         if (!searchTerm) return persons;
-        if (selectedPersonId && searchTerm === persons.find(p => p.id === selectedPersonId)?.full_name) {
+        // If search term matches the currently selected person's name exactly, show all (user hasn't started typing new search)
+        if (selectedPerson && searchTerm === selectedPerson.full_name) {
             return persons;
         }
         return persons.filter(p => p.full_name.toLowerCase().includes(searchTerm.toLowerCase()));
-    }, [persons, searchTerm, selectedPersonId]);
+    }, [persons, searchTerm, selectedPerson]);
 
     const patients = filteredPersons.filter(p => p.person_type === 'client');
     const affiliates = filteredPersons.filter(p => p.person_type === 'member');
@@ -148,108 +148,153 @@ const CalculatorsPage: FC<CalculatorsPageProps> = ({ isMobile, initialPlanToLoad
     };
 
     const handleSaveToLog = async (calculatorKey: string, logType: string, description: string, data: { inputs: any, result: any }) => {
-        if (!selectedPerson) return;
+        if (!selectedPerson) {
+             alert("Debes seleccionar un paciente primero para guardar en su bitácora.");
+             return;
+        }
         
-        // This function is passed down to tool components
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+             await supabase.from('logs').insert({
+                person_id: selectedPerson.id,
+                log_type: logType,
+                description: description,
+                created_by_user_id: user?.id
+            });
+            alert("Registro guardado en la bitácora del paciente.");
+        } catch (e) {
+            console.error("Error saving to log:", e);
+            alert("Error al guardar.");
+        }
     };
 
     const renderContent = () => {
-        if (loading) return <p>Cargando herramientas...</p>;
+        if (loading) return <SkeletonLoader type="card" count={3} />;
         if (error) return <p style={styles.error}>{error}</p>;
 
-        switch(activeTab) {
-            case 'planner':
-                return <DietPlanner 
-                            equivalentsData={equivalents} 
-                            persons={persons}
-                            knowledgeResources={knowledgeResources}
-                            isMobile={isMobile} 
-                            onPlanSaved={fetchData}
-                            initialPlan={planToLoad}
-                            clearInitialPlan={() => setPlanToLoad(null)}
-                        />;
-            case 'tools':
-                return <QuickTools 
-                            selectedPerson={selectedPerson}
-                            lastConsultation={lastConsultation}
-                            activeSubTab={activeToolSubTab}
-                            setActiveSubTab={setActiveToolSubTab}
-                            handleSaveToLog={handleSaveToLog}
-                            saveStatus={{}}
-                        />;
-            case 'references':
-                return <ClinicalReferences 
-                            references={clinicalReferences}
-                            selectedPerson={selectedPerson}
-                            lastConsultation={lastConsultation}
-                            onNavigateToToolTab={(mainTab, subTab) => {
-                                setActiveTab(mainTab);
-                                if (subTab) setActiveToolSubTab(subTab);
-                            }}
-                            onDataRefresh={fetchData}
-                        />;
-            case 'manage':
-                return <EquivalentsTableManager equivalents={equivalents} onDataChange={fetchData} />;
-            case 'history':
-                return <PlanHistory 
-                            history={planHistory} 
-                            onLoadPlan={handleLoadPlan} 
-                            onDeletePlan={handleDeletePlan} 
-                        />;
-            default:
-                return null;
-        }
+        return (
+            <div className="fade-in">
+                {activeTab === 'planner' && (
+                    <DietPlanner 
+                        equivalentsData={equivalents} 
+                        persons={persons}
+                        knowledgeResources={knowledgeResources}
+                        isMobile={isMobile} 
+                        onPlanSaved={fetchData}
+                        initialPlan={planToLoad}
+                        clearInitialPlan={() => setPlanToLoad(null)}
+                    />
+                )}
+                {activeTab === 'tools' && (
+                    <QuickTools 
+                        selectedPerson={selectedPerson}
+                        lastConsultation={lastConsultation}
+                        activeSubTab={activeToolSubTab}
+                        setActiveSubTab={setActiveToolSubTab}
+                        handleSaveToLog={handleSaveToLog}
+                        saveStatus={{}}
+                    />
+                )}
+                {activeTab === 'references' && (
+                    <ClinicalReferences 
+                        references={clinicalReferences}
+                        selectedPerson={selectedPerson}
+                        lastConsultation={lastConsultation}
+                        onNavigateToToolTab={(mainTab, subTab) => {
+                            setActiveTab(mainTab);
+                            if (subTab) setActiveToolSubTab(subTab);
+                        }}
+                        onDataRefresh={fetchData}
+                    />
+                )}
+                {activeTab === 'manage' && (
+                    <EquivalentsTableManager equivalents={equivalents} onDataChange={fetchData} />
+                )}
+                {activeTab === 'history' && (
+                    <PlanHistory 
+                        history={planHistory} 
+                        onLoadPlan={handleLoadPlan} 
+                        onDeletePlan={handleDeletePlan} 
+                    />
+                )}
+            </div>
+        );
     }
 
     return (
-        <div className="fade-in">
-            <div style={styles.pageHeader}>
-                <h1>Herramientas</h1>
+        <div className="fade-in" style={{ maxWidth: '1400px', margin: '0 auto', paddingBottom: '4rem' }}>
+            {/* Header */}
+             <div style={{...styles.pageHeader, marginBottom: '2rem', alignItems: 'flex-start'}}>
+                <div>
+                    <h1 style={{margin: '0 0 0.5rem 0', fontSize: '2rem', fontWeight: 800, letterSpacing: '-1px'}}>Herramientas Clínicas</h1>
+                    <p style={{margin: 0, color: 'var(--text-light)', maxWidth: '700px'}}>
+                        Conjunto de calculadoras, referencias y planificador dietético para optimizar tu consulta.
+                    </p>
+                </div>
             </div>
-            <p style={{marginTop: '-1.5rem', color: 'var(--text-light)', maxWidth: '800px'}}>
-                Utiliza estas herramientas para agilizar la creación de planes alimenticios y obtener datos clínicos para tus pacientes.
-            </p>
 
-             <nav className="tabs" style={{marginTop: '1.5rem'}}>
-                <button className={`tab-button ${activeTab === 'references' ? 'active' : ''}`} onClick={() => setActiveTab('references')}>Referencias Clínicas</button>
-                <button className={`tab-button ${activeTab === 'tools' ? 'active' : ''}`} onClick={() => setActiveTab('tools')}>Herramientas Clínicas</button>
-                <button className={`tab-button ${activeTab === 'manage' ? 'active' : ''}`} onClick={() => setActiveTab('manage')}>Gestionar Equivalentes</button>
-                <button className={`tab-button ${activeTab === 'planner' ? 'active' : ''}`} onClick={() => setActiveTab('planner')}>Planificador Dietético</button>
-                <button className={`tab-button ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>Historial de Planes</button>
-            </nav>
-
-            {(activeTab === 'references' || activeTab === 'tools') && (
-                 <div ref={containerRef} style={{marginTop: '2rem', marginBottom: '2rem', maxWidth: '400px', backgroundColor: 'var(--surface-color)', padding: '1rem', borderRadius: '8px', position: 'relative'}}>
-                    <label htmlFor="person-search">Asociar Cálculos a:</label>
+            {/* Patient Context Bar (Always visible above tabs) */}
+            <div style={{ 
+                backgroundColor: 'var(--surface-color)', 
+                padding: '1rem 1.5rem', 
+                borderRadius: '16px', 
+                border: '1px solid var(--border-color)',
+                boxShadow: 'var(--shadow)',
+                marginBottom: '2rem',
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                alignItems: isMobile ? 'stretch' : 'center',
+                gap: '1.5rem'
+            }}>
+                <div style={{ flex: 1 }} ref={containerRef}>
+                    <label htmlFor="person-search" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.5rem' }}>
+                        Paciente Seleccionado
+                    </label>
                     <div style={{ position: 'relative' }}>
+                         <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary-color)' }}>
+                            {ICONS.user}
+                        </div>
                         <input 
                             id="person-search"
                             type="text"
-                            placeholder="Buscar y seleccionar..."
+                            placeholder="Buscar paciente para calcular..."
                             value={searchTerm}
                             onChange={e => {
                                 setSearchTerm(e.target.value);
-                                if (selectedPersonId) setSelectedPersonId('');
+                                if (selectedPersonId) setSelectedPersonId(''); 
                                 setIsDropdownOpen(true);
                             }}
                             onFocus={() => setIsDropdownOpen(true)}
-                            style={{ marginBottom: 0, paddingRight: '2.5rem' }}
+                            style={{ 
+                                ...styles.input,
+                                marginBottom: 0, 
+                                paddingLeft: '3rem', 
+                                backgroundColor: 'var(--surface-hover-color)',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '12px',
+                                fontWeight: 500
+                            }}
                             autoComplete="off"
                         />
-                         <div style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-light)', transition: 'transform 0.2s', ...(isDropdownOpen && { transform: 'translateY(-50%) rotate(180deg)' }) }}>
-                            ▼
-                        </div>
+                        {selectedPersonId && (
+                            <button 
+                                onClick={() => { setSelectedPersonId(''); setSearchTerm(''); }}
+                                style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)' }}
+                            >
+                                &times;
+                            </button>
+                        )}
                     </div>
 
                     {isDropdownOpen && (
-                        <div style={{ position: 'absolute', top: '100%', left: '1rem', right: '1rem', backgroundColor: 'var(--surface-hover-color)', border: '1px solid var(--border-color)', borderRadius: '8px', marginTop: '0.5rem', maxHeight: '300px', overflowY: 'auto', zIndex: 10 }}>
-                            {(patients.length > 0 || affiliates.length > 0) ? (
+                        <div style={{ position: 'absolute', top: 'calc(100% + 5px)', left: 0, right: 0, backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '12px', maxHeight: '300px', overflowY: 'auto', zIndex: 20, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}>
+                             {(patients.length > 0 || affiliates.length > 0) ? (
                                 <>
                                     {patients.length > 0 && (
                                         <>
-                                            <div style={{padding: '0.5rem 1rem', fontWeight: 600, color: 'var(--text-light)', fontSize: '0.8rem', borderBottom: '1px solid var(--border-color)'}}>Pacientes</div>
+                                            <div style={{padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--primary-color)', fontSize: '0.75rem', backgroundColor: 'var(--surface-hover-color)', textTransform: 'uppercase'}}>Pacientes</div>
                                             {patients.map(p => (
-                                                <div key={p.id} onClick={() => handleSelectPerson(p)} style={{padding: '0.75rem 1rem', cursor: 'pointer'}} className="nav-item-hover">
+                                                <div key={p.id} onClick={() => handleSelectPerson(p)} style={{padding: '0.75rem 1rem', cursor: 'pointer', borderBottom: '1px solid var(--border-color)'}} className="nav-item-hover">
                                                     {p.full_name}
                                                 </div>
                                             ))}
@@ -257,9 +302,9 @@ const CalculatorsPage: FC<CalculatorsPageProps> = ({ isMobile, initialPlanToLoad
                                     )}
                                     {affiliates.length > 0 && (
                                         <>
-                                            <div style={{padding: '0.5rem 1rem', fontWeight: 600, color: 'var(--text-light)', fontSize: '0.8rem', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)'}}>Afiliados</div>
+                                            <div style={{padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--primary-color)', fontSize: '0.75rem', backgroundColor: 'var(--surface-hover-color)', textTransform: 'uppercase'}}>Afiliados</div>
                                             {affiliates.map(p => (
-                                                <div key={p.id} onClick={() => handleSelectPerson(p)} style={{padding: '0.75rem 1rem', cursor: 'pointer'}} className="nav-item-hover">
+                                                <div key={p.id} onClick={() => handleSelectPerson(p)} style={{padding: '0.75rem 1rem', cursor: 'pointer', borderBottom: '1px solid var(--border-color)'}} className="nav-item-hover">
                                                     {p.full_name}
                                                 </div>
                                             ))}
@@ -267,14 +312,48 @@ const CalculatorsPage: FC<CalculatorsPageProps> = ({ isMobile, initialPlanToLoad
                                     )}
                                 </>
                             ) : (
-                                 <div style={{padding: '1rem', color: 'var(--text-light)'}}>No se encontraron resultados.</div>
+                                 <div style={{padding: '1rem', color: 'var(--text-light)', textAlign: 'center'}}>No se encontraron resultados.</div>
                             )}
                         </div>
                     )}
                 </div>
-            )}
+                
+                {selectedPerson && (
+                    <div style={{ display: 'flex', gap: '2rem', paddingLeft: isMobile ? 0 : '2rem', borderLeft: isMobile ? 'none' : '1px solid var(--border-color)' }}>
+                        <div>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', textTransform: 'uppercase', fontWeight: 700 }}>Edad</span>
+                            <p style={{ margin: 0, fontWeight: 600 }}>{selectedPerson.birth_date ? `${new Date().getFullYear() - new Date(selectedPerson.birth_date).getFullYear()} años` : '-'}</p>
+                        </div>
+                         <div>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', textTransform: 'uppercase', fontWeight: 700 }}>Último Peso</span>
+                            <p style={{ margin: 0, fontWeight: 600 }}>{lastConsultation?.weight_kg ? `${lastConsultation.weight_kg} kg` : '-'}</p>
+                        </div>
+                    </div>
+                )}
+            </div>
 
-            <div style={{marginTop: (activeTab !== 'references' && activeTab !== 'tools') ? '2rem' : 0}}>
+            {/* Main Navigation (Folder Tabs) */}
+             <div style={styles.tabContainer}>
+                {[
+                    { id: 'references', label: 'Referencias', icon: ICONS.book },
+                    { id: 'tools', label: 'Calculadoras', icon: ICONS.calculator },
+                    { id: 'planner', label: 'Planificador', icon: ICONS.sparkles },
+                    { id: 'history', label: 'Historial', icon: ICONS.clock },
+                    { id: 'manage', label: 'Equivalentes', icon: ICONS.list }
+                ].map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        style={activeTab === tab.id ? {...styles.folderTab, ...styles.folderTabActive} : styles.folderTab}
+                    >
+                        <span style={{ marginRight: '0.5rem' }}>{tab.icon}</span>
+                        {tab.label}
+                    </button>
+                ))}
+            </div>
+
+            {/* Folder Content */}
+            <div style={styles.folderContent}>
                 {renderContent()}
             </div>
         </div>

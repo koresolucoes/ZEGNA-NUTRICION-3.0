@@ -1,3 +1,4 @@
+
 import React, { FC } from 'react';
 import { Person, ConsultationWithLabs } from '../../types';
 
@@ -53,18 +54,49 @@ const QuickTools: FC<QuickToolsProps> = ({ selectedPerson, lastConsultation, act
         }
     }
 
+    const tools = [
+        { key: 'energia', label: 'Energía' },
+        { key: 'antropometria', label: 'Antropometría' },
+        { key: 'renal', label: 'Renal' },
+        { key: 'diabetes', label: 'Diabetes' },
+        { key: 'poblaciones', label: 'Poblaciones' },
+        { key: 'soporte', label: 'Soporte' },
+        { key: 'tamizaje', label: 'Tamizaje' },
+        { key: 'pediatria', label: 'Pediatría' }
+    ];
+
     return (
-        <div>
-            <nav className="sub-tabs">
-                 <button className={`sub-tab-button ${activeSubTab === 'energia' ? 'active' : ''}`} onClick={() => setActiveSubTab('energia')}>Requerimientos Energéticos</button>
-                <button className={`sub-tab-button ${activeSubTab === 'antropometria' ? 'active' : ''}`} onClick={() => setActiveSubTab('antropometria')}>Antropometría y Riesgo</button>
-                <button className={`sub-tab-button ${activeSubTab === 'renal' ? 'active' : ''}`} onClick={() => setActiveSubTab('renal')}>Función Renal</button>
-                <button className={`sub-tab-button ${activeSubTab === 'diabetes' ? 'active' : ''}`} onClick={() => setActiveSubTab('diabetes')}>Diabetes</button>
-                <button className={`sub-tab-button ${activeSubTab === 'poblaciones' ? 'active' : ''}`} onClick={() => setActiveSubTab('poblaciones')}>Poblaciones Específicas</button>
-                <button className={`sub-tab-button ${activeSubTab === 'soporte' ? 'active' : ''}`} onClick={() => setActiveSubTab('soporte')}>Soporte Nutricional</button>
-                <button className={`sub-tab-button ${activeSubTab === 'tamizaje' ? 'active' : ''}`} onClick={() => setActiveSubTab('tamizaje')}>Tamizaje</button>
-                <button className={`sub-tab-button ${activeSubTab === 'pediatria' ? 'active' : ''}`} onClick={() => setActiveSubTab('pediatria')}>Pediatría</button>
-            </nav>
+        <div className="fade-in">
+             <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '0.5rem',
+                marginBottom: '2rem',
+                borderBottom: '1px solid var(--border-color)',
+                paddingBottom: '1rem'
+            }}>
+                {tools.map(tool => (
+                    <button
+                        key={tool.key}
+                        onClick={() => setActiveSubTab(tool.key)}
+                        style={{
+                            padding: '0.5rem 1rem',
+                            borderRadius: '50px',
+                            cursor: 'pointer',
+                            fontSize: '0.9rem',
+                            fontWeight: activeSubTab === tool.key ? 600 : 500,
+                            backgroundColor: activeSubTab === tool.key ? 'var(--primary-light)' : 'transparent',
+                            color: activeSubTab === tool.key ? 'var(--primary-dark)' : 'var(--text-light)',
+                            transition: 'all 0.2s',
+                            border: activeSubTab === tool.key ? '1px solid var(--primary-color)' : '1px solid transparent'
+                        }}
+                        className="nav-item-hover"
+                    >
+                        {tool.label}
+                    </button>
+                ))}
+            </div>
+            
             {renderContent()}
         </div>
     );

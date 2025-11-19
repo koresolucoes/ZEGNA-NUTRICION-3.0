@@ -1,20 +1,28 @@
-import React, { FC, useState, useMemo, ChangeEvent, useEffect, useRef, ReactNode, useCallback } from 'react';
+
+import React, { FC, useState, useMemo, ChangeEvent, useEffect, useRef, useCallback } from 'react';
 import { FoodEquivalent, Person, DietPlanHistoryItem, KnowledgeResource } from '../../types';
 import { styles } from '../../constants';
 import { ICONS } from '../../pages/AuthPage';
 import { supabase } from '../../supabase';
 import { useClinic } from '../../contexts/ClinicContext';
-import AiMealPlanGeneratorModal from './AiMealPlanGeneratorModal'; // Importar el nuevo modal
+import AiMealPlanGeneratorModal from './AiMealPlanGeneratorModal';
 
-// --- PROPS INTERFACES FOR EXTRACTED COMPONENTS ---
+// --- CONSTANTS & HELPERS ---
+
+const MACRO_COLORS = {
+    protein: '#EC4899', // Pink/Red
+    lipid: '#F59E0B',   // Orange/Yellow
+    carb: '#3B82F6',    // Blue
+    energy: '#10B981'   // Green
+};
+
+// --- COMPONENT INTERFACES ---
 
 interface EquivalentRowProps {
     eq: FoodEquivalent;
     portion: string;
     isMobile: boolean;
     onPortionChange: (id: string, value: string) => void;
-    onMouseEnter: (e: React.MouseEvent, eq: FoodEquivalent) => void;
-    onMouseLeave: () => void;
 }
 
 interface EquivalentsPanelProps {
@@ -24,119 +32,207 @@ interface EquivalentsPanelProps {
     portions: Record<string, string>;
     isMobile: boolean;
     handlePortionChange: (id: string, value: string) => void;
-    handleMouseEnter: (e: React.MouseEvent, eq: FoodEquivalent) => void;
-    handleMouseLeave: () => void;
-    planTotals: { protein_g: number; lipid_g: number; carb_g: number; kcal: number };
 }
 
-// --- EXTRACTED COMPONENTS ---
+// --- SUB-COMPONENTS ---
 
-// Memoized component for a single equivalent row to prevent unnecessary re-renders.
-const EquivalentRow: FC<EquivalentRowProps> = React.memo(({ eq, portion, isMobile, onPortionChange, onMouseEnter, onMouseLeave }) => {
-    const numPortions = parseFloat(portion) || 0;
-    
-    const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        onPortionChange(eq.id, e.target.value);
-    }, [eq.id, onPortionChange]);
-    
-    const handleMouseEnterEvent = useCallback((e: React.MouseEvent) => {
-        onMouseEnter(e, eq);
-    }, [onMouseEnter, eq]);
+// Heuristic #7: Efficiency of Use - Stepper Controls
+const StepperInput: FC<{ value: string, onChange: (val: string) => void, isActive: boolean }> = ({ value, onChange, isActive }) => {
+    const numValue = parseFloat(value) || 0;
 
-    if (isMobile) {
-        return (
-            <div style={{ padding: '1rem 0.75rem', borderTop: '1px solid var(--border-color)' }}>
-                <div style={{ fontWeight: 600, cursor: 'help' }} onMouseEnter={handleMouseEnterEvent} onMouseLeave={onMouseLeave}>{eq.subgroup_name}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', margin: '0.75rem 0' }}>
-                    <label style={{ margin: 0, fontWeight: 500, flexShrink: 0 }}>Porciones:</label>
-                    <input type="text" inputMode="decimal" pattern="[0-9]*[.]?[0-9]*" value={portion} onChange={handleChange} style={{ margin: 0, padding: '10px', textAlign: 'center', width: '100px', flexShrink: 0 }} placeholder="0" />
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '0.5rem 1rem', fontSize: '0.9rem', color: 'var(--text-light)', backgroundColor: 'var(--background-color)', padding: '0.5rem 0.75rem', borderRadius: '6px' }}>
-                    <span>Pr: <strong>{(numPortions * eq.protein_g).toFixed(1)}g</strong></span>
-                    <span>Lp: <strong>{(numPortions * eq.lipid_g).toFixed(1)}g</strong></span>
-                    <span>Hc: <strong>{(numPortions * eq.carb_g).toFixed(1)}g</strong></span>
-                    <span style={{color: 'var(--text-color)'}}>Kcal: <strong>{(numPortions * eq.kcal).toFixed(0)}</strong></span>
-                </div>
-            </div>
-        );
-    }
+    const adjust = (amount: number) => {
+        const newValue = Math.max(0, numValue + amount);
+        // Avoid floating point errors
+        onChange(newValue === 0 ? '' : String(Math.round(newValue * 100) / 100));
+    };
 
     return (
-        <div className="table-row-hover" style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1fr 1fr 1fr 1fr', alignItems: 'center', gap: '1rem', padding: '0.5rem 0.75rem', borderTop: '1px solid var(--border-color)'}}>
-            <span style={{paddingLeft: '1.5rem', cursor: 'help'}} onMouseEnter={handleMouseEnterEvent} onMouseLeave={onMouseLeave}>{eq.subgroup_name}</span>
-            <div style={{width: '80px', margin: '0 auto'}}><input type="text" inputMode="decimal" pattern="[0-9]*[.]?[0-9]*" value={portion} onChange={handleChange} style={{margin: 0, padding: '8px', textAlign: 'center'}} placeholder="0" /></div>
-            <span style={{textAlign: 'right'}}>{(numPortions * eq.protein_g).toFixed(1)}</span>
-            <span style={{textAlign: 'right'}}>{(numPortions * eq.lipid_g).toFixed(1)}</span>
-            <span style={{textAlign: 'right'}}>{(numPortions * eq.carb_g).toFixed(1)}</span>
-            <span style={{textAlign: 'right'}}>{(numPortions * eq.kcal).toFixed(0)}</span>
+        <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            backgroundColor: isActive ? 'var(--surface-color)' : 'var(--background-color)', 
+            borderRadius: '8px', 
+            border: `1px solid ${isActive ? 'var(--primary-color)' : 'var(--border-color)'}`, 
+            overflow: 'hidden',
+            width: '100%',
+            marginTop: 'auto' // Push to bottom of card
+        }}>
+            <button 
+                onClick={() => adjust(-0.5)} 
+                style={{ flex: 1, height: '36px', border: 'none', background: 'transparent', color: 'var(--text-light)', cursor: 'pointer', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}
+                className="nav-item-hover"
+                type="button"
+            >
+                -
+            </button>
+            <input 
+                type="number" 
+                inputMode="decimal" 
+                value={value} 
+                onChange={(e) => onChange(e.target.value)} 
+                style={{ 
+                    width: '50px', textAlign: 'center', border: 'none', background: 'transparent', 
+                    fontWeight: 700, color: numValue > 0 ? 'var(--primary-color)' : 'var(--text-light)',
+                    marginBottom: 0, padding: 0, height: '36px'
+                }} 
+                placeholder="0"
+            />
+            <button 
+                onClick={() => adjust(0.5)} 
+                style={{ flex: 1, height: '36px', border: 'none', background: 'transparent', color: 'var(--primary-color)', cursor: 'pointer', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}
+                className="nav-item-hover"
+                type="button"
+            >
+                +
+            </button>
+        </div>
+    );
+};
+
+const EquivalentCard: FC<EquivalentRowProps> = React.memo(({ eq, portion, isMobile, onPortionChange }) => {
+    const numPortions = parseFloat(portion) || 0;
+    const isActive = numPortions > 0;
+
+    const handleChange = useCallback((val: string) => {
+        onPortionChange(eq.id, val);
+    }, [eq.id, onPortionChange]);
+
+    // Heuristic #6: Recognition rather than recall. Show calculated macros inline.
+    const stats = useMemo(() => ({
+        p: (numPortions * eq.protein_g).toFixed(1),
+        l: (numPortions * eq.lipid_g).toFixed(1),
+        c: (numPortions * eq.carb_g).toFixed(1),
+        k: (numPortions * eq.kcal).toFixed(0)
+    }), [numPortions, eq]);
+
+    return (
+        <div style={{ 
+            padding: '1rem', 
+            border: `1px solid ${isActive ? 'var(--primary-color)' : 'var(--border-color)'}`, 
+            borderRadius: '12px',
+            backgroundColor: isActive ? 'var(--primary-light)' : 'var(--surface-color)',
+            transition: 'all 0.2s ease-in-out',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.75rem',
+            height: '100%',
+            boxShadow: isActive ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
+            position: 'relative'
+        }}>
+            {isActive && (
+                <div style={{position: 'absolute', top: '8px', right: '8px', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--primary-color)'}}></div>
+            )}
+            
+            <div style={{ fontWeight: 600, color: 'var(--text-color)', fontSize: '0.95rem', lineHeight: 1.3, minHeight: '2.6em' }}>
+                {eq.subgroup_name}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', fontSize: '0.75rem' }}>
+                 <div style={{display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-light)'}}>
+                    <span style={{width: '8px', height: '8px', borderRadius: '2px', backgroundColor: MACRO_COLORS.protein}}></span>
+                    <span>P: {stats.p}</span>
+                 </div>
+                 <div style={{display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-light)'}}>
+                    <span style={{width: '8px', height: '8px', borderRadius: '2px', backgroundColor: MACRO_COLORS.lipid}}></span>
+                    <span>L: {stats.l}</span>
+                 </div>
+                 <div style={{display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-light)'}}>
+                    <span style={{width: '8px', height: '8px', borderRadius: '2px', backgroundColor: MACRO_COLORS.carb}}></span>
+                    <span>HC: {stats.c}</span>
+                 </div>
+                 <div style={{display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-color)', fontWeight: 600}}>
+                    <span style={{width: '8px', height: '8px', borderRadius: '2px', backgroundColor: MACRO_COLORS.energy}}></span>
+                    <span>{stats.k} kcal</span>
+                 </div>
+            </div>
+            
+            <StepperInput value={portion} onChange={handleChange} isActive={isActive} />
         </div>
     );
 });
 
-
 const EquivalentsPanel: FC<EquivalentsPanelProps> = ({ 
     groupedEquivalents, collapsedGroups, toggleGroup, portions, isMobile, 
-    handlePortionChange, handleMouseEnter, handleMouseLeave, planTotals 
+    handlePortionChange 
 }) => {
-    // Define the specific order for food groups
     const groupOrder = [
-        'Verduras',
-        'Frutas',
-        'Cereales y Tubérculos',
-        'Leguminosas',
-        'Alimentos de Origen Animal',
-        'Leche',
-        'Aceites y Grasas',
-        'Azúcares',
-        'Alimentos Libres en Energía',
-        'Bebidas Alcohólicas'
+        'Verduras', 'Frutas', 'Cereales y Tubérculos', 'Leguminosas',
+        'Alimentos de Origen Animal', 'Leche', 'Aceites y Grasas',
+        'Azúcares', 'Alimentos Libres en Energía', 'Bebidas Alcohólicas'
     ];
 
     return (
-        <div style={styles.infoCard}>
-            <div style={styles.infoCardHeader}><h3 style={{...styles.detailCardTitle, fontSize: '1.1rem'}}>Distribución de Equivalentes</h3></div>
-            <div style={{...styles.infoCardBody, padding: isMobile ? '0' : '1rem', ...(!isMobile && { overflowY: 'auto', maxHeight: '70vh' })}}>
-                {!isMobile && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1fr 1fr 1fr 1fr', alignItems: 'center', gap: '1rem', padding: '0.75rem', borderBottom: '2px solid var(--border-color)', fontWeight: 600, color: 'var(--text-light)'}}>
-                        <span>Grupo</span><span style={{textAlign: 'center'}}>Porciones</span><span style={{textAlign: 'right'}}>Pr (g)</span><span style={{textAlign: 'right'}}>Lip (g)</span><span style={{textAlign: 'right'}}>Hc (g)</span><span style={{textAlign: 'right'}}>Kcal</span>
-                    </div>
-                )}
+        <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)', overflow: 'hidden' }}>
+            <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)' }}>
+                 <h3 style={{margin: 0, fontSize: '1.1rem', color: 'var(--primary-color)'}}>Distribución de Equivalentes</h3>
+            </div>
+            <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 250px)' }}> {/* Scrollable area */}
                 {groupOrder
-                    .filter(groupName => groupedEquivalents[groupName]) // Only render groups that exist in the data
+                    .filter(groupName => groupedEquivalents[groupName])
                     .map((groupName) => {
                     const subgroups = groupedEquivalents[groupName];
                     const isCollapsed = collapsedGroups[groupName];
+                    
+                    // Heuristic #1: Visibility of System Status. Show summary even when collapsed.
+                    const totalPortionsInGroup = subgroups.reduce((sum, eq) => sum + (parseFloat(portions[eq.id]) || 0), 0);
+                    const hasActivePortions = totalPortionsInGroup > 0;
+
                     return (
                         <div key={groupName} style={{borderBottom: '1px solid var(--border-color)'}}>
-                            <button onClick={() => toggleGroup(groupName)} style={{...styles.table, background: 'var(--surface-hover-color)', padding: '0.75rem', fontWeight: 600, cursor: 'pointer', border: 'none', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-                                <span style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>{groupName}
+                            <button 
+                                onClick={() => toggleGroup(groupName)} 
+                                style={{
+                                    width: '100%', textAlign: 'left', padding: '0.85rem 1rem', 
+                                    background: hasActivePortions ? 'var(--surface-hover-color)' : 'var(--surface-color)', 
+                                    border: 'none', cursor: 'pointer', 
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                    fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-color)', 
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+                                    <span style={{ 
+                                        transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', 
+                                        transition: 'transform 0.2s', fontSize: '0.8rem', color: 'var(--text-light)' 
+                                    }}>▼</span>
+                                    {groupName}
+                                </div>
+                                {hasActivePortions && (
+                                    <span style={{ fontSize: '0.8rem', backgroundColor: 'var(--primary-light)', color: 'var(--primary-dark)', padding: '2px 8px', borderRadius: '12px' }}>
+                                        {totalPortionsInGroup}
+                                    </span>
+                                )}
                             </button>
-                            {!isCollapsed && subgroups.sort((a, b) => a.subgroup_name.localeCompare(b.subgroup_name)).map(eq => (
-                                <EquivalentRow
-                                    key={eq.id}
-                                    eq={eq}
-                                    portion={portions[eq.id] || ''}
-                                    isMobile={isMobile}
-                                    onPortionChange={handlePortionChange}
-                                    onMouseEnter={handleMouseEnter}
-                                    onMouseLeave={handleMouseLeave}
-                                />
-                            ))}
+                            
+                            {!isCollapsed && (
+                                <div className="fade-in" style={{ 
+                                    padding: '1rem',
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', // Responsive Grid
+                                    gap: '1rem',
+                                    backgroundColor: 'var(--background-color)' // Subtle contrast for the grid area
+                                }}>
+                                    {subgroups.sort((a, b) => a.subgroup_name.localeCompare(b.subgroup_name)).map(eq => (
+                                        <EquivalentCard
+                                            key={eq.id}
+                                            eq={eq}
+                                            portion={portions[eq.id] || ''}
+                                            isMobile={isMobile}
+                                            onPortionChange={handlePortionChange}
+                                        />
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     );
                 })}
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '3fr 1fr 1fr 1fr 1fr 1fr', alignItems: 'center', gap: '1rem', padding: '0.75rem', fontWeight: 600, background: 'var(--surface-hover-color)'}}>
-                    <span style={{ gridColumn: isMobile ? '1' : 'span 2' }}>Total del Plan</span>
-                    {!isMobile && <><span style={{textAlign: 'right'}}>{planTotals.protein_g.toFixed(1)}</span><span style={{textAlign: 'right'}}>{planTotals.lipid_g.toFixed(1)}</span><span style={{textAlign: 'right'}}>{planTotals.carb_g.toFixed(1)}</span></>}
-                    <span style={{textAlign: 'right', fontSize: '1.1rem'}}>{planTotals.kcal.toFixed(0)} Kcal</span>
-                </div>
             </div>
         </div>
     );
 };
 
 
-// --- MAIN DIET PLANNER COMPONENT ---
+// --- MAIN COMPONENT ---
 
 interface DietPlannerProps {
     equivalentsData: FoodEquivalent[];
@@ -150,10 +246,7 @@ interface DietPlannerProps {
 
 const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile, onPlanSaved, initialPlan, clearInitialPlan, knowledgeResources }) => {
     const { clinic, subscription } = useClinic();
-    const hasAiFeature = useMemo(() => {
-        return subscription?.plans?.features ? (subscription.plans.features as any).ai_assistant === true : false;
-    }, [subscription]);
-
+    
     const initialPortions = useMemo(() => 
         equivalentsData.reduce((acc, eq) => ({ ...acc, [eq.id]: '' }), {}),
         [equivalentsData]
@@ -163,49 +256,49 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
     const [goals, setGoals] = useState({ kcal: '2000', hc_perc: '50', prot_perc: '20', lip_perc: '30' });
     const [personName, setPersonName] = useState('');
     const [selectedPersonId, setSelectedPersonId] = useState('');
-    const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
-    const [tooltip, setTooltip] = useState<{ content: string; x: number; y: number } | null>(null);
+    // Default collapse logic: Keep common groups open, collapse others
+    const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({
+        'Bebidas Alcohólicas': true, 'Azúcares': true, 'Alimentos Libres en Energía': true
+    });
+    
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    
+    // Search/Dropdown States
     const [searchTerm, setSearchTerm] = useState('');
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const searchContainerRef = useRef<HTMLDivElement>(null);
-    const [isAdequacyCardExpanded, setIsAdequacyCardExpanded] = useState(false);
-    const [isAiPlanModalOpen, setIsAiPlanModalOpen] = useState(false); // State for the new modal
+    
+    const [isAiPlanModalOpen, setIsAiPlanModalOpen] = useState(false);
 
-    const bottomBarRef = useRef<HTMLDivElement>(null);
-    const [bottomBarHeight, setBottomBarHeight] = useState(280); // Default height
+    const hasAiFeature = useMemo(() => {
+        return subscription?.plans?.features ? (subscription.plans.features as any).ai_assistant === true : false;
+    }, [subscription]);
 
      useEffect(() => {
         if (initialPlan) {
             setGoals(initialPlan.goals || { kcal: '2000', hc_perc: '50', prot_perc: '20', lip_perc: '30' });
             setPortions(initialPlan.portions || initialPortions);
-            // FIX: Using String() constructor to safely convert potentially 'unknown' type to string.
-            // This prevents a type error if `initialPlan.person_name` is inferred as something other than string | null.
             setPersonName(String(initialPlan.person_name || ''));
             setSelectedPersonId(initialPlan.person_id || '');
-            // FIX: Using String() constructor to safely convert potentially 'unknown' type to string.
-            setSearchTerm(String(initialPlan.person_name || '')); // Also set search term for display
-            // Clear the initialPlan prop in the parent so it doesn't reload on every render
+            setSearchTerm(String(initialPlan.person_name || ''));
             clearInitialPlan();
         }
     }, [initialPlan, clearInitialPlan, initialPortions]);
 
      useEffect(() => {
-        // Only auto-fill name if not loading a plan (to preserve saved plan name)
         if (!initialPlan) {
             const person = persons.find(p => p.id === selectedPersonId);
             if (person) {
                 setPersonName(person.full_name);
-            } else if (!selectedPersonId) { // If user deselects to generic
-                setPersonName(searchTerm); // Keep what user might be typing for a generic plan
+            } else if (!selectedPersonId) { 
+                setPersonName(searchTerm); 
             }
         }
     }, [selectedPersonId, persons, initialPlan, searchTerm]);
 
     useEffect(() => {
-        // Click outside handler
         const handleClickOutside = (event: MouseEvent) => {
             if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
                 setIsDropdownOpen(false);
@@ -216,19 +309,6 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
             document.removeEventListener("mousedown", handleClickOutside);
         };
     }, []);
-
-    useEffect(() => {
-        const barElement = bottomBarRef.current;
-        if (isMobile && barElement) {
-            const resizeObserver = new ResizeObserver(entries => {
-                for (let entry of entries) {
-                    setBottomBarHeight(entry.contentRect.height);
-                }
-            });
-            resizeObserver.observe(barElement);
-            return () => resizeObserver.disconnect();
-        }
-    }, [isMobile, isAdequacyCardExpanded]);
 
     const groupedEquivalents = useMemo(() => {
         return equivalentsData.reduce((acc, eq) => {
@@ -256,15 +336,6 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
 
     const toggleGroup = useCallback((groupName: string) => {
         setCollapsedGroups(prev => ({...prev, [groupName]: !prev[groupName]}));
-    }, []);
-
-    const handleMouseEnter = useCallback((e: React.MouseEvent, eq: FoodEquivalent) => {
-        const content = `1 Porción: ${eq.protein_g}g Pr, ${eq.lipid_g}g Lp, ${eq.carb_g}g Hc, ${eq.kcal} Kcal`;
-        setTooltip({ content, x: e.clientX, y: e.clientY });
-    }, []);
-
-    const handleMouseLeave = useCallback(() => {
-        setTooltip(null);
     }, []);
 
     const planTotals = useMemo(() => {
@@ -298,22 +369,8 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
         prot: goalGrams.prot > 0 ? (planTotals.protein_g / goalGrams.prot) * 100 : 0,
         lip: goalGrams.lip > 0 ? (planTotals.lipid_g / goalGrams.lip) * 100 : 0,
         hc: goalGrams.hc > 0 ? (planTotals.carb_g / goalGrams.hc) * 100 : 0,
-    }), [planTotals, goalGrams]);
-
-    const overallAdequacy = useMemo(() => {
-        const validMacros = [adequacy.prot, adequacy.lip, adequacy.hc].filter(p => p > 0);
-        if (validMacros.length === 0) return 0;
-        const total = validMacros.reduce((sum, current) => sum + current, 0);
-        return total / validMacros.length;
-    }, [adequacy]);
-
-    const getAdequacyStatus = (percentage: number) => {
-        if (percentage >= 95 && percentage <= 105) return { text: 'Adecuado', color: 'var(--primary-color)' };
-        if (percentage > 105 && percentage <= 115) return { text: 'Lig. Excedido', color: 'var(--accent-color)' };
-        if (percentage < 95 && percentage >= 85) return { text: 'Lig. Bajo', color: 'var(--accent-color)'};
-        if (percentage > 115) return { text: 'Excedido', color: 'var(--error-color)'};
-        return { text: 'Bajo', color: 'var(--error-color)'};
-    };
+        kcal: parseFloat(goals.kcal) > 0 ? (planTotals.kcal / parseFloat(goals.kcal)) * 100 : 0
+    }), [planTotals, goalGrams, goals.kcal]);
 
     const handleSavePlan = async () => {
         if (!clinic) {
@@ -366,115 +423,101 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
         setIsDropdownOpen(false);
     };
 
-    const AdequacyAnalysisPanel: FC<{isCompact?: boolean}> = ({ isCompact = false }) => (
-         <div style={{...styles.infoCard, ...(isCompact && {padding: 0, boxShadow: 'none', background: 'transparent'})}}>
-            <div style={{...styles.infoCardHeader, ...(isCompact && {padding: '0.5rem 0 0.5rem 0', borderBottom: '1px solid var(--border-color)', textAlign: 'center' })}}>
-                <h3 style={{...styles.detailCardTitle, fontSize: '1.1rem'}}>Análisis de Adecuación</h3>
-            </div>
-            <div style={{...styles.infoCardBody, display: 'flex', flexDirection: 'column', gap: '1.25rem', ...(isCompact && {padding: '1rem 0 0 0'})}}>
-            {[
-                { name: 'Proteína', adequacy: adequacy.prot, current: planTotals.protein_g, goal: goalGrams.prot },
-                { name: 'Lípidos', adequacy: adequacy.lip, current: planTotals.lipid_g, goal: goalGrams.lip },
-                { name: 'H. Carbono', adequacy: adequacy.hc, current: planTotals.carb_g, goal: goalGrams.hc }
-            ].map(macro => {
-                const status = getAdequacyStatus(macro.adequacy);
-                return (
-                    <div key={macro.name}>
-                        <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', alignItems: 'baseline'}}>
-                            <span style={{fontWeight: 600}}>{macro.name}</span>
-                            <span style={{fontSize: '0.9rem', color: status.color, fontWeight: 500}}>
-                                {status.text} ({macro.adequacy.toFixed(1)}%)
-                            </span>
-                        </div>
-                        <div style={{height: '10px', backgroundColor: 'var(--background-color)', borderRadius: '5px', overflow: 'hidden', marginBottom: '0.25rem'}}>
-                            <div style={{width: `${Math.min(macro.adequacy, 120)}%`, height: '100%', backgroundColor: status.color, transition: 'width 0.3s'}}></div>
-                        </div>
-                        <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-light)'}}>
-                            <span>{macro.current.toFixed(1)}g</span>
-                            <span>Meta: {macro.goal.toFixed(1)}g</span>
-                        </div>
+    // --- HEURISTIC #1: VISIBILITY OF SYSTEM STATUS (Sticky Footer) ---
+    const StickyStatusFooter = () => (
+        <div style={{
+            position: 'fixed', bottom: 0, left: isMobile ? 0 : '260px', right: 0,
+            backgroundColor: 'var(--surface-color)', borderTop: '1px solid var(--border-color)',
+            padding: '0.75rem 1.5rem', zIndex: 100,
+            boxShadow: '0 -4px 20px rgba(0,0,0,0.1)',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            transition: 'left 0.3s ease'
+        }}>
+            <div style={{display: 'flex', gap: '1.5rem', flex: 1}}>
+                {[
+                    { label: 'Prot', val: planTotals.protein_g, goal: goalGrams.prot, adq: adequacy.prot, color: MACRO_COLORS.protein },
+                    { label: 'Lip', val: planTotals.lipid_g, goal: goalGrams.lip, adq: adequacy.lip, color: MACRO_COLORS.lipid },
+                    { label: 'HC', val: planTotals.carb_g, goal: goalGrams.hc, adq: adequacy.hc, color: MACRO_COLORS.carb },
+                ].map(m => (
+                    <div key={m.label} style={{flex: 1, maxWidth: '150px'}}>
+                         <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', fontWeight: 600, marginBottom: '2px'}}>
+                             <span style={{color: m.color}}>{m.label}</span>
+                             <span style={{color: m.adq > 110 ? 'var(--error-color)' : m.adq < 90 ? 'var(--text-light)' : 'var(--primary-color)'}}>{m.adq.toFixed(0)}%</span>
+                         </div>
+                         <div style={{height: '4px', backgroundColor: 'var(--background-color)', borderRadius: '2px', overflow: 'hidden'}}>
+                             <div style={{width: `${Math.min(m.adq, 100)}%`, height: '100%', backgroundColor: m.color, transition: 'width 0.3s ease'}}></div>
+                         </div>
+                         {!isMobile && <div style={{fontSize: '0.7rem', color: 'var(--text-light)', marginTop: '1px'}}>{m.val.toFixed(0)} / {m.goal.toFixed(0)}g</div>}
                     </div>
-                );
-            })}
-            <div style={{borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem', marginTop: '0.5rem'}}>
-                {(() => {
-                    const status = getAdequacyStatus(overallAdequacy);
-                    return (
-                        <div>
-                            <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', alignItems: 'baseline'}}>
-                                <span style={{fontWeight: 600}}>Adecuación General</span>
-                                <span style={{fontSize: '0.9rem', color: status.color, fontWeight: 500}}>
-                                    {status.text} ({overallAdequacy.toFixed(1)}%)
-                                </span>
-                            </div>
-                            <div style={{height: '10px', backgroundColor: 'var(--background-color)', borderRadius: '5px', overflow: 'hidden', marginBottom: '0.25rem'}}>
-                                <div style={{width: `${Math.min(overallAdequacy, 120)}%`, height: '100%', backgroundColor: status.color, transition: 'width 0.3s'}}></div>
-                            </div>
-                            <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-light)'}}>
-                                <span>Promedio de macros</span>
-                            </div>
-                        </div>
-                    );
-                })()}
+                ))}
             </div>
+            
+            <div style={{marginLeft: '1rem', textAlign: 'right'}}>
+                 <div style={{fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 600}}>CALORÍAS</div>
+                 <div style={{fontSize: '1.2rem', fontWeight: 700, color: adequacy.kcal > 105 ? 'var(--error-color)' : 'var(--text-color)'}}>
+                     {planTotals.kcal.toFixed(0)} <span style={{fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 400}}>/ {goals.kcal}</span>
+                 </div>
             </div>
         </div>
     );
 
-    const SavePlanPanel = ({ isCompact = false }) => {
+    const ConfigPanel = () => (
+         <div style={{ backgroundColor: 'var(--surface-color)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-color)', marginBottom: '2rem', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '1.5rem' }}>
+            {/* Patient Selection */}
+            <div ref={searchContainerRef} style={{ position: 'relative' }}>
+                <label htmlFor="planner-patient" style={styles.label}>Paciente</label>
+                <input 
+                    id="planner-patient"
+                    type="text" 
+                    placeholder="Buscar..." 
+                    value={searchTerm} 
+                    onChange={e => { setSearchTerm(e.target.value); setSelectedPersonId(''); setPersonName(e.target.value); setIsDropdownOpen(true); }} 
+                    onFocus={() => setIsDropdownOpen(true)} 
+                    style={{ ...styles.input, marginBottom: 0 }} 
+                    autoComplete="off" 
+                />
+                {isDropdownOpen && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '8px', marginTop: '4px', maxHeight: '200px', overflowY: 'auto', zIndex: 10, boxShadow: 'var(--shadow)' }}>
+                        <div onClick={() => handleSelectPerson(null)} style={{padding: '0.75rem 1rem', cursor: 'pointer', fontStyle: 'italic', borderBottom: '1px solid var(--border-color)'}} className="nav-item-hover">-- Plan Genérico --</div>
+                        {filteredPersons.map(p => (<div key={p.id} onClick={() => handleSelectPerson(p)} style={{padding: '0.75rem 1rem', cursor: 'pointer'}} className="nav-item-hover">{p.full_name}</div>))}
+                    </div>
+                )}
+            </div>
+
+            {/* Caloric Goal */}
+             <div>
+                <label htmlFor="kcal-goal" style={styles.label}>Meta Calórica (Kcal)</label>
+                <input id="kcal-goal" type="number" name="kcal" value={goals.kcal} onChange={handleGoalChange} style={{...styles.input, marginBottom: 0, fontWeight: 700, color: 'var(--primary-color)'}} />
+            </div>
+
+             {/* Macro Distribution */}
+             <div>
+                <label style={styles.label}>Distribución % (P / L / HC)</label>
+                <div style={{display: 'flex', gap: '0.5rem'}}>
+                    <input type="number" name="prot_perc" value={goals.prot_perc} onChange={handleGoalChange} style={{...styles.input, marginBottom: 0, borderColor: MACRO_COLORS.protein, color: MACRO_COLORS.protein, fontWeight: 600}} placeholder="P" />
+                    <input type="number" name="lip_perc" value={goals.lip_perc} onChange={handleGoalChange} style={{...styles.input, marginBottom: 0, borderColor: MACRO_COLORS.lipid, color: MACRO_COLORS.lipid, fontWeight: 600}} placeholder="L" />
+                    <input type="number" name="hc_perc" value={goals.hc_perc} onChange={handleGoalChange} style={{...styles.input, marginBottom: 0, borderColor: MACRO_COLORS.carb, color: MACRO_COLORS.carb, fontWeight: 600}} placeholder="HC" />
+                </div>
+            </div>
+         </div>
+    );
+
+    const ActionPanel = () => {
         const hasPortions = Object.values(portions).some(p => parseFloat(String(p)) > 0);
         return (
-            <div style={{...styles.infoCard, ...(isCompact && {padding: 0, boxShadow: 'none', background: 'transparent'})}}>
-                {!isCompact && <div style={styles.infoCardHeader}><h3 style={{...styles.detailCardTitle, fontSize: '1.1rem'}}>Acciones del Plan</h3></div>}
-                <div style={{...styles.infoCardBody, ...(isCompact && {padding: 0}), display: 'flex', flexDirection: 'column', gap: '1rem'}}>
-                    {error && <p style={styles.error}>{error}</p>}
-                    {success && <p style={{...styles.error, backgroundColor: 'var(--primary-light)', color: 'var(--primary-dark)', borderColor: 'var(--primary-color)'}}>{success}</p>}
-                    
-                    <div ref={searchContainerRef} style={{ position: 'relative' }}>
-                        <label htmlFor="person-search-planner">Asociar Plan a Paciente (Opcional)</label>
-                        <div style={{ position: 'relative' }}>
-                            <input id="person-search-planner" type="text" placeholder="Buscar y seleccionar..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setSelectedPersonId(''); setPersonName(e.target.value); setIsDropdownOpen(true); }} onFocus={() => setIsDropdownOpen(true)} style={{ marginBottom: 0, paddingRight: '2.5rem' }} autoComplete="off" />
-                            <div style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-light)', transition: 'transform 0.2s', ...(isDropdownOpen && { transform: 'translateY(-50%) rotate(180deg)' }) }}>▼</div>
-                        </div>
-                        {isDropdownOpen && (
-                            <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, backgroundColor: 'var(--surface-hover-color)', border: '1px solid var(--border-color)', borderRadius: '8px', marginBottom: '0.5rem', maxHeight: '200px', overflowY: 'auto', zIndex: 10 }}>
-                                <div onClick={() => handleSelectPerson(null)} style={{padding: '0.75rem 1rem', cursor: 'pointer', fontStyle: 'italic'}} className="nav-item-hover">-- Plan Genérico --</div>
-                                {filteredPersons.map(p => (<div key={p.id} onClick={() => handleSelectPerson(p)} style={{padding: '0.75rem 1rem', cursor: 'pointer'}} className="nav-item-hover">{p.full_name}</div>))}
-                            </div>
-                        )}
-                    </div>
-                    
-                    <label htmlFor="personName">Nombre del Plan / Paciente</label>
-                    <input id="personName" type="text" value={personName} onChange={e => setPersonName(e.target.value)} placeholder="Ej: Plan de volumen para Juan Pérez" />
-                    
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-                        <button onClick={handleSavePlan} disabled={loading} style={{width: '100%'}}>{loading ? 'Guardando...' : 'Guardar en Historial'}</button>
-                        <button type="button" onClick={() => setIsAiPlanModalOpen(true)} disabled={!hasPortions || !hasAiFeature} className="button-secondary" style={{width: '100%', whiteSpace: 'nowrap'}} title={!hasAiFeature ? "Esta función no está incluida en tu plan actual." : "Generar plan de comidas con IA"}>
-                            {ICONS.sparkles} Generar Plan
-                        </button>
-                    </div>
-                </div>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginBottom: '6rem' /* Space for sticky footer */ }}>
+                 <button type="button" onClick={() => setIsAiPlanModalOpen(true)} disabled={!hasPortions || !hasAiFeature} className="button-secondary" title={!hasAiFeature ? "Función Premium" : "Crear menú con IA"}>
+                    {ICONS.sparkles} Generar Menú IA
+                </button>
+                <button onClick={handleSavePlan} disabled={loading} className="button-primary">
+                    {loading ? 'Guardando...' : 'Guardar Cálculo'}
+                </button>
             </div>
         );
     };
-    
-    const tooltipStyle: React.CSSProperties = tooltip ? {
-        position: 'fixed',
-        left: tooltip.x + 15,
-        top: tooltip.y,
-        backgroundColor: 'var(--surface-hover-color)',
-        padding: '0.5rem 1rem',
-        borderRadius: '6px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-        zIndex: 1100,
-        pointerEvents: 'none', // This is the fix for the flickering loop
-        whiteSpace: 'nowrap',
-        transition: 'opacity 0.2s',
-        opacity: 1,
-    } : { display: 'none' };
-    
-    const renderDesktopLayout = () => (
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem', alignItems: 'start' }}>
+
+    return (
+        <div className="fade-in" style={{position: 'relative', minHeight: '80vh'}}>
             {isAiPlanModalOpen && (
                 <AiMealPlanGeneratorModal
                     isOpen={isAiPlanModalOpen}
@@ -485,7 +528,12 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
                     personId={selectedPersonId || null}
                 />
             )}
-            {tooltip && <div style={tooltipStyle}>{tooltip.content}</div>}
+            
+            {error && <p style={styles.error}>{error}</p>}
+            {success && <p style={{...styles.error, backgroundColor: 'var(--primary-light)', color: 'var(--primary-dark)', borderColor: 'var(--primary-color)'}}>{success}</p>}
+
+            <ConfigPanel />
+
             <EquivalentsPanel 
                 groupedEquivalents={groupedEquivalents}
                 collapsedGroups={collapsedGroups}
@@ -493,73 +541,15 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
                 portions={portions}
                 isMobile={isMobile}
                 handlePortionChange={handlePortionChange}
-                handleMouseEnter={handleMouseEnter}
-                handleMouseLeave={handleMouseLeave}
-                planTotals={planTotals}
             />
-            <div style={{ position: 'sticky', top: '1rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                    <div style={styles.infoCard}>
-                        <div style={styles.infoCardHeader}><h3 style={{...styles.detailCardTitle, fontSize: '1.1rem'}}>Metas Nutricionales</h3></div>
-                        <div style={styles.infoCardBody}><label>Meta Calórica (Kcal)</label><input type="text" inputMode="decimal" pattern="[0-9]*[.]?[0-9]*" name="kcal" value={goals.kcal} onChange={handleGoalChange} placeholder="2000" /><div style={{display: 'flex', gap: '1rem'}}><div><label>% Pr</label><input type="text" inputMode="decimal" pattern="[0-9]*[.]?[0-9]*" name="prot_perc" value={goals.prot_perc} onChange={handleGoalChange} placeholder="20" /></div><div><label>% Lip</label><input type="text" inputMode="decimal" pattern="[0-9]*[.]?[0-9]*" name="lip_perc" value={goals.lip_perc} onChange={handleGoalChange} placeholder="30" /></div><div><label>% Hc</label><input type="text" inputMode="decimal" pattern="[0-9]*[.]?[0-9]*" name="hc_perc" value={goals.hc_perc} onChange={handleGoalChange} placeholder="50" /></div></div></div>
-                    </div>
-                    <AdequacyAnalysisPanel />
-                    <SavePlanPanel />
-                </div>
+            
+            <div style={{marginTop: '2rem'}}>
+                 <ActionPanel />
             </div>
+
+            <StickyStatusFooter />
         </div>
     );
-
-    const renderMobileLayout = () => (
-        <div>
-             {isAiPlanModalOpen && (
-                <AiMealPlanGeneratorModal
-                    isOpen={isAiPlanModalOpen}
-                    onClose={() => setIsAiPlanModalOpen(false)}
-                    onPlanSaved={onPlanSaved}
-                    equivalentsData={equivalentsData}
-                    planPortions={portions}
-                    personId={selectedPersonId || null}
-                />
-            )}
-            {tooltip && <div style={tooltipStyle}>{tooltip.content}</div>}
-            <div style={{ paddingBottom: `${bottomBarHeight + 16}px` }}>
-                <div style={{...styles.infoCard, marginBottom: '2rem'}}>
-                    <div style={styles.infoCardHeader}><h3 style={{...styles.detailCardTitle, fontSize: '1.1rem'}}>Metas Nutricionales</h3></div>
-                    <div style={styles.infoCardBody}><label>Meta Calórica (Kcal)</label><input type="text" inputMode="decimal" pattern="[0-9]*[.]?[0-9]*" name="kcal" value={goals.kcal} onChange={handleGoalChange} placeholder="2000" /><div style={{display: 'flex', gap: '1rem'}}><div><label>% Pr</label><input type="text" inputMode="decimal" pattern="[0-9]*[.]?[0-9]*" name="prot_perc" value={goals.prot_perc} onChange={handleGoalChange} placeholder="20" /></div><div><label>% Lip</label><input type="text" inputMode="decimal" pattern="[0-9]*[.]?[0-9]*" name="lip_perc" value={goals.lip_perc} onChange={handleGoalChange} placeholder="30" /></div><div><label>% Hc</label><input type="text" inputMode="decimal" pattern="[0-9]*[.]?[0-9]*" name="hc_perc" value={goals.hc_perc} onChange={handleGoalChange} placeholder="50" /></div></div></div>
-                </div>
-                <EquivalentsPanel 
-                    groupedEquivalents={groupedEquivalents}
-                    collapsedGroups={collapsedGroups}
-                    toggleGroup={toggleGroup}
-                    portions={portions}
-                    isMobile={isMobile}
-                    handlePortionChange={handlePortionChange}
-                    handleMouseEnter={handleMouseEnter}
-                    handleMouseLeave={handleMouseLeave}
-                    planTotals={planTotals}
-                />
-            </div>
-
-            <div ref={bottomBarRef} style={{position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1000, background: 'var(--surface-color)', boxShadow: '0 -4px 12px rgba(0,0,0,0.2)', borderTop: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column' }}>
-                <div onClick={() => setIsAdequacyCardExpanded(!isAdequacyCardExpanded)} style={{ padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
-                    <div>
-                        <span style={{fontWeight: 600}}>Total: {planTotals.kcal.toFixed(0)} Kcal</span>
-                        <span style={{marginLeft: '1rem', fontSize: '0.9rem', color: getAdequacyStatus(overallAdequacy).color}}>Adecuación: {overallAdequacy.toFixed(1)}%</span>
-                    </div>
-                    <button style={{background: 'none', border: 'none', color: 'var(--text-color)', transform: isAdequacyCardExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s'}}>▲</button>
-                </div>
-                <div style={{ padding: '0 1rem 1rem 1rem' }}>
-                    {isAdequacyCardExpanded && <AdequacyAnalysisPanel isCompact />}
-                    <div style={{borderTop: isAdequacyCardExpanded ? '1px solid var(--border-color)' : 'none', paddingTop: isAdequacyCardExpanded ? '1rem' : 0, marginTop: isAdequacyCardExpanded ? '1rem' : 0}}>
-                        <SavePlanPanel isCompact />
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-
-    return isMobile ? renderMobileLayout() : renderDesktopLayout();
 };
 
 export default DietPlanner;

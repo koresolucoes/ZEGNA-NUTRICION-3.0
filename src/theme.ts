@@ -1,3 +1,4 @@
+
 import { createGlobalStyle } from 'styled-components';
 
 // Definición de Tipos para el Tema
@@ -208,6 +209,25 @@ export const GlobalStyle = createGlobalStyle<{ theme: ThemeType }>`
         height: 100%;
         display: flex;
         flex-direction: column;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: var(--background-color);
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--surface-active);
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--text-light);
     }
 
     h1, h2, h3, h4, h5, h6 {

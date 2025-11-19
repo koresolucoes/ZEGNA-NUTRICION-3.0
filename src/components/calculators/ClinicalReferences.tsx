@@ -90,60 +90,33 @@ const ClinicalReferences: FC<ClinicalReferencesProps> = ({ references, selectedP
 
     const handleDeleteConfirm = async () => {
         if (!deletingReference) return;
-        
         const { error } = await supabase.from('clinical_references').delete().eq('id', deletingReference.id);
-        
-        if (error) {
-            console.error("Error deleting reference:", error);
-        } else {
-            onDataRefresh();
-        }
+        if (error) console.error("Error deleting reference:", error);
+        else onDataRefresh();
         setDeletingReference(null);
     };
 
     return (
         <div className="fade-in" style={{ position: 'relative', paddingBottom: '5rem' }}>
-            {isFormModalOpen && (
-                <ReferenceFormModal
-                    isOpen={isFormModalOpen}
-                    onClose={() => { setFormModalOpen(false); setEditingReference(null); }}
-                    onSave={() => { setFormModalOpen(false); setEditingReference(null); onDataRefresh(); }}
-                    referenceToEdit={editingReference}
-                />
-            )}
-            {deletingReference && (
-                <ConfirmationModal
-                    isOpen={!!deletingReference}
-                    onClose={() => setDeletingReference(null)}
-                    onConfirm={handleDeleteConfirm}
-                    title="Confirmar Eliminación"
-                    message={<p>¿Estás seguro de que quieres eliminar la referencia "<strong>{deletingReference.title}</strong>"? Esta acción es irreversible.</p>}
-                />
-            )}
-            {viewingReference && (
-                <ClinicalReferenceDetailModal
-                    reference={viewingReference}
-                    selectedPerson={selectedPerson}
-                    lastConsultation={lastConsultation}
-                    onClose={() => setViewingReference(null)}
-                />
-            )}
+            {isFormModalOpen && <ReferenceFormModal isOpen={isFormModalOpen} onClose={() => { setFormModalOpen(false); setEditingReference(null); }} onSave={() => { setFormModalOpen(false); setEditingReference(null); onDataRefresh(); }} referenceToEdit={editingReference} />}
+            {deletingReference && <ConfirmationModal isOpen={!!deletingReference} onClose={() => setDeletingReference(null)} onConfirm={handleDeleteConfirm} title="Confirmar Eliminación" message={<p>¿Estás seguro de que quieres eliminar la referencia "<strong>{deletingReference.title}</strong>"?</p>} />}
+            {viewingReference && <ClinicalReferenceDetailModal reference={viewingReference} selectedPerson={selectedPerson} lastConsultation={lastConsultation} onClose={() => setViewingReference(null)} />}
 
-            <div style={{...styles.filterBar, marginBottom: '1.5rem'}}>
+            <div style={{...styles.filterBar, marginBottom: '1.5rem', maxWidth: '500px', border: 'none', background: 'transparent', padding: 0, boxShadow: 'none'}}>
                 <div style={styles.searchInputContainer}>
                     <span style={styles.searchInputIcon}>🔍</span>
-                    <input
-                        type="text"
-                        placeholder="Buscar referencia por título, categoría..."
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                        style={styles.searchInput}
+                    <input 
+                        type="text" 
+                        placeholder="Buscar referencia por título, categoría..." 
+                        value={searchTerm} 
+                        onChange={e => setSearchTerm(e.target.value)} 
+                        style={{...styles.searchInput, backgroundColor: 'var(--surface-color)', borderRadius: '12px', borderColor: 'var(--border-color)', paddingLeft: '2.5rem'}}
                     />
                 </div>
             </div>
             
             {filteredReferences.length > 0 ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '1.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
                     {filteredReferences.map(ref => {
                          const contentArray = Array.isArray(ref.content) ? ref.content : [];
                          
@@ -156,57 +129,57 @@ const ClinicalReferences: FC<ClinicalReferencesProps> = ({ references, selectedP
                          const buttonLabel = toolKey ? toolLabels[toolKey] : 'Herramientas Clínicas';
 
                          return (
-                            <div 
-                                key={ref.id} 
-                                onClick={() => setViewingReference(ref)}
-                                className="card-hover" 
-                                style={{...styles.infoCard, flexDirection: 'column', alignItems: 'stretch', padding: 0, transition: 'transform 0.2s, box-shadow 0.2s', border: '1px solid var(--border-color)', cursor: 'pointer'}}
-                            >
-                                <div style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid var(--border-color)' }}>
-                                    {ref.icon_svg && <span style={{ color: 'var(--primary-color)' }} dangerouslySetInnerHTML={{ __html: ref.icon_svg }} />}
+                            <div key={ref.id} onClick={() => setViewingReference(ref)} className="card-hover" style={{...styles.infoCard, flexDirection: 'column', alignItems: 'stretch', padding: 0, transition: 'transform 0.2s, box-shadow 0.2s', border: '1px solid var(--border-color)', cursor: 'pointer', backgroundColor: 'var(--surface-color)', borderRadius: '16px'}}>
+                                <div style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid var(--border-color)' }}>
+                                    <div style={{ color: 'var(--primary-color)', backgroundColor: 'var(--primary-light)', padding: '0.6rem', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} dangerouslySetInnerHTML={{ __html: ref.icon_svg || '' }}></div>
                                     <div style={{flex: 1}}>
-                                        <h4 style={{ margin: 0, color: 'var(--primary-color)' }}>{ref.title}</h4>
-                                        {ref.source && <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-light)' }}>Fuente: {ref.source}</p>}
+                                        <h4 style={{ margin: 0, color: 'var(--text-color)', fontSize: '1rem', fontWeight: 700 }}>{ref.title}</h4>
+                                        {ref.source && <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-light)' }}>{ref.source}</p>}
                                     </div>
-                                    {ref.user_id && ( // Show actions only for user-created cards
-                                        <div className="card-actions" style={{opacity: 1}}>
-                                            <button onClick={(e) => { e.stopPropagation(); handleEdit(ref); }} style={styles.iconButton} title="Editar">{ICONS.edit}</button>
-                                            <button onClick={(e) => { e.stopPropagation(); setDeletingReference(ref); }} style={{...styles.iconButton, color: 'var(--error-color)'}} title="Eliminar">{ICONS.delete}</button>
-                                        </div>
-                                    )}
                                 </div>
-                                <ul style={{ listStyle: 'none', padding: '1rem', margin: 0, flex: 1 }}>
-                                    {contentArray.map((item, index) => {
-                                        const patientData = getPatientValue(item);
-                                        return (
-                                            <li key={index} style={{ marginBottom: '0.75rem' }}>
-                                                <p style={{ margin: 0, display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span>{item.label}</span>
-                                                    <span style={{ fontWeight: 600 }}>{item.value}</span>
-                                                </p>
-                                                {selectedPerson && patientData.value !== null && (
-                                                    <p style={{ margin: '0.25rem 0 0 1rem', fontSize: '0.9rem', color: patientData.isOutOfRange ? 'var(--error-color)' : 'var(--primary-color)', fontWeight: 500, textAlign: 'right' }}>
-                                                        Dato Paciente: {patientData.value} {patientData.isOutOfRange && '⚠️'}
-                                                    </p>
-                                                )}
-                                            </li>
-                                        );
-                                    })}
-                                </ul>
-                                {showButton &&
-                                    <div style={{padding: '1rem', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--surface-hover-color)'}}>
-                                        <p style={{fontWeight: 600, margin: '0 0 0.5rem 0', fontSize: '0.9rem'}}>Herramientas Relacionadas</p>
-                                        <button onClick={(e) => { e.stopPropagation(); onNavigateToToolTab('tools', toolKey || undefined); }} className="button-secondary" style={{padding: '6px 12px', fontSize: '0.85rem'}}>
-                                            Ir a {buttonLabel}
+                                <div style={{ padding: '1.25rem', flex: 1 }}>
+                                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                                        {contentArray.slice(0, 3).map((item, index) => {
+                                            const patientData = getPatientValue(item);
+                                            return (
+                                                <li key={index} style={{ marginBottom: '0.75rem', fontSize: '0.9rem' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                        <span style={{color: 'var(--text-light)'}}>{item.label}</span>
+                                                        <span style={{ fontWeight: 600 }}>{item.value}</span>
+                                                    </div>
+                                                    {selectedPerson && patientData.value !== null && (
+                                                        <div style={{ marginTop: '0.25rem', fontSize: '0.85rem', color: patientData.isOutOfRange ? 'var(--error-color)' : 'var(--primary-color)', fontWeight: 600, textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
+                                                            <span>{patientData.isOutOfRange && '⚠️'} Tu Paciente: {patientData.value}</span>
+                                                        </div>
+                                                    )}
+                                                </li>
+                                            );
+                                        })}
+                                        {contentArray.length > 3 && <li style={{fontSize: '0.8rem', color: 'var(--text-light)', fontStyle: 'italic'}}>+ {contentArray.length - 3} más...</li>}
+                                    </ul>
+                                </div>
+                                <div style={{padding: '0.75rem 1.25rem', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--surface-hover-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                     {showButton ? (
+                                        <button onClick={(e) => { e.stopPropagation(); onNavigateToToolTab('tools', toolKey || undefined); }} style={{background: 'none', border: 'none', color: 'var(--primary-color)', fontWeight: 600, fontSize: '0.85rem', padding: 0, cursor: 'pointer'}}>
+                                            Ir a Calculadora →
                                         </button>
-                                    </div>
-                                }
+                                     ) : <div></div>}
+                                     
+                                     {ref.user_id && (
+                                        <div style={{display: 'flex', gap: '0.5rem'}}>
+                                            <button onClick={(e) => { e.stopPropagation(); handleEdit(ref); }} style={{...styles.iconButton, width: '28px', height: '28px', padding: '4px'}} title="Editar">{ICONS.edit}</button>
+                                            <button onClick={(e) => { e.stopPropagation(); setDeletingReference(ref); }} style={{...styles.iconButton, color: 'var(--error-color)', width: '28px', height: '28px', padding: '4px'}} title="Eliminar">{ICONS.delete}</button>
+                                        </div>
+                                     )}
+                                </div>
                             </div>
                         )}
                     )}
                 </div>
             ) : (
-                 <p style={{textAlign: 'center', padding: '2rem'}}>No se encontraron referencias con los filtros aplicados.</p>
+                 <div style={{textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-light)', border: '2px dashed var(--border-color)', borderRadius: '16px'}}>
+                     <p>No se encontraron referencias.</p>
+                 </div>
             )}
 
             <button 
@@ -215,19 +188,25 @@ const ClinicalReferences: FC<ClinicalReferencesProps> = ({ references, selectedP
                     position: 'fixed', 
                     bottom: '2rem', 
                     right: '2rem', 
-                    width: '60px', 
-                    height: '60px', 
+                    width: '56px', 
+                    height: '56px', 
                     borderRadius: '50%', 
+                    backgroundColor: 'var(--primary-color)',
+                    color: 'white',
                     display: 'flex', 
                     alignItems: 'center', 
                     justifyContent: 'center',
-                    fontSize: '2rem',
+                    fontSize: '1.5rem',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
-                    zIndex: 1040 // Below main FAB
+                    zIndex: 1040,
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s'
                 }}
+                className="nav-item-hover"
                 aria-label="Agregar nueva referencia"
             >
-                +
+                {ICONS.add}
             </button>
         </div>
     );

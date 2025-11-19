@@ -1,4 +1,5 @@
-import React, { FC, useState, useEffect, FormEvent } from 'react';
+
+import React, { FC, useState, useEffect, FormEvent, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase, Database } from '../supabase';
 import { styles } from '../constants';
@@ -15,8 +16,10 @@ const ProfileFormPage: FC<{ onBack: () => void; user: User; }> = ({ onBack, user
         avatar_url: '',
     });
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
+    const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -39,6 +42,7 @@ const ProfileFormPage: FC<{ onBack: () => void; user: User; }> = ({ onBack, user
                     biography: data.biography || '',
                     avatar_url: data.avatar_url || '',
                 });
+                setAvatarPreview(data.avatar_url || null);
             }
             setLoading(false);
         };
@@ -52,7 +56,13 @@ const ProfileFormPage: FC<{ onBack: () => void; user: User; }> = ({ onBack, user
     
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            setAvatarFile(e.target.files[0]);
+            const file = e.target.files[0];
+            setAvatarFile(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setAvatarPreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
         }
     };
 
@@ -105,41 +115,122 @@ const ProfileFormPage: FC<{ onBack: () => void; user: User; }> = ({ onBack, user
         }
     };
 
+    const modalStyle: React.CSSProperties = {
+        backgroundColor: 'var(--surface-color)',
+        borderRadius: '16px',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', // High elevation
+        width: '100%',
+        maxWidth: '700px',
+        margin: '2rem auto',
+        overflow: 'hidden',
+        border: '1px solid var(--border-color)',
+        display: 'flex',
+        flexDirection: 'column',
+    };
+
+    const sectionTitleStyle: React.CSSProperties = {
+        color: 'var(--primary-color)', 
+        fontSize: '0.9rem', 
+        borderBottom: '1px solid var(--border-color)', 
+        paddingBottom: '0.5rem', 
+        marginBottom: '1.5rem', 
+        marginTop: '2rem',
+        fontWeight: 700,
+        letterSpacing: '1px',
+        textTransform: 'uppercase'
+    };
+
     return (
-        <div className="fade-in" style={{ paddingBottom: '7rem' }}>
-            <div style={styles.pageHeader}>
-                <h1>Editar Perfil Profesional</h1>
-                <button onClick={onBack} className="button-secondary">{ICONS.back} Volver</button>
-            </div>
-            <form id="profile-form" onSubmit={handleSubmit} style={{maxWidth: '700px'}}>
-                {error && <p style={styles.error}>{error}</p>}
+        <div className="fade-in" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', minHeight: '100vh', padding: '1rem' }}>
+            <div style={modalStyle}>
+                <div style={styles.modalHeader}>
+                    <div>
+                        <h2 style={styles.modalTitle}>Editar Perfil Profesional</h2>
+                        <p style={{margin: '0.25rem 0 0 0', fontSize: '0.9rem', color: 'var(--text-light)'}}>Actualiza tu información pública para pacientes y colegas.</p>
+                    </div>
+                    <button onClick={onBack} style={{...styles.iconButton, width: '32px', height: '32px', border: 'none'}} title="Cerrar">{ICONS.close}</button>
+                </div>
                 
-                <label htmlFor="avatar">Foto de Perfil</label>
-                <input id="avatar" name="avatar" type="file" onChange={handleFileChange} accept="image/*" />
+                <div style={{ padding: '0', overflowY: 'auto', maxHeight: 'calc(100vh - 180px)' }}>
+                     <form id="profile-form" onSubmit={handleSubmit} style={{padding: '2rem'}}>
+                        {error && <p style={styles.error}>{error}</p>}
+                        
+                        {/* Avatar Section */}
+                        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', padding: '1.5rem', backgroundColor: 'var(--surface-hover-color)', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid var(--border-color)' }}>
+                             <div style={{ position: 'relative', width: '90px', height: '90px', flexShrink: 0 }}>
+                                <img
+                                    src={avatarPreview || `https://api.dicebear.com/8.x/initials/svg?seed=${formData.full_name || '?'}&radius=50`}
+                                    alt="Avatar"
+                                    style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: '4px solid var(--surface-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+                                />
+                                <button 
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    style={{ position: 'absolute', bottom: 0, right: 0, backgroundColor: 'var(--primary-color)', color: 'white', padding: '6px', borderRadius: '50%', cursor: 'pointer', border: '2px solid var(--surface-color)', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
+                                    title="Cambiar foto"
+                                >
+                                    {ICONS.edit}
+                                </button>
+                                <input ref={fileInputRef} name="avatar" type="file" onChange={handleFileChange} accept="image/*" style={{ display: 'none' }} />
+                            </div>
+                            <div>
+                                <h3 style={{margin: 0, fontSize: '1.1rem', color: 'var(--text-color)'}}>Foto de Perfil</h3>
+                                <p style={{margin: '0.25rem 0 0 0', fontSize: '0.9rem', color: 'var(--text-light)', lineHeight: 1.4}}>Esta imagen será visible en tu tarjeta de presentación digital y en el directorio.</p>
+                            </div>
+                        </div>
 
-                <label htmlFor="full_name">Nombre Completo</label>
-                <input id="full_name" name="full_name" type="text" value={formData.full_name} onChange={handleChange} />
-                
-                <label htmlFor="professional_title">Título Profesional</label>
-                <input id="professional_title" name="professional_title" type="text" value={formData.professional_title} onChange={handleChange} placeholder="Ej: Nutriólogo Clínico"/>
+                        <h3 style={{...sectionTitleStyle, marginTop: 0}}>Datos Principales</h3>
+                        <div style={{display: 'grid', gap: '1.5rem'}}>
+                            <div>
+                                <label htmlFor="full_name">Nombre Completo *</label>
+                                <input id="full_name" name="full_name" type="text" value={formData.full_name} onChange={handleChange} required style={styles.input} placeholder="Dr. Juan Pérez" />
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                                <div>
+                                    <label htmlFor="professional_title">Título Profesional</label>
+                                    <input id="professional_title" name="professional_title" type="text" value={formData.professional_title} onChange={handleChange} placeholder="Ej: Nutriólogo Clínico" style={styles.input} />
+                                </div>
+                                <div>
+                                    <label htmlFor="license_number">Cédula Profesional</label>
+                                    <input id="license_number" name="license_number" type="text" value={formData.license_number} onChange={handleChange} placeholder="12345678" style={styles.input} />
+                                </div>
+                            </div>
+                        </div>
 
-                <label htmlFor="license_number">Cédula Profesional</label>
-                <input id="license_number" name="license_number" type="text" value={formData.license_number} onChange={handleChange} />
-                
-                <label htmlFor="contact_phone">Teléfono de Contacto</label>
-                <input id="contact_phone" name="contact_phone" type="tel" value={formData.contact_phone} onChange={handleChange} />
+                        <h3 style={sectionTitleStyle}>Contacto y Ubicación</h3>
+                        <div style={{display: 'grid', gap: '1.5rem'}}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '1.5rem' }}>
+                                <div>
+                                    <label htmlFor="contact_phone">Teléfono</label>
+                                    <input id="contact_phone" name="contact_phone" type="tel" value={formData.contact_phone} onChange={handleChange} style={styles.input} />
+                                </div>
+                                <div>
+                                    <label htmlFor="office_address">Dirección del Consultorio</label>
+                                    <input id="office_address" name="office_address" type="text" value={formData.office_address} onChange={handleChange} placeholder="Calle, Número, Colonia..." style={styles.input} />
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <h3 style={sectionTitleStyle}>Presentación</h3>
+                        <label htmlFor="biography">Biografía / Resumen Profesional</label>
+                        <textarea 
+                            id="biography" 
+                            name="biography" 
+                            value={formData.biography} 
+                            onChange={handleChange} 
+                            rows={5} 
+                            style={styles.input} 
+                            placeholder="Describe tu experiencia, especialidades y enfoque de tratamiento..."
+                        ></textarea>
+                    </form>
+                </div>
 
-                <label htmlFor="office_address">Dirección del Consultorio</label>
-                <input id="office_address" name="office_address" type="text" value={formData.office_address} onChange={handleChange} />
-                
-                <label htmlFor="biography">Biografía / Resumen Profesional</label>
-                <textarea id="biography" name="biography" value={formData.biography} onChange={handleChange} rows={4}></textarea>
-            </form>
-            <div style={styles.floatingActions}>
-                <button type="button" onClick={onBack} className="button-secondary">Cancelar</button>
-                <button type="submit" form="profile-form" disabled={loading} style={styles.floatingSaveButton} aria-label="Guardar Cambios">
-                    {loading ? '...' : ICONS.save}
-                </button>
+                <div style={styles.modalFooter}>
+                    <button type="button" onClick={onBack} className="button-secondary">Cancelar</button>
+                    <button type="submit" form="profile-form" disabled={loading} style={{minWidth: '140px'}}>
+                        {loading ? 'Guardando...' : 'Guardar Cambios'}
+                    </button>
+                </div>
             </div>
         </div>
     );

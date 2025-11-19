@@ -1,4 +1,3 @@
-
 import React, { FC, useState, FormEvent } from 'react';
 import { supabase } from '../supabase';
 import { styles } from '../constants';
@@ -57,37 +56,74 @@ const CollaboratorFormPage: FC<{ onBack: () => void; }> = ({ onBack }) => {
         }
     };
 
-    return (
-        <div className="fade-in" style={{ paddingBottom: '7rem' }}>
-            <div style={styles.pageHeader}>
-                <h1>Invitar Colaborador a la Red</h1>
-                <button onClick={onBack} className="button-secondary">{ICONS.back} Volver</button>
-            </div>
-            <p style={{marginTop: '-1rem', marginBottom: '2rem', color: 'var(--text-light)', maxWidth: '600px'}}>
-                Invita a otros profesionales a tu red. Podrán recibir referidos tuyos y enviarte referidos directamente a través de la plataforma una vez que acepten la invitación.
-            </p>
-            <form id="aliado-form" onSubmit={handleSubmit} style={{maxWidth: '600px'}}>
-                {error && <p style={styles.error}>{error}</p>}
-                {success && <p style={{...styles.error, backgroundColor: 'var(--primary-light)', color: 'var(--primary-dark)', borderColor: 'var(--primary-color)'}}>{success}</p>}
-                
-                <label htmlFor="contact_email">Correo Electrónico del Profesional*</label>
-                <input id="contact_email" name="contact_email" type="email" value={formData.contact_email} onChange={handleChange} placeholder="email@profesional.com" required />
-                
-                <label htmlFor="full_name">Nombre del Profesional</label>
-                <input id="full_name" name="full_name" type="text" value={formData.full_name} onChange={handleChange} />
-                
-                <label htmlFor="specialty">Especialidad</label>
-                <input id="specialty" name="specialty" type="text" value={formData.specialty} onChange={handleChange} placeholder="Ej: Médico General, Entrenador Personal" />
+    const modalStyle: React.CSSProperties = {
+        backgroundColor: 'var(--surface-color)',
+        borderRadius: '16px',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', // High elevation
+        width: '100%',
+        maxWidth: '650px',
+        margin: '4rem auto',
+        overflow: 'hidden',
+        border: '1px solid var(--border-color)',
+        display: 'flex',
+        flexDirection: 'column',
+    };
+    
+    const inputStyle: React.CSSProperties = {
+        ...styles.input,
+        padding: '1rem',
+        fontSize: '1rem',
+        borderRadius: '8px',
+        backgroundColor: 'var(--surface-hover-color)',
+        border: '1px solid var(--border-color)'
+    };
 
-                <label htmlFor="phone_number">Teléfono</label>
-                <input id="phone_number" name="phone_number" type="tel" value={formData.phone_number} onChange={handleChange} />
-                
-            </form>
-             <div style={styles.floatingActions}>
-                <button type="button" onClick={onBack} className="button-secondary">Cancelar</button>
-                <button type="submit" form="aliado-form" disabled={loading || !!success} style={styles.floatingSaveButton} aria-label="Enviar Invitación">
-                    {loading ? '...' : ICONS.send}
-                </button>
+    return (
+        <div className="fade-in" style={{ minHeight: '100vh', padding: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
+            <div style={modalStyle}>
+                 <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--surface-color)' }}>
+                    <div>
+                        <h1 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--text-color)', fontWeight: 700 }}>Invitar Colaborador</h1>
+                        <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-light)', fontSize: '0.9rem' }}>Envía una invitación por correo para conectar.</p>
+                    </div>
+                    <button onClick={onBack} style={{...styles.iconButton, border: 'none'}}>{ICONS.close}</button>
+                </div>
+
+                <div style={{ padding: '2.5rem 2rem' }}>
+                    {error && <p style={styles.error}>{error}</p>}
+                    {success && <p style={{...styles.error, backgroundColor: 'var(--primary-light)', color: 'var(--primary-dark)', borderColor: 'var(--primary-color)'}}>{success}</p>}
+                    
+                    <form id="aliado-form" onSubmit={handleSubmit}>
+                        <div style={{marginBottom: '2rem'}}>
+                            <label htmlFor="contact_email" style={{...styles.label, fontSize: '0.95rem'}}>Correo Electrónico del Profesional *</label>
+                            <input id="contact_email" name="contact_email" type="email" value={formData.contact_email} onChange={handleChange} placeholder="email@profesional.com" required style={inputStyle} autoFocus />
+                            <p style={{margin: '-0.5rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-light)'}}>Se enviará una notificación a esta dirección.</p>
+                        </div>
+                        
+                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '1rem'}}>
+                             <div>
+                                <label htmlFor="full_name" style={styles.label}>Nombre (Opcional)</label>
+                                <input id="full_name" name="full_name" type="text" value={formData.full_name} onChange={handleChange} placeholder="Nombre del Doctor/a" style={inputStyle} />
+                             </div>
+                             <div>
+                                <label htmlFor="specialty" style={styles.label}>Especialidad</label>
+                                <input id="specialty" name="specialty" type="text" value={formData.specialty} onChange={handleChange} placeholder="Ej: Psicólogo, Endocrinólogo" style={inputStyle} />
+                            </div>
+                        </div>
+
+                        <div style={{marginTop: '1.5rem'}}>
+                            <label htmlFor="phone_number" style={styles.label}>Teléfono (Opcional)</label>
+                            <input id="phone_number" name="phone_number" type="tel" value={formData.phone_number} onChange={handleChange} placeholder="Número de contacto" style={inputStyle} />
+                        </div>
+                    </form>
+                </div>
+
+                 <div style={{ padding: '1.5rem 2rem', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--surface-hover-color)', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                    <button type="button" onClick={onBack} className="button-secondary" style={{padding: '0.75rem 1.5rem', fontSize: '0.9rem'}}>Cancelar</button>
+                    <button type="submit" form="aliado-form" disabled={loading || !!success} className="button-primary" style={{minWidth: '160px', padding: '0.75rem 1.5rem', fontSize: '0.9rem'}}>
+                        {loading ? 'Enviando...' : 'Enviar Invitación'}
+                    </button>
+                </div>
             </div>
         </div>
     );

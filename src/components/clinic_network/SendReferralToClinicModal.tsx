@@ -82,7 +82,6 @@ const SendReferralToClinicModal: FC<SendReferralToClinicModalProps> = ({ isOpen,
             if (!user) throw new Error("Usuario no autenticado.");
 
             if (selectedPerson.user_id) {
-                // Patient has a portal account, send consent request.
                 const { error: requestError } = await supabase.from('referral_consent_requests').insert({
                     clinic_id: myClinic.id,
                     person_id: selectedPerson.id,
@@ -93,7 +92,6 @@ const SendReferralToClinicModal: FC<SendReferralToClinicModalProps> = ({ isOpen,
                 });
                 if (requestError) throw requestError;
                 
-                // Send push notification to patient
                 fetch('/api/send-notification', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -104,10 +102,9 @@ const SendReferralToClinicModal: FC<SendReferralToClinicModalProps> = ({ isOpen,
                     })
                 }).catch(err => console.error("Failed to send consent request notification:", err));
 
-                setSuccess(`¡Solicitud de consentimiento enviada al portal de ${selectedPerson.full_name}!`);
+                setSuccess(`¡Solicitud enviada al portal del paciente!`);
                 setTimeout(onSuccess, 3000);
             } else {
-                // Patient does not have a portal account, require manual consent confirmation.
                 if (!manualConsent) {
                     throw new Error("Debe confirmar que ha obtenido el consentimiento por escrito del paciente.");
                 }
@@ -118,7 +115,7 @@ const SendReferralToClinicModal: FC<SendReferralToClinicModalProps> = ({ isOpen,
                     p_person_id: selectedPerson.id,
                 });
                 if (rpcError) throw rpcError;
-                setSuccess(`¡Referido para ${selectedPerson.full_name} enviado con éxito!`);
+                setSuccess(`¡Referido enviado con éxito!`);
                 setTimeout(onSuccess, 2500);
             }
 
@@ -131,50 +128,61 @@ const SendReferralToClinicModal: FC<SendReferralToClinicModalProps> = ({ isOpen,
 
     return createPortal(
         <div style={styles.modalOverlay}>
-            <form onSubmit={handleSubmit} style={styles.modalContent} className="fade-in">
-                <div style={styles.modalHeader}><h2 style={styles.modalTitle}>Enviar Referido a Clínica</h2><button type="button" onClick={onClose} style={{...styles.iconButton, border: 'none'}}>{ICONS.close}</button></div>
-                <div style={styles.modalBody}>
+            <form onSubmit={handleSubmit} style={{...styles.modalContent, maxWidth: '600px', borderRadius: '16px', padding: 0, border: '1px solid var(--border-color)'}} className="fade-in">
+                <div style={{...styles.modalHeader, borderBottom: '1px solid var(--border-color)', paddingBottom: '1.5rem', backgroundColor: 'var(--surface-color)'}}>
+                    <h2 style={{...styles.modalTitle, fontSize: '1.25rem'}}>Enviar Referido</h2>
+                    <button type="button" onClick={onClose} style={{...styles.iconButton, border: 'none', backgroundColor: 'var(--surface-hover-color)'}}>{ICONS.close}</button>
+                </div>
+                <div style={{...styles.modalBody, paddingTop: '2rem', paddingBottom: '2rem'}}>
                     {error && <p style={styles.error}>{error}</p>}
                     {success && <p style={{...styles.error, backgroundColor: 'var(--primary-light)', color: 'var(--primary-dark)', borderColor: 'var(--primary-color)'}}>{success}</p>}
-                    <label>Enviar a Clínica*</label>
-                    <select value={receivingClinicId} onChange={e => setReceivingClinicId(e.target.value)} required>
-                        {partnerClinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
+                    
+                    <div style={{marginBottom: '1.5rem'}}>
+                        <label style={styles.label}>Destino (Clínica)</label>
+                        <select value={receivingClinicId} onChange={e => setReceivingClinicId(e.target.value)} required style={{...styles.input, fontSize: '1rem', padding: '0.75rem'}}>
+                            {partnerClinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                    </div>
 
-                    <label htmlFor="person-search-referral">Seleccionar Paciente*</label>
-                    <div ref={searchContainerRef} style={{ position: 'relative' }}>
-                        <input id="person-search-referral" type="text" placeholder="Buscar paciente o afiliado..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setIsDropdownOpen(true); }} onFocus={() => setIsDropdownOpen(true)} autoComplete="off" />
-                        {isDropdownOpen && filteredPersons.length > 0 && (
-                             <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'var(--surface-hover-color)', border: '1px solid var(--border-color)', borderRadius: '8px', marginTop: '0.5rem', maxHeight: '200px', overflowY: 'auto', zIndex: 10 }}>
-                                {filteredPersons.map(p => (<div key={p.id} onClick={() => handleSelectPerson(p)} className="nav-item-hover" style={{padding: '0.75rem 1rem', cursor: 'pointer'}}>{p.full_name}</div>))}
-                            </div>
-                        )}
+                    <div style={{marginBottom: '1.5rem'}}>
+                        <label style={styles.label}>Paciente a Referir</label>
+                        <div ref={searchContainerRef} style={{ position: 'relative' }}>
+                            <input type="text" placeholder="Buscar paciente..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setIsDropdownOpen(true); }} onFocus={() => setIsDropdownOpen(true)} autoComplete="off" style={{...styles.input, marginBottom: 0, padding: '0.75rem'}} />
+                            {isDropdownOpen && filteredPersons.length > 0 && (
+                                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '8px', marginTop: '0.5rem', maxHeight: '200px', overflowY: 'auto', zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
+                                    {filteredPersons.map(p => (<div key={p.id} onClick={() => handleSelectPerson(p)} className="nav-item-hover" style={{padding: '0.75rem 1rem', cursor: 'pointer', borderBottom: '1px solid var(--border-color)'}}>{p.full_name}</div>))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                     
-                    <label>Motivo del Referido / Notas</label><textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)}></textarea>
+                    <label style={styles.label}>Notas o Motivo</label>
+                    <textarea rows={4} value={notes} onChange={e => setNotes(e.target.value)} style={{...styles.input, resize: 'vertical', minHeight: '100px'}} placeholder="Ej: Paciente con diabetes tipo 2, requiere valoración..."></textarea>
 
                     {selectedPerson && !selectedPerson.user_id && (
-                        <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                        <div style={{ marginTop: '1.5rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem', backgroundColor: 'var(--surface-hover-color)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                             <input
                                 id="manual_consent_clinic" type="checkbox"
                                 checked={manualConsent}
                                 onChange={e => setManualConsent(e.target.checked)}
                                 required
-                                style={{ marginTop: '4px', flexShrink: 0, width: '16px', height: '16px' }}
+                                style={{ marginTop: '4px', width: '18px', height: '18px' }}
                             />
-                            <label htmlFor="manual_consent_clinic" style={{ ...styles.label, marginBottom: 0, fontSize: '0.85rem', lineHeight: 1.5, fontWeight: 400 }}>
-                                Confirmo que he obtenido el consentimiento informado y por escrito del paciente para compartir su información.
+                            <label htmlFor="manual_consent_clinic" style={{ ...styles.label, marginBottom: 0, fontSize: '0.85rem', lineHeight: 1.5, fontWeight: 400, color: 'var(--text-color)' }}>
+                                Confirmo que he obtenido el <strong>consentimiento informado</strong> y por escrito del paciente para compartir sus datos personales con esta clínica.
                             </label>
                         </div>
                     )}
                 </div>
-                <div style={styles.modalFooter}>
-                    <button type="button" onClick={onClose} className="button-secondary">Cancelar</button>
+                <div style={{...styles.modalFooter, backgroundColor: 'var(--surface-hover-color)', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem', paddingBottom: '1.5rem'}}>
+                    <button type="button" onClick={onClose} className="button-secondary" style={{padding: '0.75rem 1.5rem'}}>Cancelar</button>
                     <button 
                         type="submit" 
                         disabled={loading || !!success || (selectedPerson && !selectedPerson.user_id && !manualConsent)}
+                        style={{minWidth: '140px', padding: '0.75rem 1.5rem'}}
+                        className="button-primary"
                     >
-                        {loading ? 'Enviando...' : (selectedPerson && !selectedPerson.user_id ? 'Enviar Referido' : 'Enviar Solicitud de Consentimiento')}
+                        {loading ? 'Enviando...' : 'Enviar'}
                     </button>
                 </div>
             </form>

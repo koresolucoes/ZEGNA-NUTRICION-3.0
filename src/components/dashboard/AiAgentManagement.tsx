@@ -1,5 +1,5 @@
 
-import React, { FC, useState, useEffect, FormEvent, useMemo } from 'react';
+import React, { FC, useState, useEffect, FormEvent } from 'react';
 import { supabase } from '../../supabase';
 import { styles } from '../../constants';
 import { ICONS } from '../../pages/AuthPage';
@@ -8,13 +8,15 @@ import { AiAgent, WhatsappConnection } from '../../types';
 
 const AiAgentManagement: FC = () => {
     const { clinic } = useClinic();
+    
+    // States
     const [wappConnection, setWappConnection] = useState<Partial<WhatsappConnection>>({ provider: 'twilio', is_active: false });
     const [agent, setAgent] = useState<Partial<AiAgent>>({ 
         model_provider: 'gemini', 
         model_name: 'gemini-2.5-flash',
         provider_api_key: '',
-        system_prompt: 'Eres una secretaria virtual amigable y eficiente para una clínica de nutrición. Tu objetivo es responder preguntas y ayudar a agendar citas. Tienes acceso a herramientas para consultar información de los pacientes si es necesario. Sé siempre cortés y profesional. Nunca des consejos médicos o nutricionales.',
-        patient_system_prompt: 'Eres un asistente de nutrición personal y amigable. Tu objetivo es ayudar al paciente a seguir su plan, resolver dudas sobre sus comidas o ejercicios del día y motivarlo. Habla de forma clara y alentadora. No puedes dar diagnósticos médicos.',
+        system_prompt: 'Eres una secretaria virtual...',
+        patient_system_prompt: 'Eres un asistente de nutrición...',
         is_active: false,
         is_patient_portal_agent_active: false, 
         use_knowledge_base: false,
@@ -25,233 +27,81 @@ const AiAgentManagement: FC = () => {
             book_appointment: { enabled: false },
         },
     });
+
+    // UI States
     const [activeEditor, setActiveEditor] = useState<'whatsapp' | 'patient'>('whatsapp');
+    const [isEditingConnection, setIsEditingConnection] = useState(false);
     
+    // Credentials State (Form)
     const [credentials, setCredentials] = useState({
-        accountSid: '',
-        authToken: '',
-        phoneNumberId: '',
-        wabaId: '',
-        accessToken: '',
-        verifyToken: '',
+        accountSid: '', authToken: '', phoneNumberId: '', wabaId: '', accessToken: '', verifyToken: crypto.randomUUID(),
     });
+    const [phoneNumberInput, setPhoneNumberInput] = useState('');
 
-    const [loading, setLoading] = useState({ connection: true, agent: true });
-    const [error, setError] = useState<{ connection?: string; agent?: string; test?: string }>({});
-    const [success, setSuccess] = useState<{ connection?: string; agent?: string; test?: string }>({});
-    const [testLoading, setTestLoading] = useState(false);
-    
-    // Helper function to normalize phone numbers by stripping non-digit characters
-    const normalizePhoneNumber = (phone: string | null | undefined): string => {
-        if (!phone) return '';
-        return phone.replace(/\D/g, '');
-    };
+    // Loading/Feedback States
+    const [loading, setLoading] = useState({ connection: false, agent: false, initial: true });
+    const [error, setError] = useState<{ connection?: string; agent?: string }>({});
+    const [success, setSuccess] = useState<{ connection?: string; agent?: string }>({});
 
-
+    // --- Load Data ---
     useEffect(() => {
         const fetchData = async () => {
             if (!clinic) return;
-            setLoading({ connection: true, agent: true });
+            setLoading(prev => ({...prev, initial: true}));
 
-            const { data: connData, error: connError } = await supabase
-                .from('whatsapp_connections')
-                .select('*')
-                .eq('clinic_id', clinic.id)
-                .single();
-
-            if (connError && connError.code !== 'PGRST116') {
-                setError(prev => ({ ...prev, connection: connError.message }));
-            } else if (connData) {
+            // 1. Fetch Connection
+            const { data: connData } = await supabase.from('whatsapp_connections').select('*').eq('clinic_id', clinic.id).single();
+            if (connData) {
                 setWappConnection(connData);
                 const dbCreds = connData.credentials as any || {};
-                
-                setCredentials(prev => ({
-                    ...prev,
+                setCredentials({
                     accountSid: dbCreds.accountSid || '',
                     authToken: dbCreds.authToken || '',
                     phoneNumberId: dbCreds.phoneNumberId || '',
                     wabaId: dbCreds.wabaId || '',
                     accessToken: dbCreds.accessToken || '',
-                    verifyToken: dbCreds.verifyToken || prev.verifyToken || crypto.randomUUID()
-                }));
-
+                    verifyToken: dbCreds.verifyToken || crypto.randomUUID()
+                });
+                setPhoneNumberInput(connData.phone_number);
+                setIsEditingConnection(false);
             } else {
-                setCredentials(prev => ({ ...prev, verifyToken: crypto.randomUUID() }));
+                setIsEditingConnection(true); // Start in edit mode if no connection
             }
-            setLoading(prev => ({ ...prev, connection: false }));
 
-            const { data: agentData, error: agentError } = await supabase.from('ai_agents').select('*').eq('clinic_id', clinic.id).single();
-            if (agentError && agentError.code !== 'PGRST116') {
-                setError(prev => ({ ...prev, agent: agentError.message }));
-            } else if (agentData) {
-                const defaultTools = { 
+            // 2. Fetch Agent
+            const { data: agentData } = await supabase.from('ai_agents').select('*').eq('clinic_id', clinic.id).single();
+            if (agentData) {
+                const existingTools = (agentData.tools as unknown as Record<string, any>) || {};
+                 const defaultTools = { 
                     get_patient_details: { enabled: false }, 
                     get_my_data_for_ai: { enabled: false },
                     get_available_slots: { enabled: false },
                     book_appointment: { enabled: false },
                 };
-                // FIX: Cast agentData.tools to Record<string, any> to allow spreading
-                const existingTools = (agentData.tools as unknown as Record<string, any>) || {};
-                
-                setAgent({ 
-                    ...agentData, 
-                    model_provider: agentData.model_provider || 'gemini',
-                    model_name: agentData.model_name || 'gemini-2.5-flash',
-                    provider_api_key: agentData.provider_api_key || '',
-                    is_patient_portal_agent_active: agentData.is_patient_portal_agent_active || false,
-                    tools: { ...defaultTools, ...existingTools }
-                });
+                setAgent({ ...agentData, model_provider: agentData.model_provider || 'gemini', tools: { ...defaultTools, ...existingTools } });
             }
-            setLoading(prev => ({ ...prev, agent: false }));
+            setLoading(prev => ({...prev, initial: false}));
         };
-
         fetchData();
     }, [clinic]);
 
-    const handleCredsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setCredentials(prev => ({ ...prev, [name]: value }));
-    };
-    
-    const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const { value } = e.target;
-        const field = activeEditor === 'whatsapp' ? 'system_prompt' : 'patient_system_prompt';
-        setAgent(prev => ({ ...prev, [field]: value }));
-    };
-    
-    const handleAgentChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value, type } = e.target;
-        const fieldValue = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
-    
-        if (name === 'model_provider') {
-            let defaultModel = '';
-            if (value === 'gemini') {
-                defaultModel = 'gemini-2.5-flash';
-            } else if (value === 'openai') {
-                defaultModel = 'gpt-4o-mini';
-            } else if (value === 'openrouter') {
-                defaultModel = 'openai/gpt-4o-mini';
-            }
-            setAgent(prev => ({ ...prev, model_provider: value, model_name: defaultModel }));
-        } else {
-            setAgent(prev => ({ ...prev, [name]: fieldValue }));
-        }
-    };
+    // --- Handlers ---
 
-
-    const handleToolToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, checked } = e.target;
-        setAgent(prev => ({
-            ...prev,
-            tools: {
-                ...(prev.tools as unknown as Record<string, any> || {}),
-                [name]: { enabled: checked }
-            }
-        }));
-    };
-
-    const handleTestConnection = async () => {
-        setTestLoading(true);
-        setError(prev => ({ ...prev, test: undefined }));
-        setSuccess(prev => ({ ...prev, test: undefined }));
-        try {
-            const provider = wappConnection.provider;
-            
-            const credentialsToTest = provider === 'twilio' 
-                ? { accountSid: credentials.accountSid, authToken: credentials.authToken } 
-                : { accessToken: credentials.accessToken };
-
-            const response = await fetch('/api/test-whatsapp', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ provider, credentials: credentialsToTest }),
-            });
-
-            const result = await response.json();
-            if (!response.ok) {
-                throw new Error(result.error || 'Falló la prueba de conexión.');
-            }
-
-            setSuccess(prev => ({ ...prev, test: result.message }));
-            setTimeout(() => setSuccess(prev => ({...prev, test: undefined})), 4000);
-
-        } catch (err: any) {
-            setError(prev => ({ ...prev, test: err.message }));
-        } finally {
-            setTestLoading(false);
-        }
-    };
-
-
-    const handleSaveConnection = async (e: FormEvent) => {
-        e.preventDefault();
-        if (!clinic) return;
-        setLoading(prev => ({ ...prev, connection: true }));
-        setError(prev => ({ ...prev, connection: undefined, test: undefined }));
-        setSuccess(prev => ({ ...prev, connection: undefined, test: undefined }));
-        try {
-            let credentialsToSave = {};
-            if (wappConnection.provider === 'twilio') {
-                credentialsToSave = {
-                    accountSid: credentials.accountSid,
-                    authToken: credentials.authToken,
-                };
-            } else { // meta
-                credentialsToSave = {
-                    phoneNumberId: credentials.phoneNumberId,
-                    wabaId: credentials.wabaId,
-                    accessToken: credentials.accessToken,
-                    verifyToken: credentials.verifyToken,
-                };
-            }
-            
-            const payload = {
-                clinic_id: clinic.id,
-                provider: wappConnection.provider,
-                phone_number: normalizePhoneNumber(wappConnection.phone_number), // Normalize before saving
-                credentials: credentialsToSave,
-                is_active: wappConnection.is_active,
-            };
-
-            const { error } = await supabase.from('whatsapp_connections').upsert([payload], {
-                onConflict: 'clinic_id',
-            });
-            if (error) throw error;
-            setSuccess(prev => ({ ...prev, connection: "Configuración de WhatsApp guardada." }));
-             setTimeout(() => setSuccess(prev => ({ ...prev, connection: undefined })), 3000);
-        } catch (err: any) {
-            setError(prev => ({ ...prev, connection: err.message }));
-        } finally {
-            setLoading(prev => ({ ...prev, connection: false }));
-        }
-    };
-    
     const handleSaveAgent = async (e: FormEvent) => {
         e.preventDefault();
         if (!clinic) return;
         setLoading(prev => ({ ...prev, agent: true }));
         setError(prev => ({ ...prev, agent: undefined }));
-        setSuccess(prev => ({ ...prev, agent: undefined }));
+        
         try {
             const payload = {
                 clinic_id: clinic.id,
-                system_prompt: agent.system_prompt,
-                patient_system_prompt: agent.patient_system_prompt,
-                model_provider: agent.model_provider,
-                provider_api_key: agent.provider_api_key,
-                model_name: agent.model_name,
-                is_active: agent.is_active,
-                is_patient_portal_agent_active: agent.is_patient_portal_agent_active,
-                use_knowledge_base: agent.use_knowledge_base,
-                tools: agent.tools,
+                ...agent,
+                tools: agent.tools as any
             };
-            
-            const { error } = await supabase
-                .from('ai_agents')
-                .upsert([payload], { onConflict: 'clinic_id' });
-
+            const { error } = await supabase.from('ai_agents').upsert(payload, { onConflict: 'clinic_id' });
             if (error) throw error;
-            setSuccess(prev => ({ ...prev, agent: "Configuración del agente guardada." }));
+            setSuccess(prev => ({ ...prev, agent: "Configuración guardada." }));
             setTimeout(() => setSuccess(prev => ({ ...prev, agent: undefined })), 3000);
         } catch (err: any) {
             setError(prev => ({ ...prev, agent: err.message }));
@@ -260,201 +110,321 @@ const AiAgentManagement: FC = () => {
         }
     };
 
-    const webhookUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/whatsapp-webhook` : '';
-    const successMessageStyle: React.CSSProperties = {...styles.error, backgroundColor: 'var(--primary-light)', color: 'var(--primary-dark)', borderColor: 'var(--primary-color)'};
+    const handleSaveConnection = async (e: FormEvent) => {
+        e.preventDefault();
+        if (!clinic) return;
+        setLoading(prev => ({ ...prev, connection: true }));
+        setError(prev => ({ ...prev, connection: undefined }));
 
-    const promptValue = activeEditor === 'whatsapp' ? agent.system_prompt : agent.patient_system_prompt;
-    const promptLabel = `Personalidad del Agente`;
-    
-    const toolLabels: { [key: string]: string } = {
-        get_patient_details: 'Consultar datos de pacientes',
-        get_my_data_for_ai: 'Consultar datos del paciente conectado (plan, progreso)',
-        get_available_slots: 'Consultar horarios disponibles',
-        book_appointment: 'Agendar nuevas citas',
+        try {
+            // Validate based on provider
+            if (wappConnection.provider === 'twilio') {
+                if (!credentials.accountSid || !credentials.authToken || !phoneNumberInput) throw new Error("Faltan credenciales de Twilio.");
+            } else {
+                if (!credentials.phoneNumberId || !credentials.accessToken || !phoneNumberInput) throw new Error("Faltan credenciales de Meta.");
+            }
+
+            const payload = {
+                clinic_id: clinic.id,
+                provider: wappConnection.provider,
+                phone_number: phoneNumberInput,
+                is_active: true,
+                credentials: wappConnection.provider === 'twilio' 
+                    ? { accountSid: credentials.accountSid, authToken: credentials.authToken } 
+                    : { phoneNumberId: credentials.phoneNumberId, wabaId: credentials.wabaId, accessToken: credentials.accessToken, verifyToken: credentials.verifyToken }
+            };
+
+            const { error } = await supabase.from('whatsapp_connections').upsert(payload, { onConflict: 'clinic_id' });
+            if (error) throw error;
+
+            // Update local state to reflect "Saved" state
+            setWappConnection(prev => ({ ...prev, ...payload, is_active: true }));
+            setIsEditingConnection(false);
+            setSuccess(prev => ({ ...prev, connection: "Conexión establecida con éxito." }));
+            setTimeout(() => setSuccess(prev => ({ ...prev, connection: undefined })), 3000);
+
+        } catch (err: any) {
+             setError(prev => ({ ...prev, connection: err.message }));
+        } finally {
+            setLoading(prev => ({ ...prev, connection: false }));
+        }
     };
-    const toolsForWhatsapp = ['get_patient_details', 'get_available_slots', 'book_appointment'];
-    const toolsForPatient = ['get_my_data_for_ai', 'get_available_slots', 'book_appointment'];
 
-    const providerName = useMemo(() => {
-        if (agent.model_provider === 'openai') return 'OpenAI';
-        if (agent.model_provider === 'openrouter') return 'OpenRouter';
-        return 'Google Gemini';
-    }, [agent.model_provider]);
+    const handleDisconnect = async () => {
+        if (!clinic || !window.confirm("¿Estás seguro? Esto detendrá el bot de WhatsApp inmediatamente.")) return;
+        
+        setLoading(prev => ({ ...prev, connection: true }));
+        try {
+            const { error } = await supabase.from('whatsapp_connections').delete().eq('clinic_id', clinic.id);
+            if (error) throw error;
+            
+            setWappConnection({ provider: 'twilio', is_active: false });
+            setCredentials(prev => ({...prev, accountSid: '', authToken: '', accessToken: ''}));
+            setPhoneNumberInput('');
+            setIsEditingConnection(true);
+        } catch (err: any) {
+            setError(prev => ({ ...prev, connection: err.message }));
+        } finally {
+            setLoading(prev => ({ ...prev, connection: false }));
+        }
+    };
+
+    // --- Styles matching updated visual aesthetics ---
+    const cardStyle: React.CSSProperties = {
+        backgroundColor: 'var(--surface-color)',
+        padding: '2rem',
+        borderRadius: '16px',
+        border: '1px solid var(--border-color)',
+        marginBottom: '2rem',
+        boxShadow: 'var(--shadow)',
+        transition: 'all 0.3s ease'
+    };
+    
+    const headerStyle: React.CSSProperties = {
+        borderBottom: '1px solid var(--border-color)', 
+        paddingBottom: '1rem', 
+        marginBottom: '1.5rem', 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '0.75rem'
+    };
+
+    const labelStyle: React.CSSProperties = { 
+        display: 'block', 
+        marginBottom: '0.5rem', 
+        fontWeight: 600, 
+        fontSize: '0.9rem', 
+        color: 'var(--text-color)' 
+    };
+    
+    const inputStyle: React.CSSProperties = { 
+        width: '100%',
+        padding: '0.75rem 1rem',
+        borderRadius: '8px',
+        border: '1px solid var(--border-color)',
+        backgroundColor: 'var(--background-color)',
+        color: 'var(--text-color)',
+        fontSize: '0.95rem',
+        transition: 'all 0.2s',
+        marginBottom: 0 
+    };
+
+    const ToggleSwitch: FC<{ label: string; checked: boolean; onChange: (e: any) => void; name: string; description?: string }> = ({ label, checked, onChange, name, description }) => (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', backgroundColor: 'var(--surface-hover-color)', borderRadius: '12px', border: '1px solid var(--border-color)', marginBottom: '0.75rem' }}>
+            <div style={{paddingRight: '1rem'}}>
+                <label htmlFor={name} style={{marginBottom: 0, fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer', color: 'var(--text-color)'}}>{label}</label>
+                {description && <p style={{margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-light)'}}>{description}</p>}
+            </div>
+            <label className="switch">
+                <input id={name} name={name} type="checkbox" checked={checked} onChange={onChange} />
+                <span className="slider round"></span>
+            </label>
+        </div>
+    );
+
+    const handleToolToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, checked } = e.target;
+        setAgent(prev => ({
+            ...prev,
+            tools: { ...(prev.tools as any || {}), [name]: { enabled: checked } }
+        }));
+    };
+
+    if (loading.initial) return <div style={{padding: '2rem', textAlign: 'center'}}>Cargando configuración...</div>;
 
     return (
-        <div className="fade-in" style={{ maxWidth: '900px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', alignItems: 'start' }}>
-                <form onSubmit={handleSaveAgent} style={{...styles.detailCard, margin: 0}}>
-                     <div style={styles.detailCardHeader}><h3 style={styles.detailCardTitle}>Configuración del Agente IA</h3></div>
-                     <div style={styles.detailCardBody}>
-                        {error.agent && <p style={styles.error}>{error.agent}</p>}
-                        {success.agent && <p style={successMessageStyle}>{success.agent}</p>}
+        <div className="fade-in">
+            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '2rem', alignItems: 'start' }}>
+                
+                {/* Left Column: AI Configuration */}
+                <form onSubmit={handleSaveAgent}>
+                    <section style={cardStyle}>
+                        <div style={headerStyle}>
+                            <span style={{fontSize: '1.5rem', color: 'var(--primary-color)'}}>🧠</span>
+                            <h3 style={{margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-color)'}}>Cerebro del Agente</h3>
+                        </div>
                         
-                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem'}}>
+                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem'}}>
                             <div>
-                                <label>Proveedor de IA</label>
-                                <select name="model_provider" value={agent.model_provider || 'gemini'} onChange={handleAgentChange}>
-                                    <option value="gemini">Google Gemini</option>
-                                    <option value="openai">OpenAI</option>
-                                    <option value="openrouter">OpenRouter</option>
-                                </select>
+                                <label style={labelStyle}>Proveedor IA</label>
+                                <div className="select-wrapper">
+                                    <select name="model_provider" value={agent.model_provider} onChange={e => setAgent({...agent, model_provider: e.target.value})} style={inputStyle}>
+                                        <option value="gemini">Google Gemini</option>
+                                        <option value="openai">OpenAI</option>
+                                        <option value="openrouter">OpenRouter</option>
+                                    </select>
+                                </div>
                             </div>
                             <div>
-                                <label>Nombre del Modelo</label>
-                                <input name="model_name" type="text" value={agent.model_name || ''} onChange={handleAgentChange} placeholder="Ej: gemini-2.5-flash" />
+                                <label style={labelStyle}>Modelo</label>
+                                <input name="model_name" value={agent.model_name} onChange={e => setAgent({...agent, model_name: e.target.value})} style={inputStyle} placeholder="gemini-2.5-flash" />
                             </div>
                             <div style={{gridColumn: 'span 2'}}>
-                                <label>API Key de {providerName}</label>
-                                <input name="provider_api_key" type="password" value={agent.provider_api_key || ''} onChange={handleAgentChange} placeholder={agent.model_provider === 'gemini' ? "Opcional, déjalo en blanco para usar la clave del sistema" : "Pega tu clave aquí"} />
-                                {agent.model_provider === 'gemini' && (
-                                    <small style={{display: 'block', marginTop: '-0.75rem', color: 'var(--text-light)', fontSize: '0.8rem'}}>
-                                        Deja este campo en blanco para usar la clave de Gemini configurada en el servidor.
-                                    </small>
-                                )}
+                                <label style={labelStyle}>API Key (Opcional)</label>
+                                <input type="password" name="provider_api_key" value={agent.provider_api_key || ''} onChange={e => setAgent({...agent, provider_api_key: e.target.value})} style={inputStyle} placeholder="Dejar vacío para usar default del sistema" />
                             </div>
                         </div>
 
-                        <label>Agente a configurar</label>
-                        <select value={activeEditor} onChange={e => setActiveEditor(e.target.value as any)} style={{marginBottom: '1.5rem'}}>
-                            <option value="whatsapp">Agente de WhatsApp</option>
-                            <option value="patient">Agente del Portal del Paciente</option>
-                        </select>
+                        <div style={{marginBottom: '1.5rem'}}>
+                             <label style={{...labelStyle, marginBottom: '1rem'}}>Base de Conocimiento</label>
+                             <ToggleSwitch 
+                                label="Usar Biblioteca" 
+                                description="Permite al agente leer tus recursos y documentos para responder."
+                                name="use_knowledge_base" 
+                                checked={agent.use_knowledge_base || false} 
+                                onChange={e => setAgent({...agent, use_knowledge_base: e.target.checked})} 
+                            />
+                        </div>
 
-                        <label>{promptLabel}</label>
-                        <textarea value={promptValue || ''} onChange={handlePromptChange} rows={5} />
-                        
-                        <h5 style={{marginTop: '1.5rem', fontSize: '1rem'}}>Activación y Herramientas del Agente</h5>
-
-                        {activeEditor === 'whatsapp' && (
-                            <div className="fade-in">
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', backgroundColor: 'var(--surface-hover-color)', borderRadius: '8px', marginBottom: '1rem' }}>
-                                    <label htmlFor="is_active_wapp" style={{marginBottom: 0, fontWeight: 500}}>Activar Agente de WhatsApp</label>
-                                    <label className="switch"><input id="is_active_wapp" name="is_active" type="checkbox" checked={agent.is_active || false} onChange={handleAgentChange} /><span className="slider round"></span></label>
-                                </div>
-                                {agent.is_active && (
-                                    <div style={{ marginLeft: '1rem', borderLeft: '2px solid var(--border-color)', paddingLeft: '1rem' }}>
-                                        <p style={{fontSize: '0.9rem', color: 'var(--text-light)', marginTop: 0}}>Capacidades para WhatsApp:</p>
-                                        {toolsForWhatsapp.map(toolKey => (
-                                            <div key={`whatsapp-${toolKey}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                                <label htmlFor={`tool_wapp_${toolKey}`} style={{marginBottom: 0}}>{toolLabels[toolKey]}</label>
-                                                <label className="switch"><input id={`tool_wapp_${toolKey}`} name={toolKey} type="checkbox" checked={(agent.tools as any)?.[toolKey]?.enabled || false} onChange={handleToolToggle} /></label>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                        <div style={{marginBottom: '1.5rem'}}>
+                            <label style={labelStyle}>Personalidad (System Prompt)</label>
+                            <div style={{display: 'flex', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)'}}>
+                                <button type="button" onClick={() => setActiveEditor('whatsapp')} style={{padding: '0.5rem 1rem', borderBottom: activeEditor === 'whatsapp' ? '2px solid var(--primary-color)' : '2px solid transparent', fontWeight: activeEditor === 'whatsapp' ? 600 : 500, color: activeEditor === 'whatsapp' ? 'var(--primary-color)' : 'var(--text-light)', background: 'none', border: 'none', cursor: 'pointer', transition: 'all 0.2s'}}>WhatsApp</button>
+                                <button type="button" onClick={() => setActiveEditor('patient')} style={{padding: '0.5rem 1rem', borderBottom: activeEditor === 'patient' ? '2px solid var(--primary-color)' : '2px solid transparent', fontWeight: activeEditor === 'patient' ? 600 : 500, color: activeEditor === 'patient' ? 'var(--primary-color)' : 'var(--text-light)', background: 'none', border: 'none', cursor: 'pointer', transition: 'all 0.2s'}}>Portal Paciente</button>
                             </div>
-                        )}
+                            
+                            <textarea 
+                                value={activeEditor === 'whatsapp' ? agent.system_prompt : agent.patient_system_prompt || ''} 
+                                onChange={e => setAgent(prev => ({...prev, [activeEditor === 'whatsapp' ? 'system_prompt' : 'patient_system_prompt']: e.target.value}))} 
+                                rows={6} 
+                                style={{...inputStyle, lineHeight: 1.6, resize: 'vertical', minHeight: '120px'}} 
+                                placeholder="Instrucciones para el comportamiento del agente..."
+                            />
+                        </div>
 
-                        {activeEditor === 'patient' && (
-                            <div className="fade-in">
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', backgroundColor: 'var(--surface-hover-color)', borderRadius: '8px', marginBottom: '1rem' }}>
-                                    <label htmlFor="is_active_portal" style={{marginBottom: 0, fontWeight: 500}}>Activar Agente del Portal del Paciente</label>
-                                    <label className="switch"><input id="is_active_portal" name="is_patient_portal_agent_active" type="checkbox" checked={agent.is_patient_portal_agent_active || false} onChange={handleAgentChange} /><span className="slider round"></span></label>
-                                </div>
-                                {agent.is_patient_portal_agent_active && (
-                                    <div style={{ marginLeft: '1rem', borderLeft: '2px solid var(--border-color)', paddingLeft: '1rem' }}>
-                                        <p style={{fontSize: '0.9rem', color: 'var(--text-light)', marginTop: 0}}>Capacidades para Portal del Paciente:</p>
-                                        {toolsForPatient.map(toolKey => (
-                                            <div key={`patient-${toolKey}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                                <label htmlFor={`tool_patient_${toolKey}`} style={{marginBottom: 0}}>{toolLabels[toolKey]}</label>
-                                                <label className="switch"><input id={`tool_patient_${toolKey}`} name={toolKey} type="checkbox" checked={(agent.tools as any)?.[toolKey]?.enabled || false} onChange={handleToolToggle} /></label>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                        
-                        <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
-                            <button type="submit" disabled={loading.agent}>{loading.agent ? 'Guardando...' : 'Guardar Configuración de Agente'}</button>
-                         </div>
-                     </div>
+                        <div style={{display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem'}}>
+                            <button type="submit" disabled={loading.agent} className="button-primary" style={{padding: '0.75rem 2rem'}}>
+                                {loading.agent ? 'Guardando...' : 'Guardar Configuración'}
+                            </button>
+                        </div>
+                        {success.agent && <p style={{color: 'var(--primary-color)', textAlign: 'right', marginTop: '0.5rem', fontSize: '0.9rem', fontWeight: 500}}>{success.agent}</p>}
+                        {error.agent && <p style={styles.error}>{error.agent}</p>}
+                    </section>
                 </form>
 
-                <form onSubmit={handleSaveConnection} style={{...styles.detailCard, margin: 0}}>
-                    <div style={styles.detailCardHeader}>
-                        <h3 style={styles.detailCardTitle}>Conexión de WhatsApp</h3>
-                    </div>
-                    <div style={styles.detailCardBody}>
-                         {error.connection && <p style={styles.error}>{error.connection}</p>}
-                         {success.connection && <p style={successMessageStyle}>{success.connection}</p>}
+                {/* Right Column: WhatsApp & Status */}
+                <div style={{display: 'flex', flexDirection: 'column', gap: '2rem'}}>
+                    
+                    {/* Capabilities Card */}
+                    <section style={cardStyle}>
+                        <div style={headerStyle}>
+                            <span style={{fontSize: '1.5rem', color: 'var(--primary-color)'}}>⚡</span>
+                            <h3 style={{margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-color)'}}>Capacidades</h3>
+                        </div>
                         
-                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
-                            <div>
-                                <label>Proveedor de API</label>
-                                <select name="provider" value={wappConnection.provider || 'twilio'} onChange={e => setWappConnection(p => ({...p, provider: e.target.value}))}>
-                                    <option value="twilio">Twilio</option>
-                                    <option value="meta">WhatsApp Cloud API (Meta)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label>Tu Número de WhatsApp</label>
-                                <input name="phone_number" value={wappConnection.phone_number || ''} onChange={e => setWappConnection(p => ({...p, phone_number: e.target.value}))} placeholder="+521234567890" required />
+                        <ToggleSwitch label="Agente de WhatsApp" name="is_active" checked={agent.is_active || false} onChange={e => setAgent({...agent, is_active: e.target.checked})} />
+                        <ToggleSwitch label="Agente del Portal" name="is_patient_portal_agent_active" checked={agent.is_patient_portal_agent_active || false} onChange={e => setAgent({...agent, is_patient_portal_agent_active: e.target.checked})} />
+
+                        <div style={{marginTop: '2rem'}}>
+                            <label style={{...labelStyle, color: 'var(--text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.5px'}}>Herramientas Habilitadas</label>
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem'}}>
+                                <label style={{display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', padding: '0.5rem', borderRadius: '8px', transition: 'background 0.2s'}} className="nav-item-hover">
+                                    <input type="checkbox" name="get_available_slots" checked={(agent.tools as any)?.get_available_slots?.enabled} onChange={handleToolToggle} style={{width: '18px', height: '18px', accentColor: 'var(--primary-color)'}} /> 
+                                    <span style={{fontSize: '0.95rem'}}>Consultar Agenda</span>
+                                </label>
+                                <label style={{display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', padding: '0.5rem', borderRadius: '8px', transition: 'background 0.2s'}} className="nav-item-hover">
+                                    <input type="checkbox" name="book_appointment" checked={(agent.tools as any)?.book_appointment?.enabled} onChange={handleToolToggle} style={{width: '18px', height: '18px', accentColor: 'var(--primary-color)'}} /> 
+                                    <span style={{fontSize: '0.95rem'}}>Agendar Citas</span>
+                                </label>
+                                <label style={{display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', padding: '0.5rem', borderRadius: '8px', transition: 'background 0.2s'}} className="nav-item-hover">
+                                    <input type="checkbox" name="get_patient_details" checked={(agent.tools as any)?.get_patient_details?.enabled} onChange={handleToolToggle} style={{width: '18px', height: '18px', accentColor: 'var(--primary-color)'}} /> 
+                                    <span style={{fontSize: '0.95rem'}}>Consultar Info Paciente</span>
+                                </label>
+                                <label style={{display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', padding: '0.5rem', borderRadius: '8px', transition: 'background 0.2s'}} className="nav-item-hover">
+                                    <input type="checkbox" name="get_my_data_for_ai" checked={(agent.tools as any)?.get_my_data_for_ai?.enabled} onChange={handleToolToggle} style={{width: '18px', height: '18px', accentColor: 'var(--primary-color)'}} /> 
+                                    <span style={{fontSize: '0.95rem'}}>Datos Personales (Portal)</span>
+                                </label>
                             </div>
                         </div>
+                    </section>
 
-                        {wappConnection.provider === 'twilio' && (
-                            <div className="fade-in">
-                                <label style={{marginTop: '1rem'}}>Account SID</label>
-                                <input name="accountSid" value={credentials.accountSid} onChange={handleCredsChange} placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" required />
-                                <small style={{display: 'block', marginTop: '-0.75rem', color: 'var(--text-light)'}}>Encuentra esto en el Dashboard de tu cuenta de Twilio.</small>
+                    {/* WhatsApp Connection Card */}
+                    <section style={{...cardStyle, borderColor: wappConnection.is_active ? '#10B981' : 'var(--border-color)', borderWidth: wappConnection.is_active ? '2px' : '1px'}}>
+                         <div style={headerStyle}>
+                            <span style={{fontSize: '1.5rem', color: '#10B981'}}>💬</span>
+                            <h3 style={{margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-color)'}}>WhatsApp</h3>
+                        </div>
 
-                                <label style={{marginTop: '1rem'}}>Auth Token</label>
-                                <input type="password" name="authToken" value={credentials.authToken} onChange={handleCredsChange} placeholder="••••••••••••••••••••••••" required />
-                                <small style={{display: 'block', marginTop: '-0.75rem', color: 'var(--text-light)'}}>Es tu "Auth Token" principal de Twilio.</small>
-                            </div>
-                        )}
-
-                        {wappConnection.provider === 'meta' && (
+                        {/* VIEW MODE: Connection Summary */}
+                        {!isEditingConnection && wappConnection.is_active ? (
                              <div className="fade-in">
-                                <label style={{marginTop: '1rem'}}>Phone Number ID</label>
-                                <input name="phoneNumberId" value={credentials.phoneNumberId} onChange={handleCredsChange} placeholder="10xxxxxxxxxxxxx" required />
-                                <small style={{display: 'block', marginTop: '-0.75rem', color: 'var(--text-light)'}}>En tu App de Meta {'>'} WhatsApp {'>'} "Getting Started".</small>
-
-                                <label style={{marginTop: '1rem'}}>WhatsApp Business Account ID (WABA ID)</label>
-                                <input name="wabaId" value={credentials.wabaId} onChange={handleCredsChange} placeholder="10xxxxxxxxxxxxx" required />
-                                <small style={{display: 'block', marginTop: '-0.75rem', color: 'var(--text-light)'}}>En tu App de Meta {'>'} WhatsApp {'>'} "Getting Started".</small>
-
-                                <label style={{marginTop: '1rem'}}>Permanent Access Token</label>
-                                <input type="password" name="accessToken" value={credentials.accessToken} onChange={handleCredsChange} placeholder="••••••••••••••••••••••••" required />
-                                <small style={{display: 'block', marginTop: '-0.75rem', color: 'var(--text-light)'}}>Debes generar un token de acceso permanente para tu app.</small>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderRadius: '12px', border: '1px solid #10B981'}}>
+                                    <div style={{width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#10B981', boxShadow: '0 0 0 3px rgba(16, 185, 129, 0.2)'}}></div>
+                                    <span style={{fontWeight: 700, color: '#047857', fontSize: '1rem'}}>Conectado ({wappConnection.provider === 'meta' ? 'Meta Cloud API' : 'Twilio'})</span>
+                                </div>
+                                <div style={{marginBottom: '2rem'}}>
+                                    <label style={{fontSize: '0.85rem', color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600, display: 'block', marginBottom: '0.5rem'}}>Número Vinculado</label>
+                                    <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--surface-hover-color)', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--border-color)'}}>
+                                        <span style={{fontFamily: 'monospace', fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-color)'}}>{wappConnection.phone_number}</span>
+                                    </div>
+                                </div>
+                                <div style={{display: 'flex', gap: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem'}}>
+                                    <button onClick={() => setIsEditingConnection(true)} className="button-secondary" style={{flex: 1}}>
+                                        {ICONS.edit} Editar
+                                    </button>
+                                    <button onClick={handleDisconnect} style={{flex: 1, backgroundColor: 'var(--error-bg)', color: 'var(--error-color)', border: '1px solid var(--error-color)'}}>
+                                        Desconectar
+                                    </button>
+                                </div>
                             </div>
+                        ) : (
+                            /* EDIT/CREATE MODE: Form */
+                            <form onSubmit={handleSaveConnection} className="fade-in">
+                                <div style={{marginBottom: '1.5rem'}}>
+                                    <label style={labelStyle}>Proveedor de Mensajería</label>
+                                    <div className="select-wrapper">
+                                        <select 
+                                            value={wappConnection.provider} 
+                                            onChange={e => setWappConnection(prev => ({...prev, provider: e.target.value}))} 
+                                            style={inputStyle}
+                                        >
+                                            <option value="twilio">Twilio</option>
+                                            <option value="meta">Meta (Cloud API)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {wappConnection.provider === 'twilio' ? (
+                                    <>
+                                        <div style={{marginBottom: '1.5rem'}}><label style={labelStyle}>Account SID</label><input value={credentials.accountSid} onChange={e => setCredentials({...credentials, accountSid: e.target.value})} style={inputStyle} placeholder="AC..." /></div>
+                                        <div style={{marginBottom: '1.5rem'}}><label style={labelStyle}>Auth Token</label><input type="password" value={credentials.authToken} onChange={e => setCredentials({...credentials, authToken: e.target.value})} style={inputStyle} placeholder="••••••••" /></div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div style={{marginBottom: '1.5rem'}}><label style={labelStyle}>Phone Number ID</label><input value={credentials.phoneNumberId} onChange={e => setCredentials({...credentials, phoneNumberId: e.target.value})} style={inputStyle} placeholder="Identificador del teléfono" /></div>
+                                        <div style={{marginBottom: '1.5rem'}}><label style={labelStyle}>WABA ID</label><input value={credentials.wabaId} onChange={e => setCredentials({...credentials, wabaId: e.target.value})} style={inputStyle} placeholder="Identificador de la cuenta comercial" /></div>
+                                        <div style={{marginBottom: '1.5rem'}}><label style={labelStyle}>Permanent Access Token</label><input type="password" value={credentials.accessToken} onChange={e => setCredentials({...credentials, accessToken: e.target.value})} style={inputStyle} placeholder="Token de acceso del sistema" /></div>
+                                        <div style={{marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'var(--surface-hover-color)', borderRadius: '8px', fontSize: '0.85rem', border: '1px solid var(--border-color)'}}>
+                                            <strong style={{color: 'var(--primary-color)'}}>Webhook Verify Token:</strong> 
+                                            <div style={{fontFamily: 'monospace', marginTop: '0.5rem', wordBreak: 'break-all'}}>{credentials.verifyToken}</div>
+                                        </div>
+                                    </>
+                                )}
+
+                                <div style={{marginBottom: '2rem'}}>
+                                    <label style={labelStyle}>Número de Teléfono (con código país)</label>
+                                    <input value={phoneNumberInput} onChange={e => setPhoneNumberInput(e.target.value)} placeholder="+5215512345678" style={inputStyle} />
+                                    <p style={{fontSize: '0.8rem', color: 'var(--text-light)', marginTop: '0.5rem'}}>Debe coincidir con el número registrado en el proveedor.</p>
+                                </div>
+
+                                {error.connection && <p style={styles.error}>{error.connection}</p>}
+                                {success.connection && <p style={{color: 'var(--primary-color)', fontSize: '0.9rem', marginBottom: '1rem', fontWeight: 500}}>{success.connection}</p>}
+
+                                <div style={{display: 'flex', gap: '1rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)'}}>
+                                    {wappConnection.is_active && (
+                                        <button type="button" onClick={() => setIsEditingConnection(false)} className="button-secondary" style={{flex: 1}}>
+                                            Cancelar
+                                        </button>
+                                    )}
+                                    <button type="submit" disabled={loading.connection} className="button-primary" style={{flex: 1}}>
+                                        {loading.connection ? 'Guardando...' : wappConnection.is_active ? 'Guardar Cambios' : 'Conectar'}
+                                    </button>
+                                </div>
+                            </form>
                         )}
-                        
-                        {error.test && <p style={{...styles.error, marginTop: '1rem'}}>{error.test}</p>}
-                        {success.test && <p style={{...successMessageStyle, marginTop: '1rem'}}>{success.test}</p>}
-
-                         <div style={{ marginTop: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <label htmlFor="is_active_conn" style={{marginBottom: 0}}>Activar Conexión</label>
-                                <label className="switch"><input id="is_active_conn" name="is_active" type="checkbox" checked={wappConnection.is_active || false} onChange={e => setWappConnection(p => ({ ...p, is_active: e.target.checked }))} /><span className="slider round"></span></label>
-                            </div>
-                             <div style={{ display: 'flex', gap: '1rem' }}>
-                                <button type="button" onClick={handleTestConnection} disabled={testLoading} className="button-secondary">
-                                    {testLoading ? 'Probando...' : 'Probar Conexión'}
-                                </button>
-                                <button type="submit" disabled={loading.connection}>{loading.connection ? 'Guardando...' : 'Guardar Conexión'}</button>
-                            </div>
-                         </div>
-                    </div>
-                </form>
-                <div style={{...styles.detailCard, margin: 0}}>
-                    <div style={styles.detailCardHeader}><h3 style={styles.detailCardTitle}>Configuración del Webhook</h3></div>
-                    <div style={styles.detailCardBody}>
-                        <p>Para que los mensajes lleguen a tu agente, debes configurar esta URL en tu proveedor de WhatsApp:</p>
-                        <input type="text" readOnly value={webhookUrl} style={{ backgroundColor: 'var(--background-color)', cursor: 'text' }} />
-                         
-                        {wappConnection.provider === 'twilio' && <p style={{marginTop: '1rem', fontSize: '0.9rem', color: 'var(--text-light)'}}>En Twilio, ve a "Develop" {'>'} "Messaging" {'>'} "Try it Out" {'>'} "Send a WhatsApp message" y pega esta URL en el campo "WHEN A MESSAGE COMES IN".</p>}
-                        {wappConnection.provider === 'meta' && (
-                            <div style={{marginTop: '1rem'}}>
-                                <p style={{fontSize: '0.9rem', color: 'var(--text-light)'}}>En tu App de Meta {'>'} WhatsApp {'>'} "Configuration", edita la configuración del Webhook.</p>
-                                <label style={{marginTop: '1rem'}}>Tu Token de Verificación</label>
-                                <input type="text" readOnly value={credentials.verifyToken} style={{ backgroundColor: 'var(--background-color)', cursor: 'text', fontFamily: 'monospace' }} />
-                                <small style={{display: 'block', marginTop: '-0.75rem', color: 'var(--text-light)'}}>Copia y pega este token en el campo "Verify Token" en tu configuración de Meta.</small>
-                            </div>
-                        )}
-                    </div>
+                    </section>
                 </div>
+
             </div>
         </div>
     );
