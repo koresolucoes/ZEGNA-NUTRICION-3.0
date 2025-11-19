@@ -1,3 +1,4 @@
+
 import React, { FC, useMemo, useState, useEffect } from 'react';
 import { AppointmentWithPerson, Person, TeamMember, PatientServicePlan, ConsultationWithLabs } from '../../types';
 import { styles } from '../../constants';
@@ -6,15 +7,15 @@ import AppointmentRequestModal from '../../components/patient_portal/Appointment
 import { supabase } from '../../supabase';
 import ConfirmationModal from '../../components/shared/ConfirmationModal';
 
-const appointmentStatusMap: { [key: string]: { text: string; color: string; bg: string } } = {
-    'pending-approval': { text: 'Pendiente', color: '#EAB308', bg: 'rgba(234, 179, 8, 0.1)' },
-    scheduled: { text: 'Agendada', color: 'var(--primary-color)', bg: 'var(--primary-light)' },
-    completed: { text: 'Completada', color: 'var(--text-light)', bg: 'var(--surface-hover-color)' },
-    cancelled: { text: 'Cancelada', color: 'var(--error-color)', bg: 'var(--error-bg)' },
-    'no-show': { text: 'No Asistió', color: 'var(--error-color)', bg: 'var(--error-bg)' },
-    'checked-in': { text: 'En Espera', color: 'var(--primary-color)', bg: 'var(--primary-light)' },
-    'in-consultation': { text: 'En Consulta', color: 'var(--primary-color)', bg: 'var(--primary-light)' },
-    'called': { text: 'Llamando', color: 'var(--primary-color)', bg: 'var(--primary-light)' },
+const appointmentStatusMap: { [key: string]: { text: string; color: string; bg: string; icon: React.ReactNode } } = {
+    'pending-approval': { text: 'Pendiente', color: '#EAB308', bg: '#FEF9C3', icon: ICONS.clock },
+    scheduled: { text: 'Confirmada', color: '#10B981', bg: '#D1FAE5', icon: ICONS.check },
+    completed: { text: 'Completada', color: '#6B7280', bg: '#F3F4F6', icon: ICONS.check },
+    cancelled: { text: 'Cancelada', color: '#EF4444', bg: '#FEE2E2', icon: ICONS.close },
+    'no-show': { text: 'No Asistió', color: '#EF4444', bg: '#FEE2E2', icon: ICONS.close },
+    'checked-in': { text: 'En Espera', color: '#3B82F6', bg: '#DBEAFE', icon: ICONS.activity },
+    'in-consultation': { text: 'En Consulta', color: '#8B5CF6', bg: '#EDE9FE', icon: ICONS.activity },
+    'called': { text: 'Llamando', color: '#F59E0B', bg: '#FEF3C7', icon: ICONS.activity },
 };
 
 const AppointmentsPage: FC<{ 
@@ -23,12 +24,13 @@ const AppointmentsPage: FC<{
     servicePlans: PatientServicePlan[];
     consultations: ConsultationWithLabs[]; 
     onDataRefresh: () => void; 
-}> = ({ appointments, person, servicePlans, consultations, onDataRefresh }) => {
+}> = ({ appointments, person, servicePlans, onDataRefresh }) => {
     
     const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
     const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
     const [appointmentToCancel, setAppointmentToCancel] = useState<AppointmentWithPerson | null>(null);
     const [appointmentToReschedule, setAppointmentToReschedule] = useState<AppointmentWithPerson | null>(null);
+    const [activeTab, setActiveTab] = useState<'upcoming' | 'history'>('upcoming');
 
     useEffect(() => {
         const fetchTeam = async () => {
@@ -62,22 +64,22 @@ const AppointmentsPage: FC<{
     }, [usedConsultations, maxConsultations]);
 
     const { upcoming, past } = useMemo(() => {
-        const upcoming: AppointmentWithPerson[] = [];
-        const past: AppointmentWithPerson[] = [];
+        const upcomingList: AppointmentWithPerson[] = [];
+        const pastList: AppointmentWithPerson[] = [];
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
 
         appointments.forEach(appt => {
             const apptDate = new Date(appt.start_time);
             if (apptDate >= todayStart && !['completed', 'cancelled', 'no-show'].includes(appt.status)) {
-                 upcoming.push(appt);
+                 upcomingList.push(appt);
             } else {
-                past.push(appt);
+                pastList.push(appt);
             }
         });
         return { 
-            upcoming: upcoming.sort((a,b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()),
-            past: past.sort((a,b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())
+            upcoming: upcomingList.sort((a,b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()),
+            past: pastList.sort((a,b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())
         };
     }, [appointments]);
 
@@ -110,53 +112,93 @@ const AppointmentsPage: FC<{
         setAppointmentToReschedule(null);
     };
 
+    // Ticket Card Component
     const AppointmentCard: FC<{ appt: AppointmentWithPerson; onCancel: (appt: AppointmentWithPerson) => void; onReschedule: (appt: AppointmentWithPerson) => void; isUpcoming: boolean }> = ({ appt, onCancel, onReschedule, isUpcoming }) => {
-        const statusInfo = appointmentStatusMap[appt.status as keyof typeof appointmentStatusMap] || { text: appt.status, color: 'var(--text-color)', bg: 'transparent' };
         const nutritionist = appt.user_id ? memberMap.get(appt.user_id) : null;
         const canTakeAction = isUpcoming && ['scheduled', 'pending-approval'].includes(appt.status);
         const dateObj = new Date(appt.start_time);
+        const month = dateObj.toLocaleDateString('es-MX', { month: 'short' }).toUpperCase();
+        const day = dateObj.getDate();
+        const time = dateObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+        const weekday = dateObj.toLocaleDateString('es-MX', { weekday: 'long' });
+        const statusConfig = appointmentStatusMap[appt.status] || appointmentStatusMap['scheduled'];
 
         return (
-            <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: '12px', padding: '1.25rem', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow)' }}>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem'}}>
-                    <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-                        <div style={{textAlign: 'center', backgroundColor: 'var(--surface-hover-color)', padding: '0.5rem', borderRadius: '8px', minWidth: '60px'}}>
-                            <span style={{display: 'block', fontSize: '0.8rem', color: 'var(--text-light)', textTransform: 'uppercase'}}>{dateObj.toLocaleDateString('es-MX', {month: 'short'})}</span>
-                            <span style={{display: 'block', fontSize: '1.5rem', fontWeight: 700, lineHeight: 1}}>{dateObj.getDate()}</span>
-                        </div>
-                        <div>
-                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color)' }}>{appt.title}</h3>
-                            <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-light)', fontSize: '0.9rem' }}>
-                                {dateObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                            </p>
-                        </div>
-                    </div>
-                    <span style={{ color: statusInfo.color, backgroundColor: statusInfo.bg, fontWeight: 600, fontSize: '0.8rem', padding: '4px 10px', borderRadius: '12px' }}>{statusInfo.text}</span>
+            <div style={{
+                display: 'flex',
+                backgroundColor: 'var(--surface-color)',
+                borderRadius: '16px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                overflow: 'hidden',
+                marginBottom: '1rem',
+                border: '1px solid var(--border-color)',
+                transition: 'transform 0.2s',
+            }} className="card-hover">
+                {/* Left Date Column - The "Stub" */}
+                <div style={{
+                    backgroundColor: 'var(--surface-hover-color)',
+                    width: '80px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '1rem 0.5rem',
+                    borderRight: '2px dashed var(--border-color)',
+                    position: 'relative'
+                }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-light)', textTransform: 'uppercase' }}>{month}</span>
+                    <span style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-color)', lineHeight: 1, margin: '4px 0' }}>{day}</span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-light)' }}>{dateObj.getFullYear()}</span>
+                    
+                    {/* Perforation circles visual effect */}
+                    <div style={{position: 'absolute', top: '-6px', right: '-6px', width: '12px', height: '12px', backgroundColor: 'var(--background-color)', borderRadius: '50%', border: '1px solid var(--border-color)'}}></div>
+                    <div style={{position: 'absolute', bottom: '-6px', right: '-6px', width: '12px', height: '12px', backgroundColor: 'var(--background-color)', borderRadius: '50%', border: '1px solid var(--border-color)'}}></div>
                 </div>
 
-                {nutritionist && (
-                    <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-color)'}}>
-                        <img src={nutritionist.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${nutritionist.full_name || '?'}&radius=50`} alt="avatar" style={{width: '24px', height: '24px', borderRadius: '50%'}} />
-                        <span>Especialista: {nutritionist.full_name}</span>
+                {/* Right Content Column */}
+                <div style={{ flex: 1, padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+                         <div>
+                             <span style={{fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-light)', fontWeight: 600, letterSpacing: '0.5px'}}>{weekday} • {time}</span>
+                             <h3 style={{ margin: '4px 0 0 0', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-color)', lineHeight: 1.2 }}>{appt.title}</h3>
+                         </div>
+                         <span style={{
+                             backgroundColor: statusConfig.bg, color: statusConfig.color,
+                             padding: '4px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700,
+                             textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap'
+                         }}>
+                             {statusConfig.text}
+                         </span>
                     </div>
-                )}
-                
-                {canTakeAction && (
-                    <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '1rem' }}>
-                        <button onClick={(e) => { e.stopPropagation(); onReschedule(appt); }} className="button-secondary" style={{padding: '0.5rem 1rem', fontSize: '0.85rem', flex: 1}}>
-                            {ICONS.calendar} Reagendar
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); onCancel(appt); }} className="button-danger" style={{padding: '0.5rem 1rem', fontSize: '0.85rem', flex: 1}}>
-                            {ICONS.close} Cancelar
-                        </button>
-                    </div>
-                )}
+
+                    {nutritionist && (
+                        <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 'auto', paddingTop: '0.5rem'}}>
+                             <img 
+                                src={nutritionist.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${nutritionist.full_name || '?'}&radius=50`} 
+                                alt="avatar" 
+                                style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} 
+                            />
+                            <span style={{ fontSize: '0.9rem', color: 'var(--text-color)' }}>{nutritionist.full_name}</span>
+                        </div>
+                    )}
+
+                    {canTakeAction && (
+                        <div style={{ display: 'flex', gap: '0.75rem', paddingTop: '1rem', marginTop: '0.5rem', borderTop: '1px solid var(--border-color)' }}>
+                            <button onClick={(e) => {e.stopPropagation(); onReschedule(appt)}} className="button-secondary" style={{ flex: 1, fontSize: '0.85rem', padding: '0.5rem' }}>
+                                Reagendar
+                            </button>
+                            <button onClick={(e) => {e.stopPropagation(); onCancel(appt)}} style={{ flex: 1, fontSize: '0.85rem', padding: '0.5rem', backgroundColor: 'var(--error-bg)', color: 'var(--error-color)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>
+                                Cancelar
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
         );
     };
 
     return (
-        <div className="fade-in" style={{ maxWidth: '1000px', margin: '0 auto' }}>
+        <div className="fade-in" style={{ maxWidth: '800px', margin: '0 auto' }}>
              {appointmentToCancel && (
                 <ConfirmationModal
                     isOpen={!!appointmentToCancel}
@@ -177,37 +219,67 @@ const AppointmentsPage: FC<{
                 />
             )}
 
-            <div style={{...styles.pageHeader, alignItems: 'center'}}>
-                <h1 style={{ margin: 0, fontSize: '1.8rem' }}>Mis Citas</h1>
-                <button onClick={() => setIsRequestModalOpen(true)} disabled={consultationLimitReached} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{...styles.pageHeader, marginBottom: '1.5rem', alignItems: 'center'}}>
+                <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 800 }}>Mis Citas</h1>
+                <button 
+                    onClick={() => setIsRequestModalOpen(true)} 
+                    disabled={consultationLimitReached} 
+                    style={{
+                        backgroundColor: 'var(--primary-color)', color: 'white', border: 'none',
+                        padding: '0.8rem 1.5rem', borderRadius: '12px', fontWeight: 600, fontSize: '1rem',
+                        display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: consultationLimitReached ? 'not-allowed' : 'pointer',
+                        opacity: consultationLimitReached ? 0.6 : 1, boxShadow: '0 4px 12px rgba(56, 189, 248, 0.4)'
+                    }}
+                >
                     {ICONS.add} Solicitar Cita
                 </button>
             </div>
 
             {consultationLimitReached && (
-                <div style={{ padding: '1rem', marginBottom: '2rem', backgroundColor: 'rgba(234, 179, 8, 0.1)', border: '1px solid #EAB308', borderRadius: '8px', color: '#EAB308', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ padding: '1rem', marginBottom: '2rem', backgroundColor: 'rgba(234, 179, 8, 0.1)', border: '1px solid #EAB308', borderRadius: '12px', color: '#EAB308', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.9rem' }}>
                     <span style={{fontSize: '1.2rem'}}>⚠️</span>
-                    Has utilizado {usedConsultations} de {maxConsultations} citas de tu plan actual. Contacta a la clínica para renovar.
+                    Has utilizado todas las citas de tu plan actual ({usedConsultations}/{maxConsultations}).
                 </div>
             )}
+
+             {/* Segmented Control */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', padding: '4px', backgroundColor: 'var(--surface-hover-color)', borderRadius: '12px', marginBottom: '2rem', border: '1px solid var(--border-color)' }}>
+                 <button 
+                    onClick={() => setActiveTab('upcoming')}
+                    style={{
+                        padding: '0.75rem', border: 'none', borderRadius: '10px',
+                        backgroundColor: activeTab === 'upcoming' ? 'var(--surface-color)' : 'transparent',
+                        color: activeTab === 'upcoming' ? 'var(--primary-color)' : 'var(--text-light)',
+                        fontWeight: activeTab === 'upcoming' ? 700 : 500, cursor: 'pointer', fontSize: '0.9rem',
+                        boxShadow: activeTab === 'upcoming' ? '0 2px 5px rgba(0,0,0,0.05)' : 'none',
+                        transition: 'all 0.2s ease'
+                    }}
+                 >
+                     Próximas
+                 </button>
+                 <button 
+                    onClick={() => setActiveTab('history')}
+                    style={{
+                        padding: '0.75rem', border: 'none', borderRadius: '10px',
+                        backgroundColor: activeTab === 'history' ? 'var(--surface-color)' : 'transparent',
+                        color: activeTab === 'history' ? 'var(--primary-color)' : 'var(--text-light)',
+                        fontWeight: activeTab === 'history' ? 700 : 500, cursor: 'pointer', fontSize: '0.9rem',
+                        boxShadow: activeTab === 'history' ? '0 2px 5px rgba(0,0,0,0.05)' : 'none',
+                        transition: 'all 0.2s ease'
+                    }}
+                 >
+                     Historial
+                 </button>
+            </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem', alignItems: 'start' }}>
-                <section>
-                    <h2 style={{ fontSize: '1.3rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.5rem', color: 'var(--primary-color)' }}>
-                        Próximas Citas
-                    </h2>
-                    <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
-                        {upcoming.length > 0 ? upcoming.map(appt => <AppointmentCard key={appt.id} appt={appt} onCancel={setAppointmentToCancel} onReschedule={handleRequestReschedule} isUpcoming={true} />) : <p style={{color: 'var(--text-light)'}}>No tienes citas próximas.</p>}
-                    </div>
-                </section>
-                <section>
-                    <h2 style={{ fontSize: '1.3rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.5rem', color: 'var(--text-light)' }}>
-                        Historial
-                    </h2>
-                    <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
-                        {past.length > 0 ? past.map(appt => <AppointmentCard key={appt.id} appt={appt} onCancel={() => {}} onReschedule={() => {}} isUpcoming={false} />) : <p style={{color: 'var(--text-light)'}}>No hay historial de citas.</p>}
-                    </div>
-                </section>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {activeTab === 'upcoming' ? (
+                    upcoming.length > 0 ? upcoming.map(appt => <AppointmentCard key={appt.id} appt={appt} onCancel={setAppointmentToCancel} onReschedule={handleRequestReschedule} isUpcoming={true} />) 
+                    : <div style={{textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-light)', backgroundColor: 'var(--surface-color)', borderRadius: '16px', border: '1px dashed var(--border-color)'}}><p style={{margin:0}}>No tienes citas próximas.</p></div>
+                ) : (
+                    past.length > 0 ? past.map(appt => <AppointmentCard key={appt.id} appt={appt} onCancel={() => {}} onReschedule={() => {}} isUpcoming={false} />) 
+                    : <div style={{textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-light)', backgroundColor: 'var(--surface-color)', borderRadius: '16px', border: '1px dashed var(--border-color)'}}><p style={{margin:0}}>No hay historial de citas.</p></div>
+                )}
             </div>
         </div>
     );

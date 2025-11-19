@@ -139,8 +139,8 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
         return (
             <>
                 {isPatientAiEnabled && isAiChatOpen && person && <PatientAiChatModal isOpen={isAiChatOpen} onClose={() => setIsAiChatOpen(false)} person={person} />}
-                {isPatientAiEnabled && <PatientPortalFAB onOpenChat={() => setIsAiChatOpen(true)} />}
-                <div style={{paddingBottom: '80px'}}>
+                {isPatientAiEnabled && <PatientPortalFAB onOpenChat={() => setIsAiChatOpen(true)} isMobile={isMobile} />}
+                <div style={{paddingBottom: isMobile ? '100px' : '40px'}}>
                     {(() => {
                         switch (view) {
                             case 'home': return <PatientHomePage user={session.user} person={person} dietLogs={dietLogs} exerciseLogs={exerciseLogs} checkins={checkins} consultations={consultations} appointments={appointments} servicePlans={servicePlans} onDataRefresh={() => fetchData(person.id, person.clinic_id)} isMobile={isMobile} isAiEnabled={isPatientAiEnabled} />;
@@ -148,7 +148,7 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
                             case 'progress': return <MyProgressPage consultations={consultations} gamificationLogs={gamificationLogs} checkins={checkins} onDataRefresh={() => fetchData(person.id, person.clinic_id)} />;
                             case 'files': return <MyFilesPage person={person} user={session.user} files={files} onDataRefresh={() => fetchData(person.id, person.clinic_id)} />;
                             case 'appointments': return <AppointmentsPage appointments={appointments} person={person} servicePlans={servicePlans} consultations={consultations} onDataRefresh={() => fetchData(person.id, person.clinic_id)} />;
-                            case 'notifications': return <PatientNotificationsPage />;
+                            case 'notifications': return <PatientNotificationsPage person={person} user={session.user} onLogout={handleLogout} />;
                             default: return <PatientHomePage user={session.user} person={person} dietLogs={dietLogs} exerciseLogs={exerciseLogs} checkins={checkins} consultations={consultations} appointments={appointments} servicePlans={servicePlans} onDataRefresh={() => fetchData(person.id, person.clinic_id)} isMobile={isMobile} isAiEnabled={isPatientAiEnabled} />;
                         }
                     })()}
@@ -246,7 +246,7 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
                         <NavItem viewName="progress" icon={ICONS.activity} label="Progreso" />
                         <NavItem viewName="files" icon={ICONS.file} label="Archivos" />
                         <NavItem viewName="appointments" icon={ICONS.calendar} label="Consultas" />
-                        <NavItem viewName="notifications" icon={ICONS.settings} label="Ajustes" />
+                        <NavItem viewName="notifications" icon={ICONS.settings} label="Mi Cuenta" />
                     </nav>
                     <button onClick={handleLogout} style={{background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '0.5rem 1rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer'}} className="nav-item-hover">
                         {ICONS.logout} Salir
@@ -265,7 +265,9 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
                             />
                             <span style={{fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-color)'}}>Zegna</span>
                         </div>
-                        <button onClick={handleLogout} style={{padding: '0.5rem', background: 'transparent', border: 'none', color: 'var(--text-light)'}}>{ICONS.logout}</button>
+                        <div style={{fontSize: '0.9rem', fontWeight: 600, color: 'var(--primary-color)'}}>
+                            {view === 'home' ? 'Inicio' : view === 'plans' ? 'Mis Planes' : view === 'progress' ? 'Progreso' : view === 'appointments' ? 'Citas' : view === 'files' ? 'Archivos' : 'Ajustes'}
+                        </div>
                      </header>
                 )}
                 {renderContent()}
@@ -290,7 +292,7 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
                     <BottomNavItem viewName="plans" icon={ICONS.book} label="Planes" />
                     <BottomNavItem viewName="progress" icon={ICONS.activity} label="Progreso" />
                     <BottomNavItem viewName="appointments" icon={ICONS.calendar} label="Agenda" />
-                    <BottomNavItem viewName="files" icon={ICONS.file} label="Docs" />
+                    <BottomNavItem viewName="notifications" icon={ICONS.settings} label="Cuenta" />
                 </nav>
             )}
         </div>

@@ -1,11 +1,10 @@
 
-
 import React, { FC, useState, useEffect, FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../supabase';
 import { styles } from '../../constants';
 import { ICONS } from '../../pages/AuthPage';
-import { Person, TeamMember, Appointment, Clinic } from '../../types';
+import { Person, TeamMember, Clinic } from '../../types';
 
 const modalRoot = document.getElementById('modal-root');
 
@@ -68,7 +67,6 @@ const AppointmentRequestModal: FC<AppointmentRequestModalProps> = ({ isOpen, onC
                 const dayOfWeek = startOfDay.getDay();
                 let startHour: number, endHour: number;
 
-                // Use new flexible schedule if available, otherwise fallback
                 if (clinic.operating_schedule && clinic.operating_schedule.length === 7) {
                     const daySchedule = clinic.operating_schedule[dayOfWeek];
                     if (!daySchedule || !daySchedule.active) {
@@ -79,8 +77,7 @@ const AppointmentRequestModal: FC<AppointmentRequestModalProps> = ({ isOpen, onC
                     startHour = parseInt(daySchedule.start.split(':')[0]);
                     endHour = parseInt(daySchedule.end.split(':')[0]);
                 } else {
-                    // Fallback to old system
-                    const operatingDays = clinic.operating_days || [1, 2, 3, 4, 5]; // Default Mon-Fri
+                    const operatingDays = clinic.operating_days || [1, 2, 3, 4, 5]; 
                     if (!operatingDays.includes(dayOfWeek)) {
                         setAvailableSlots([]);
                         setSlotsLoading(false);
@@ -121,7 +118,7 @@ const AppointmentRequestModal: FC<AppointmentRequestModalProps> = ({ isOpen, onC
             return;
         }
         if (!person) {
-            setError('Error: no se ha identificado al paciente. Por favor, recarga la página.');
+            setError('Error: no se ha identificado al paciente.');
             return;
         }
         setLoading(true);
@@ -130,7 +127,7 @@ const AppointmentRequestModal: FC<AppointmentRequestModalProps> = ({ isOpen, onC
 
         try {
             const startTime = new Date(`${selectedDate}T${selectedSlot}:00`);
-            const endTime = new Date(startTime.getTime() + 60 * 60000); // 1 hour duration
+            const endTime = new Date(startTime.getTime() + 60 * 60000); 
             
             const payload = {
                 person_id: person.id,
@@ -146,20 +143,19 @@ const AppointmentRequestModal: FC<AppointmentRequestModalProps> = ({ isOpen, onC
             const { error: dbError } = await supabase.from('appointments').insert(payload);
             if (dbError) throw dbError;
 
-            setSuccess('Tu solicitud de cita ha sido enviada. Recibirás una notificación cuando sea aprobada.');
+            setSuccess('Solicitud enviada. Te notificaremos cuando sea aprobada.');
             
-            // Send notification to the selected nutritionist
             fetch('/api/send-notification', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  userId: selectedNutritionistId, // The user_id of the professional
+                  userId: selectedNutritionistId,
                   title: 'Nueva Solicitud de Cita',
-                  body: `El paciente ${person.full_name} ha solicitado una nueva cita. Revisa la agenda para aprobarla.`
+                  body: `El paciente ${person.full_name} ha solicitado una nueva cita.`
                 })
             }).catch(err => console.error("Failed to send notification:", err));
 
-            setTimeout(onSave, 3000);
+            setTimeout(onSave, 2500);
         } catch (err: any) {
             setError(`Error al enviar solicitud: ${err.message}`);
         } finally {
@@ -168,50 +164,76 @@ const AppointmentRequestModal: FC<AppointmentRequestModalProps> = ({ isOpen, onC
     };
 
     if (!isOpen || !modalRoot) return null;
+    
+    // Touch-friendly input styles for better mobile UX
+    const touchInputStyle = {
+        ...styles.input,
+        padding: '1rem', // Increased padding for touch
+        fontSize: '1.1rem', // Larger font
+        borderRadius: '12px',
+        backgroundColor: 'var(--surface-hover-color)',
+        border: '1px solid var(--border-color)',
+        height: 'auto',
+        marginBottom: 0
+    };
 
     return createPortal(
-        <div style={styles.modalOverlay}>
-            <form onSubmit={handleSubmit} style={{...styles.modalContent, maxWidth: '600px'}}>
+        <div style={{...styles.modalOverlay, zIndex: 1300}}>
+            <form onSubmit={handleSubmit} style={{...styles.modalContent, maxWidth: '600px', borderRadius: '20px', maxHeight: '95vh', display: 'flex', flexDirection: 'column'}} className="fade-in">
                 <div style={styles.modalHeader}>
                     <h2 style={styles.modalTitle}>Solicitar Cita</h2>
                     <button type="button" onClick={onClose} style={{...styles.iconButton, border: 'none'}}>{ICONS.close}</button>
                 </div>
-                <div style={styles.modalBody}>
+                <div style={{...styles.modalBody, flex: 1, overflowY: 'auto', paddingTop: '1.5rem'}}>
                     {error && <p style={styles.error}>{error}</p>}
                     {success && <p style={{...styles.error, backgroundColor: 'var(--primary-light)', color: 'var(--primary-dark)', borderColor: 'var(--primary-color)'}}>{success}</p>}
                     
-                    <label htmlFor="nutritionist">Seleccionar Profesional</label>
-                    <select id="nutritionist" value={selectedNutritionistId} onChange={e => setSelectedNutritionistId(e.target.value)} required>
-                        {teamMembers.map(m => <option key={m.user_id} value={m.user_id!}>{m.full_name}</option>)}
-                    </select>
+                    <div style={{marginBottom: '1.5rem'}}>
+                        <label htmlFor="nutritionist" style={{...styles.label, fontSize: '0.9rem', marginBottom: '0.5rem'}}>Especialista</label>
+                        <select id="nutritionist" value={selectedNutritionistId} onChange={e => setSelectedNutritionistId(e.target.value)} required style={touchInputStyle}>
+                            {teamMembers.map(m => <option key={m.user_id} value={m.user_id!}>{m.full_name}</option>)}
+                        </select>
+                    </div>
 
-                    <label htmlFor="date">Seleccionar Fecha</label>
-                    <input type="date" id="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} required min={new Date().toISOString().split('T')[0]}/>
+                    <div style={{marginBottom: '1.5rem'}}>
+                        <label htmlFor="date" style={{...styles.label, fontSize: '0.9rem', marginBottom: '0.5rem'}}>Fecha Deseada</label>
+                        <input type="date" id="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} required min={new Date().toISOString().split('T')[0]} style={touchInputStyle}/>
+                    </div>
 
-                    <label>Horarios Disponibles</label>
-                    {slotsLoading ? <p>Cargando horarios...</p> : (
-                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: '0.5rem', maxHeight: '200px', overflowY: 'auto', padding: '0.5rem', backgroundColor: 'var(--background-color)', borderRadius: '8px'}}>
+                    <label style={{...styles.label, marginBottom: '0.75rem', fontSize: '0.9rem'}}>Horarios Disponibles</label>
+                    {slotsLoading ? <div style={{padding: '1rem', textAlign: 'center', color: 'var(--text-light)'}}>Buscando espacios...</div> : (
+                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem'}}>
                             {availableSlots.length > 0 ? availableSlots.map(slot => (
                                 <button
                                     type="button"
                                     key={slot}
                                     onClick={() => setSelectedSlot(slot)}
-                                    className={`filter-button ${selectedSlot === slot ? 'active' : ''}`}
+                                    style={{
+                                        padding: '1rem 0.5rem', // Larger touch target
+                                        borderRadius: '12px',
+                                        border: `2px solid ${selectedSlot === slot ? 'var(--primary-color)' : 'var(--border-color)'}`,
+                                        backgroundColor: selectedSlot === slot ? 'var(--primary-light)' : 'var(--surface-color)',
+                                        color: selectedSlot === slot ? 'var(--primary-dark)' : 'var(--text-color)',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        fontSize: '1.1rem',
+                                        transition: 'all 0.2s',
+                                        width: '100%'
+                                    }}
                                 >{slot}</button>
-                            )) : <p style={{gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-light)'}}>No hay horarios disponibles para este día.</p>}
+                            )) : <div style={{gridColumn: '1 / -1', padding: '2rem', textAlign: 'center', color: 'var(--text-light)', backgroundColor: 'var(--surface-hover-color)', borderRadius: '12px'}}>No hay horarios disponibles para este día.</div>}
                         </div>
                     )}
                     
-                    <label htmlFor="notes">Motivo de la cita (opcional)</label>
-                    <textarea id="notes" rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Ej: Consulta de seguimiento, revisar nuevo plan, etc." />
+                    <label htmlFor="notes" style={{...styles.label, fontSize: '0.9rem', marginBottom: '0.5rem'}}>Motivo (opcional)</label>
+                    <textarea id="notes" rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Ej: Revisión mensual..." style={{...touchInputStyle, resize: 'none'}} />
                 </div>
-                <div style={styles.modalFooter}>
-                    <button type="button" onClick={onClose} className="button-secondary" disabled={loading}>Cancelar</button>
-                    <button type="submit" disabled={loading || !selectedSlot}>{loading ? 'Enviando...' : 'Enviar Solicitud'}</button>
+                <div style={{...styles.modalFooter, padding: '1.5rem', backgroundColor: 'var(--surface-color)'}}>
+                    <button type="button" onClick={onClose} className="button-secondary" disabled={loading} style={{padding: '1rem', borderRadius: '12px', flex: 1}}>Cancelar</button>
+                    <button type="submit" disabled={loading || !selectedSlot} className="button-primary" style={{padding: '1rem', borderRadius: '12px', flex: 2, fontSize: '1rem', fontWeight: 700}}>{loading ? 'Enviando...' : 'Enviar Solicitud'}</button>
                 </div>
             </form>
-        </div>,
-        modalRoot
+        </div>
     );
 };
 
