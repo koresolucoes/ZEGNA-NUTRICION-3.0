@@ -1,4 +1,5 @@
-import React, { useState, useEffect, FC, useCallback } from 'react';
+
+import React, { useState, useEffect, FC, useCallback, useMemo } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { styles } from '../constants';
 import { ICONS } from '../pages/AuthPage';
@@ -37,13 +38,50 @@ import SubscriptionPage from '../pages/SubscriptionPage';
 import AffiliatesPage from '../pages/AffiliatesPage';
 import BetaFeedbackModal from './shared/BetaFeedbackModal';
 import UserGuidePage from '../pages/UserGuidePage'; // Importar la nueva página de guía
+import { useThemeManager } from '../contexts/ThemeContext';
+
+const PlanLockedView: FC<{ onGoToBilling: () => void }> = ({ onGoToBilling }) => (
+    <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '80vh',
+        textAlign: 'center',
+        color: 'var(--text-color)',
+        padding: '2rem'
+    }}>
+        <div style={{ 
+            fontSize: '3rem', 
+            marginBottom: '1.5rem', 
+            color: 'var(--text-light)', 
+            backgroundColor: 'var(--surface-hover-color)',
+            borderRadius: '50%',
+            width: '80px',
+            height: '80px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+        }}>
+            {ICONS.lock}
+        </div>
+        <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Acceso Restringido</h2>
+        <p style={{ color: 'var(--text-light)', maxWidth: '450px', marginBottom: '2rem', lineHeight: 1.6 }}>
+            Tu plan actual ha vencido o no tienes una suscripción activa. Para acceder a este módulo y continuar gestionando tu clínica, por favor actualiza tu plan.
+        </p>
+        <button onClick={onGoToBilling} className="button-primary" style={{ padding: '0.75rem 2rem', fontSize: '1rem' }}>
+            Ver Planes de Suscripción
+        </button>
+    </div>
+);
 
 const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
-    const { clinic, role } = useClinic(); // Use clinic context
+    const { clinic, role, subscription } = useClinic(); // Use clinic context
     const [view, setView] = useState({ page: 'home', context: {} as any });
     const [isMobile, setIsMobile] = useState(window.innerWidth < 960);
     const [isSidebarOpen, setSidebarOpen] = useState(!isMobile);
     const [profile, setProfile] = useState<NutritionistProfile | null>(null);
+    const { setTheme } = useThemeManager();
 
     // State for new collapsible sidebar
     const [openCategory, setOpenCategory] = useState<string | null>(null);
@@ -53,6 +91,10 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
     const [isFeedbackModalOpen, setFeedbackModalOpen] = useState(false);
     const [clients, setClients] = useState<Pick<Person, 'id' | 'full_name' | 'avatar_url'>[]>([]);
     const [afiliados, setAfiliados] = useState<Pick<Person, 'id' | 'full_name' | 'avatar_url'>[]>([]);
+
+    const isSubscriptionActive = subscription?.status === 'active' || subscription?.status === 'trialing';
+    // List of pages that are allowed even when subscription is inactive
+    const unrestrictedPages = ['profile', 'profile-form', 'settings', 'clinic-settings', 'billing'];
 
     const fetchPersons = useCallback(async () => {
         if (!clinic) return;
@@ -76,6 +118,13 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
         fetchPersons();
     }, [fetchPersons]);
 
+    useEffect(() => {
+        if (clinic?.theme) {
+            setTheme(clinic.theme);
+        } else {
+            setTheme('default');
+        }
+    }, [clinic, setTheme]);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -115,6 +164,12 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
     
     const renderContent = () => {
         const { page, context } = view;
+
+        // Check if access is restricted
+        if (!isSubscriptionActive && !unrestrictedPages.includes(page)) {
+             return <PlanLockedView onGoToBilling={() => navigate('billing')} />;
+        }
+
         switch (page) {
             case 'home': return <HomePage user={session.user} isMobile={isMobile} navigate={navigate} openQuickConsult={() => setQuickConsultModalOpen(true)} />;
             case 'clients': return <ClientsPage onAddClient={() => navigate('client-form')} onEditClient={(personId) => navigate('client-form', { personId })} onViewDetails={(personId) => navigate('client-detail', { personId })} isMobile={isMobile} />;
@@ -161,7 +216,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
             case 'chat': return <ChatPage isMobile={isMobile} />;
             case 'finanzas': return <FinanzasPage isMobile={isMobile} navigate={navigate} />;
             case 'affiliates': return <AffiliatesPage navigate={navigate} />;
-            case 'user-guide': return <UserGuidePage />; // Añadir el nuevo caso de renderizado
+            case 'user-guide': return <UserGuidePage />;
 
             case 'profile': return <ProfilePage user={session.user} onEditProfile={() => navigate('profile-form')} />;
             case 'profile-form': return <ProfileFormPage user={session.user} onBack={() => navigate('profile')} />;
@@ -177,16 +232,27 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
 
     const NavItem: FC<{name: string, pageName: string, icon?: React.ReactNode, isSubItem?: boolean, context?: any}> = ({ name, pageName, icon, isSubItem = false, context }) => {
         const isActive = (view.page === pageName) && (context?.initialTab ? view.context?.initialTab === context.initialTab : true);
+        const isLocked = !isSubscriptionActive && !unrestrictedPages.includes(pageName);
+
         return (
         <div
-            onClick={() => navigate(pageName, context)}
-            style={{...styles.navItem, backgroundColor: isActive ? 'var(--primary-light)' : 'transparent', color: isActive ? 'var(--primary-color)' : 'var(--text-color)', borderLeft: isActive ? '4px solid var(--primary-color)' : '4px solid transparent', ...(isSubItem && {paddingLeft: '2.5rem'})}}
+            onClick={isLocked ? () => navigate('billing') : () => navigate(pageName, context)}
+            style={{
+                ...styles.navItem, 
+                backgroundColor: isActive ? 'var(--primary-light)' : 'transparent', 
+                color: isActive ? 'var(--primary-color)' : isLocked ? 'var(--text-light)' : 'var(--text-color)', 
+                borderLeft: isActive ? '4px solid var(--primary-color)' : '4px solid transparent', 
+                ...(isSubItem && {paddingLeft: '2.5rem'}),
+                opacity: isLocked ? 0.7 : 1,
+                cursor: 'pointer'
+            }}
             className="nav-item-hover"
             role="button"
             aria-label={`Navegar a ${name}`}
         >
-            {icon && <span style={{color: 'var(--primary-color)'}}>{icon}</span>}
-            {name}
+            {icon && <span style={{color: isActive ? 'var(--primary-color)' : 'inherit'}}>{icon}</span>}
+            <span style={{flex: 1}}>{name}</span>
+            {isLocked && <span style={{fontSize: '0.8rem', color: 'var(--text-light)'}}>{ICONS.lock}</span>}
         </div>
     )};
     
@@ -325,7 +391,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                 </div>
                 {renderContent()}
             </main>
-            {!isFabHidden && (
+            {!isFabHidden && isSubscriptionActive && (
                 <FloatingActionButton
                     onNewClient={() => navigate('client-form')}
                     onNewAfiliado={() => navigate('afiliado-form')}

@@ -1,3 +1,4 @@
+
 import React, { FC, useState, FormEvent } from 'react';
 import { supabase } from '../../supabase';
 import { styles } from '../../constants';
@@ -44,20 +45,14 @@ const DailyCheckinForm: FC<{ personId: string; onCheckinSaved: () => void }> = (
             
             if (error) throw error;
             
-            // --- GAMIFICATION ---
-            // After successful insert, call the RPC to award points
             const { error: rpcError } = await supabase.rpc('award_daily_checkin_points', {
                 p_person_id: personId,
                 p_checkin_id: insertedData.id,
             });
 
-            if (rpcError) {
-                // Don't block the UI for a gamification error, just log it.
-                console.warn("Could not award points for daily checkin:", rpcError);
-            }
-            // --- END GAMIFICATION ---
+            if (rpcError) console.warn("Could not award points:", rpcError);
             
-            setSuccess('¡Registro guardado con éxito! Has ganado 5 puntos.');
+            setSuccess('¡Registro guardado!');
             setFormData(prev => ({ ...prev, notes: '' }));
             setTimeout(() => setSuccess(null), 3000);
             onCheckinSaved();
@@ -69,56 +64,94 @@ const DailyCheckinForm: FC<{ personId: string; onCheckinSaved: () => void }> = (
         }
     };
     
-    const RatingInput: FC<{ label: string; value: number; onChange: (value: number) => void }> = ({ label, value, onChange }) => (
-        <div style={{marginBottom: '1.5rem'}}>
-            <label>{label}</label>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 0.5rem' }}>
-                {[1, 2, 3, 4, 5].map(star => (
-                    <button
-                        type="button"
-                        key={star}
-                        onClick={() => onChange(star)}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: '0.25rem',
-                            color: star <= value ? 'var(--accent-color)' : 'var(--border-color)',
-                            transition: 'color 0.2s',
-                        }}
-                        aria-label={`Calificar con ${star} estrellas`}
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24" fill="currentColor" stroke="none">
-                            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-                        </svg>
-                    </button>
-                ))}
+    const RatingInput: FC<{ label: string; value: number; onChange: (value: number) => void; icon: 'star' | 'energy' }> = ({ label, value, onChange, icon }) => (
+        <div style={{textAlign: 'center', flex: 1}}>
+            <label style={{fontSize: '0.85rem', color: 'var(--text-light)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '1rem', display: 'block', letterSpacing: '1px'}}>{label}</label>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                {[1, 2, 3, 4, 5].map(rating => {
+                    const isActive = rating <= value;
+                    // Colors: Teal for Mood, Orange for Energy
+                    const activeColor = icon === 'star' ? '#2DD4BF' : '#F59E0B'; 
+                    const inactiveColor = 'var(--surface-active)';
+                    
+                    return (
+                        <button
+                            type="button"
+                            key={rating}
+                            onClick={() => onChange(rating)}
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: '0',
+                                color: isActive ? activeColor : inactiveColor,
+                                transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.2s',
+                                transform: isActive ? 'scale(1.2)' : 'scale(1)',
+                                width: '44px', // Big touch target
+                                height: '44px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}
+                            aria-label={`Rate ${rating}`}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                                <path d={icon === 'star' 
+                                    ? "M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" 
+                                    : "M13 2L3 14h9l-1 8 10-12h-9l1-8z"} />
+                            </svg>
+                        </button>
+                    )
+                })}
             </div>
         </div>
     );
 
-
     return (
-        <form onSubmit={handleSubmit}>
-            <p>¿Cómo te sientes hoy, {new Date(formData.checkin_date.replace(/-/g, '/')).toLocaleDateString('es-MX', {weekday: 'long'})}?</p>
+        <form onSubmit={handleSubmit} style={{height: '100%', display: 'flex', flexDirection: 'column'}}>
+            <div style={{marginBottom: '1.5rem', textAlign: 'center'}}>
+                <p style={{margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-color)'}}>
+                    ¿Cómo te sientes hoy?
+                </p>
+                <p style={{margin: '0.5rem 0 0 0', fontSize: '0.9rem', color: 'var(--text-light)', textTransform: 'capitalize'}}>
+                    {new Date().toLocaleDateString('es-MX', {weekday: 'long', day: 'numeric', month: 'long'})}
+                </p>
+            </div>
+            
             {error && <p style={styles.error}>{error}</p>}
-            {success && <p style={{...styles.error, backgroundColor: 'var(--primary-light)', color: 'var(--primary-dark)', borderColor: 'var(--primary-color)'}}>{success}</p>}
+            {success && <div style={{marginBottom: '1rem', padding: '1rem', backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10B981', borderRadius: '8px', fontWeight: 700, textAlign: 'center', fontSize: '1rem'}}>{success}</div>}
             
-            <RatingInput label="Tu estado de ánimo" value={formData.mood_rating} onChange={v => setFormData(p => ({...p, mood_rating: v}))} />
-            <RatingInput label="Tu nivel de energía" value={formData.energy_level_rating} onChange={v => setFormData(p => ({...p, energy_level_rating: v}))} />
+            <div style={{display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2rem', backgroundColor: 'var(--background-color)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-color)'}}>
+                <RatingInput label="ÁNIMO" value={formData.mood_rating} onChange={v => setFormData(p => ({...p, mood_rating: v}))} icon="star" />
+                <div style={{height: '1px', backgroundColor: 'var(--border-color)', width: '100%'}}></div>
+                <RatingInput label="ENERGÍA" value={formData.energy_level_rating} onChange={v => setFormData(p => ({...p, energy_level_rating: v}))} icon="energy" />
+            </div>
 
-            <label htmlFor="notes">Notas Adicionales</label>
-            <textarea
-                id="notes"
-                rows={4}
-                value={formData.notes}
-                onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))}
-                placeholder="¿Algo que quieras compartir sobre tu día? (Ej: tuve antojo de..., me sentí con más fuerza en el gym, etc.)"
-            />
-            
-            <button type="submit" disabled={loading} style={{width: '100%', marginTop: '1rem'}}>
-                {loading ? 'Guardando...' : 'Guardar Mi Registro'}
-            </button>
+            <div style={{flex: 1, display: 'flex', flexDirection: 'column'}}>
+                 <label htmlFor="notes" style={{fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.75rem', display: 'block', letterSpacing: '1px'}}>NOTAS ADICIONALES</label>
+                <textarea
+                    id="notes"
+                    rows={4}
+                    value={formData.notes}
+                    onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))}
+                    style={{
+                        ...styles.input, 
+                        backgroundColor: 'var(--background-color)', 
+                        border: '1px solid var(--border-color)', 
+                        fontSize: '1rem', 
+                        padding: '1rem', 
+                        borderRadius: '12px', 
+                        resize: 'none',
+                        flex: 1,
+                        marginBottom: '1.5rem'
+                    }}
+                    placeholder="¿Algún síntoma o comentario sobre tu día?"
+                />
+                
+                <button type="submit" disabled={loading} style={{width: '100%', padding: '1rem', borderRadius: '12px', fontWeight: 800, fontSize: '1.1rem', backgroundColor: '#38BDF8', color: '#0F172A', border: 'none', cursor: 'pointer', boxShadow: '0 4px 15px rgba(56, 189, 248, 0.4)', transition: 'transform 0.2s'}}>
+                    {loading ? 'Guardando...' : 'Guardar Registro'}
+                </button>
+            </div>
         </form>
     );
 };

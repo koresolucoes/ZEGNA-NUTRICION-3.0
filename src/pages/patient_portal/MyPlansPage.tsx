@@ -1,3 +1,4 @@
+
 import React, { FC, useMemo, useState } from 'react';
 import { DietLog, ExerciseLog } from '../../types';
 import DietPlanViewer from '../../components/DietPlanViewer';
@@ -41,9 +42,10 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs }) => {
             textAlign: 'center', 
             padding: '4rem 2rem', 
             backgroundColor: 'var(--surface-color)', 
-            borderRadius: '12px',
+            borderRadius: '16px', 
             border: '1px solid var(--border-color)',
-            color: 'var(--text-light)'
+            color: 'var(--text-light)',
+            marginTop: '1.5rem'
         }}>
             <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}>{icon}</div>
             <p style={{ fontSize: '1.1rem', margin: 0 }}>{text}</p>
@@ -65,36 +67,54 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs }) => {
                 />
             )}
 
-            <div style={styles.pageHeader}>
-                <h1 style={{ margin: 0, fontSize: '1.8rem' }}>Mis Planes</h1>
+            <div style={{...styles.pageHeader, flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '2rem'}}>
+                <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: 800 }}>Mis Planes</h1>
+                <p style={{ margin: 0, color: 'var(--text-light)' }}>Consulta tu historial de alimentación y rutinas.</p>
             </div>
-            <p style={{ color: 'var(--text-light)', marginTop: '-1.5rem', marginBottom: '2rem' }}>
-                Consulta el historial detallado de tu alimentación y rutinas de ejercicio.
-            </p>
 
-            <nav className="tabs" style={{ marginBottom: '2rem' }}>
-                <button 
-                    className={`tab-button ${activeTab === 'food' ? 'active' : ''}`} 
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
+                 <button 
                     onClick={() => setActiveTab('food')}
+                    style={{
+                        padding: '0.75rem 1.5rem',
+                        borderRadius: '12px',
+                        border: 'none',
+                        backgroundColor: activeTab === 'food' ? 'var(--primary-light)' : 'transparent',
+                        color: activeTab === 'food' ? 'var(--primary-color)' : 'var(--text-light)',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: '0.5rem',
+                        transition: 'all 0.2s'
+                    }}
                 >
-                    Plan Alimenticio
+                    {ICONS.book} Alimentación
                 </button>
                 <button 
-                    className={`tab-button ${activeTab === 'exercise' ? 'active' : ''}`} 
                     onClick={() => setActiveTab('exercise')}
+                    style={{
+                         padding: '0.75rem 1.5rem',
+                        borderRadius: '12px',
+                        border: 'none',
+                        backgroundColor: activeTab === 'exercise' ? 'var(--primary-light)' : 'transparent',
+                        color: activeTab === 'exercise' ? 'var(--primary-color)' : 'var(--text-light)',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                         display: 'flex', alignItems: 'center', gap: '0.5rem',
+                        transition: 'all 0.2s'
+                    }}
                 >
-                    Rutinas de Ejercicio
+                    {ICONS.activity} Ejercicio
                 </button>
-            </nav>
+            </div>
 
             {activeTab === 'food' && (
                 <section className="fade-in">
                     {Object.keys(groupedDietLogs).length > 0 ? (
                         Object.keys(groupedDietLogs).sort((a, b) => new Date(b).getTime() - new Date(a).getTime()).map(weekStart => (
-                            <div key={weekStart} style={{ marginBottom: '2.5rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
-                                    <span style={{ color: 'var(--primary-color)' }}>{ICONS.calendar}</span>
-                                    <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color)' }}>
+                            <div key={weekStart} style={{ marginBottom: '3rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                                    <span style={{ color: 'var(--primary-color)', fontSize: '1.2rem' }}>📅</span>
+                                    <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-color)' }}>
                                         Semana del {new Date(weekStart).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', timeZone: 'UTC' })}
                                     </h3>
                                 </div>
@@ -104,7 +124,7 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs }) => {
                                 />
                             </div>
                         ))
-                    ) : renderEmptyState("No hay planes alimenticios asignados aún.", ICONS.book)}
+                    ) : renderEmptyState("No hay planes alimenticios asignados.", ICONS.book)}
                 </section>
             )}
             
@@ -112,10 +132,10 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs }) => {
                 <section className="fade-in">
                      {Object.keys(groupedExerciseLogs).length > 0 ? (
                         Object.keys(groupedExerciseLogs).sort((a, b) => new Date(b).getTime() - new Date(a).getTime()).map(weekStart => (
-                            <div key={weekStart} style={{ marginBottom: '2.5rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
-                                    <span style={{ color: 'var(--primary-color)' }}>{ICONS.activity}</span>
-                                    <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color)' }}>
+                            <div key={weekStart} style={{ marginBottom: '3rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                                    <span style={{ color: 'var(--primary-color)', fontSize: '1.2rem' }}>💪</span>
+                                    <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-color)' }}>
                                         Semana del {new Date(weekStart).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', timeZone: 'UTC' })}
                                     </h3>
                                 </div>
@@ -125,7 +145,7 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs }) => {
                                 />
                             </div>
                         ))
-                    ) : renderEmptyState("No hay rutinas de ejercicio asignadas aún.", ICONS.activity)}
+                    ) : renderEmptyState("No hay rutinas de ejercicio asignadas.", ICONS.activity)}
                 </section>
             )}
         </div>

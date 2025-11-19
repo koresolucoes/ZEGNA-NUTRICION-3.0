@@ -1,4 +1,3 @@
-
 import React, { FC, useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../supabase';
 import { styles } from '../constants';
@@ -11,6 +10,7 @@ import EquivalentsTableManager from '../components/calculators/EquivalentsTableM
 import PlanHistory from '../components/calculators/PlanHistory';
 import { useClinic } from '../contexts/ClinicContext';
 import SkeletonLoader from '../components/shared/SkeletonLoader';
+import { defaultClinicalReferences } from '../data/defaultClinicalReferences';
 
 interface CalculatorsPageProps {
     isMobile: boolean;
@@ -63,7 +63,11 @@ const CalculatorsPage: FC<CalculatorsPageProps> = ({ isMobile, initialPlanToLoad
             setEquivalents(equivalentsRes.data || []);
             setPlanHistory(historyRes.data || []);
             setPersons(personsRes.data as unknown as Person[] || []);
-            setClinicalReferences(referencesRes.data as ClinicalReference[] || []);
+            
+            // Merge default references with custom ones from DB
+            const customReferences = referencesRes.data as ClinicalReference[] || [];
+            setClinicalReferences([...defaultClinicalReferences, ...customReferences]);
+            
             setKnowledgeResources(resourcesRes.data || []);
 
         } catch (err: any) {
@@ -130,21 +134,26 @@ const CalculatorsPage: FC<CalculatorsPageProps> = ({ isMobile, initialPlanToLoad
     const selectedPerson = persons.find(p => p.id === selectedPersonId) || null;
     
     const filteredPersons = useMemo(() => {
-        if (!searchTerm) return persons;
-        // If search term matches the currently selected person's name exactly, show all (user hasn't started typing new search)
-        if (selectedPerson && searchTerm === selectedPerson.full_name) {
+        if (!searchTerm || (selectedPerson && searchTerm === selectedPerson.full_name)) {
             return persons;
         }
-        return persons.filter(p => p.full_name.toLowerCase().includes(searchTerm.toLowerCase()));
+        const lowerSearch = searchTerm.toLowerCase();
+        return persons.filter(p => p.full_name.toLowerCase().includes(lowerSearch));
     }, [persons, searchTerm, selectedPerson]);
 
     const patients = filteredPersons.filter(p => p.person_type === 'client');
     const affiliates = filteredPersons.filter(p => p.person_type === 'member');
 
     const handleSelectPerson = (person: Person | null) => {
-        setSelectedPersonId(person ? person.id : '');
-        setSearchTerm(person ? person.full_name : '');
-        setIsDropdownOpen(false);
+        if (person) {
+            setSelectedPersonId(person.id);
+            setSearchTerm(person.full_name);
+            setIsDropdownOpen(false);
+        } else {
+            setSelectedPersonId('');
+            setSearchTerm('');
+            setLastConsultation(null);
+        }
     };
 
     const handleSaveToLog = async (calculatorKey: string, logType: string, description: string, data: { inputs: any, result: any }) => {
@@ -244,13 +253,15 @@ const CalculatorsPage: FC<CalculatorsPageProps> = ({ isMobile, initialPlanToLoad
                 display: 'flex',
                 flexDirection: isMobile ? 'column' : 'row',
                 alignItems: isMobile ? 'stretch' : 'center',
-                gap: '1.5rem'
+                gap: '1.5rem',
+                position: 'relative', // Essential for z-index context
+                zIndex: 50
             }}>
-                <div style={{ flex: 1 }} ref={containerRef}>
+                <div style={{ flex: 1, position: 'relative' }} ref={containerRef}>
                     <label htmlFor="person-search" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.5rem' }}>
                         Paciente Seleccionado
                     </label>
-                    <div style={{ position: 'relative' }}>
+                    <div style={{ position: 'relative', zIndex: 55 }}>
                          <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary-color)' }}>
                             {ICONS.user}
                         </div>
@@ -261,8 +272,11 @@ const CalculatorsPage: FC<CalculatorsPageProps> = ({ isMobile, initialPlanToLoad
                             value={searchTerm}
                             onChange={e => {
                                 setSearchTerm(e.target.value);
-                                if (selectedPersonId) setSelectedPersonId(''); 
                                 setIsDropdownOpen(true);
+                                if (!e.target.value) {
+                                    setSelectedPersonId('');
+                                    setLastConsultation(null);
+                                }
                             }}
                             onFocus={() => setIsDropdownOpen(true)}
                             style={{ 
@@ -278,7 +292,7 @@ const CalculatorsPage: FC<CalculatorsPageProps> = ({ isMobile, initialPlanToLoad
                         />
                         {selectedPersonId && (
                             <button 
-                                onClick={() => { setSelectedPersonId(''); setSearchTerm(''); }}
+                                onClick={() => handleSelectPerson(null)}
                                 style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)' }}
                             >
                                 &times;
@@ -287,7 +301,20 @@ const CalculatorsPage: FC<CalculatorsPageProps> = ({ isMobile, initialPlanToLoad
                     </div>
 
                     {isDropdownOpen && (
-                        <div style={{ position: 'absolute', top: 'calc(100% + 5px)', left: 0, right: 0, backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '12px', maxHeight: '300px', overflowY: 'auto', zIndex: 20, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}>
+                        <div style={{ 
+                            position: 'absolute', 
+                            top: '100%', 
+                            left: 0, 
+                            right: 0, 
+                            marginTop: '8px',
+                            backgroundColor: 'var(--surface-color)', 
+                            border: '1px solid var(--border-color)', 
+                            borderRadius: '12px', 
+                            maxHeight: '300px', 
+                            overflowY: 'auto', 
+                            zIndex: 1000, // High z-index to float above everything
+                            boxShadow: '0 10px 40px rgba(0,0,0,0.15)'
+                        }}>
                              {(patients.length > 0 || affiliates.length > 0) ? (
                                 <>
                                     {patients.length > 0 && (

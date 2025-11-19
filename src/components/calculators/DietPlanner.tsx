@@ -162,11 +162,11 @@ const EquivalentsPanel: FC<EquivalentsPanelProps> = ({
     ];
 
     return (
-        <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)', overflow: 'hidden' }}>
+        <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)', overflow: 'hidden', marginBottom: '80px' /* Space for fixed footer */ }}>
             <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)' }}>
                  <h3 style={{margin: 0, fontSize: '1.1rem', color: 'var(--primary-color)'}}>Distribución de Equivalentes</h3>
             </div>
-            <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 250px)' }}> {/* Scrollable area */}
+            <div style={{ overflowY: 'auto' }}>
                 {groupOrder
                     .filter(groupName => groupedEquivalents[groupName])
                     .map((groupName) => {
@@ -275,6 +275,8 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
     const hasAiFeature = useMemo(() => {
         return subscription?.plans?.features ? (subscription.plans.features as any).ai_assistant === true : false;
     }, [subscription]);
+
+    const hasPortions = useMemo(() => Object.values(portions).some(p => parseFloat(String(p)) > 0), [portions]);
 
      useEffect(() => {
         if (initialPlan) {
@@ -423,7 +425,7 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
         setIsDropdownOpen(false);
     };
 
-    // --- HEURISTIC #1: VISIBILITY OF SYSTEM STATUS (Sticky Footer) ---
+    // --- HEURISTIC #1 & #7: VISIBILITY & EFFICIENCY (Sticky Footer) ---
     const StickyStatusFooter = () => (
         <div style={{
             position: 'fixed', bottom: 0, left: isMobile ? 0 : '260px', right: 0,
@@ -431,15 +433,18 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
             padding: '0.75rem 1.5rem', zIndex: 100,
             boxShadow: '0 -4px 20px rgba(0,0,0,0.1)',
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            transition: 'left 0.3s ease'
+            gap: '1rem',
+            transition: 'left 0.3s ease',
+            flexDirection: isMobile ? 'column' : 'row'
         }}>
-            <div style={{display: 'flex', gap: '1.5rem', flex: 1}}>
+            {/* Left: Macros Stats */}
+            <div style={{display: 'flex', gap: '1.5rem', flex: 1, width: '100%'}}>
                 {[
                     { label: 'Prot', val: planTotals.protein_g, goal: goalGrams.prot, adq: adequacy.prot, color: MACRO_COLORS.protein },
                     { label: 'Lip', val: planTotals.lipid_g, goal: goalGrams.lip, adq: adequacy.lip, color: MACRO_COLORS.lipid },
                     { label: 'HC', val: planTotals.carb_g, goal: goalGrams.hc, adq: adequacy.hc, color: MACRO_COLORS.carb },
                 ].map(m => (
-                    <div key={m.label} style={{flex: 1, maxWidth: '150px'}}>
+                    <div key={m.label} style={{flex: 1, minWidth: 0}}>
                          <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', fontWeight: 600, marginBottom: '2px'}}>
                              <span style={{color: m.color}}>{m.label}</span>
                              <span style={{color: m.adq > 110 ? 'var(--error-color)' : m.adq < 90 ? 'var(--text-light)' : 'var(--primary-color)'}}>{m.adq.toFixed(0)}%</span>
@@ -452,11 +457,35 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
                 ))}
             </div>
             
-            <div style={{marginLeft: '1rem', textAlign: 'right'}}>
-                 <div style={{fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 600}}>CALORÍAS</div>
-                 <div style={{fontSize: '1.2rem', fontWeight: 700, color: adequacy.kcal > 105 ? 'var(--error-color)' : 'var(--text-color)'}}>
-                     {planTotals.kcal.toFixed(0)} <span style={{fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 400}}>/ {goals.kcal}</span>
-                 </div>
+            {/* Right: Calories & Actions */}
+            <div style={{display: 'flex', gap: '1.5rem', alignItems: 'center', width: isMobile ? '100%' : 'auto', justifyContent: 'flex-end'}}>
+                 <div style={{textAlign: 'right', minWidth: '80px'}}>
+                     <div style={{fontSize: '0.7rem', color: 'var(--text-light)', fontWeight: 600}}>CALORÍAS</div>
+                     <div style={{fontSize: '1.1rem', fontWeight: 700, color: adequacy.kcal > 105 ? 'var(--error-color)' : 'var(--text-color)'}}>
+                         {planTotals.kcal.toFixed(0)} <span style={{fontSize: '0.7rem', color: 'var(--text-light)', fontWeight: 400}}>/ {goals.kcal}</span>
+                     </div>
+                </div>
+                
+                <div style={{display: 'flex', gap: '0.5rem', flex: isMobile ? 1 : 'initial'}}>
+                    <button 
+                        type="button" 
+                        onClick={() => setIsAiPlanModalOpen(true)} 
+                        disabled={!hasPortions || !hasAiFeature} 
+                        className="button-secondary" 
+                        title={!hasAiFeature ? "Función Premium" : "Crear menú con IA"}
+                        style={{padding: '0.5rem 0.75rem', fontSize: '0.9rem', whiteSpace: 'nowrap', flex: 1}}
+                    >
+                        {ICONS.sparkles} {isMobile ? 'IA' : 'Menú IA'}
+                    </button>
+                    <button 
+                        onClick={handleSavePlan} 
+                        disabled={loading} 
+                        className="button-primary"
+                        style={{padding: '0.5rem 1rem', fontSize: '0.9rem', whiteSpace: 'nowrap', flex: 1}}
+                    >
+                        {loading ? '...' : 'Guardar'}
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -502,20 +531,6 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
          </div>
     );
 
-    const ActionPanel = () => {
-        const hasPortions = Object.values(portions).some(p => parseFloat(String(p)) > 0);
-        return (
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginBottom: '6rem' /* Space for sticky footer */ }}>
-                 <button type="button" onClick={() => setIsAiPlanModalOpen(true)} disabled={!hasPortions || !hasAiFeature} className="button-secondary" title={!hasAiFeature ? "Función Premium" : "Crear menú con IA"}>
-                    {ICONS.sparkles} Generar Menú IA
-                </button>
-                <button onClick={handleSavePlan} disabled={loading} className="button-primary">
-                    {loading ? 'Guardando...' : 'Guardar Cálculo'}
-                </button>
-            </div>
-        );
-    };
-
     return (
         <div className="fade-in" style={{position: 'relative', minHeight: '80vh'}}>
             {isAiPlanModalOpen && (
@@ -543,10 +558,6 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
                 handlePortionChange={handlePortionChange}
             />
             
-            <div style={{marginTop: '2rem'}}>
-                 <ActionPanel />
-            </div>
-
             <StickyStatusFooter />
         </div>
     );

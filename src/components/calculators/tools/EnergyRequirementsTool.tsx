@@ -2,6 +2,7 @@ import React, { FC, useState, useMemo, useEffect } from 'react';
 import { ToolProps } from './tool-types';
 import CalculatorCard from './shared/CalculatorCard';
 import HelpTooltip from './shared/HelpTooltip';
+import { styles } from '../../../constants';
 
 const activityFactors = [
     { label: 'Sedentario (poco o nada)', value: '1.2' },
@@ -85,67 +86,74 @@ const EnergyRequirementsTool: FC<ToolProps> = ({ selectedPerson, lastConsultatio
     const activityFactorLabel = activityFactors.find(f => f.value === energyCalculator.activity)?.label || '';
     const stressFactorLabel = stressFactors.find(f => f.value === energyCalculator.stress)?.label || '';
 
+    const inputStyle = {
+        ...styles.input,
+        backgroundColor: 'var(--background-color)',
+        marginBottom: 0
+    };
+
     return (
-        <div className="fade-in" style={{display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', maxWidth: '800px', margin: '0 auto'}}>
+        <div style={{display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', maxWidth: '800px', margin: '0 auto'}}>
             <CalculatorCard 
                 title="Gasto Energético"
                 onSave={() => handleSaveToLog('energyCalculator', `Cálculo GET (${selectedFormulaName})`, `GET: ${energyResult!.get} kcal/día`, { inputs: { ...energyCalculator, activityFactorLabel, stressFactorLabel }, result: energyResult })} 
                 saveDisabled={!selectedPerson || !energyResult} 
                 saveStatus={saveStatus['energyCalculator']}
-                extraActions={<button className="button-secondary" disabled>Usar GET para crear Plan</button>}
             >
-                <div>
-                    <label style={{display: 'flex', alignItems: 'center'}}>
-                        Fórmula de Cálculo
-                        <HelpTooltip content="Mifflin-St Jeor es la más recomendada para la mayoría de adultos. Harris-Benedict es una fórmula más antigua. OMS es útil para estudios poblacionales." />
-                    </label>
-                    <select value={energyCalculator.formula} onChange={e => setEnergyCalculator(p => ({...p, formula: e.target.value}))}>
-                        {energyFormulas.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                    </select>
-                </div>
-                <fieldset style={{border: 'none', padding: 0, margin: '1.5rem 0', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem'}}>
-                    <legend style={{fontWeight: 600, fontSize: '1rem', paddingRight: '1rem'}}>Datos del Paciente</legend>
-                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
-                        <div><label>Peso (kg)</label><input type="number" value={energyCalculator.weight} onChange={e => setEnergyCalculator(p => ({...p, weight: e.target.value}))} /></div>
-                        <div><label>Altura (cm)</label><input type="number" value={energyCalculator.height} onChange={e => setEnergyCalculator(p => ({...p, height: e.target.value}))} /></div>
-                        <div><label>Edad</label><input type="number" value={energyCalculator.age} onChange={e => setEnergyCalculator(p => ({...p, age: e.target.value}))} /></div>
-                        <div><label>Género</label><select value={energyCalculator.gender} onChange={e => setEnergyCalculator(p => ({...p, gender: e.target.value as 'male'|'female'}))}><option value="female">Mujer</option><option value="male">Hombre</option></select></div>
+                <div style={{marginBottom: '1.5rem'}}>
+                    <label style={styles.label}>Fórmula de Cálculo</label>
+                    <div className="select-wrapper">
+                        <select value={energyCalculator.formula} onChange={e => setEnergyCalculator(p => ({...p, formula: e.target.value}))} style={inputStyle}>
+                            {energyFormulas.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                        </select>
                     </div>
-                </fieldset>
-                    <fieldset style={{border: 'none', padding: 0, margin: '1.5rem 0', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem'}}>
-                    <legend style={{fontWeight: 600, fontSize: '1rem', paddingRight: '1rem'}}>Factores Metabólicos</legend>
+                </div>
+
+                <div style={{padding: '1.5rem', backgroundColor: 'var(--surface-hover-color)', borderRadius: '12px', marginBottom: '1.5rem'}}>
+                    <h4 style={{margin: '0 0 1rem 0', fontSize: '0.9rem', color: 'var(--text-light)', textTransform: 'uppercase'}}>Datos Antropométricos</h4>
+                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                        <div><label style={styles.label}>Peso (kg)</label><input type="number" value={energyCalculator.weight} onChange={e => setEnergyCalculator(p => ({...p, weight: e.target.value}))} style={inputStyle} placeholder="0.0"/></div>
+                        <div><label style={styles.label}>Altura (cm)</label><input type="number" value={energyCalculator.height} onChange={e => setEnergyCalculator(p => ({...p, height: e.target.value}))} style={inputStyle} placeholder="0"/></div>
+                        <div><label style={styles.label}>Edad</label><input type="number" value={energyCalculator.age} onChange={e => setEnergyCalculator(p => ({...p, age: e.target.value}))} style={inputStyle} placeholder="0"/></div>
+                        <div><label style={styles.label}>Género</label><div className="select-wrapper"><select value={energyCalculator.gender} onChange={e => setEnergyCalculator(p => ({...p, gender: e.target.value as 'male'|'female'}))} style={inputStyle}><option value="female">Mujer</option><option value="male">Hombre</option></select></div></div>
+                    </div>
+                </div>
+                
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem'}}>
                     <div>
-                        <label style={{display: 'flex', alignItems: 'center'}}>
+                        <label style={{...styles.label, display: 'flex', alignItems: 'center'}}>
                             Factor de Actividad
                             <HelpTooltip content="Representa el nivel de actividad física diaria. Selecciona la opción que mejor describa el estilo de vida del paciente." />
                         </label>
-                        <select value={energyCalculator.activity} onChange={e => setEnergyCalculator(p => ({...p, activity: e.target.value}))}>{activityFactors.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}</select>
+                        <div className="select-wrapper">
+                            <select value={energyCalculator.activity} onChange={e => setEnergyCalculator(p => ({...p, activity: e.target.value}))} style={inputStyle}>
+                                {activityFactors.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                            </select>
+                        </div>
                     </div>
-                    <div style={{marginTop: '1rem'}}>
-                        <label style={{display: 'flex', alignItems: 'center'}}>
+                    <div>
+                        <label style={{...styles.label, display: 'flex', alignItems: 'center'}}>
                             Factor de Estrés
                             <HelpTooltip content="Ajusta el gasto energético según el estrés metabólico causado por una enfermedad o lesión. Usa 1.0 para pacientes ambulatorios sanos." />
                         </label>
-                        <select value={energyCalculator.stress} onChange={e => setEnergyCalculator(p => ({...p, stress: e.target.value}))}>{stressFactors.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}</select>
+                        <div className="select-wrapper">
+                            <select value={energyCalculator.stress} onChange={e => setEnergyCalculator(p => ({...p, stress: e.target.value}))} style={inputStyle}>
+                                {stressFactors.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                            </select>
+                        </div>
                     </div>
-                </fieldset>
+                </div>
                 
                 {energyResult && 
-                    <div style={{marginTop: '1.5rem', padding: '1.5rem', backgroundColor: 'var(--background-color)', borderRadius: '12px'}}>
-                        <h4 style={{margin: '0 0 1rem 0', textAlign: 'center', color: 'var(--primary-color)'}}>Resultados del Cálculo</h4>
-                        <div style={{display: 'flex', gap: '1rem', justifyContent: 'space-around', textAlign: 'center'}}>
-                            <div>
-                                <p style={{ margin: 0, color: 'var(--text-light)', fontSize: '0.9rem' }}>Tasa Metabólica Basal (TMB)</p>
-                                <p style={{ margin: '0.25rem 0', fontWeight: 600, fontSize: '1.8rem', color: 'var(--text-color)' }}>{energyResult.tmb} <span style={{fontSize: '1rem', color: 'var(--text-light)'}}>kcal</span></p>
-                            </div>
-                                <div>
-                                <p style={{ margin: 0, color: 'var(--text-light)', fontSize: '0.9rem' }}>Gasto Energético Total (GET)</p>
-                                <p style={{ margin: '0.25rem 0', fontWeight: 700, fontSize: '2.2rem', color: 'var(--primary-color)' }}>{energyResult.get} <span style={{fontSize: '1rem', color: 'var(--text-light)'}}>kcal</span></p>
-                            </div>
+                    <div style={{marginTop: '2rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem'}}>
+                         <div style={{backgroundColor: 'var(--background-color)', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--border-color)'}}>
+                            <p style={{ margin: 0, color: 'var(--text-light)', fontSize: '0.85rem', textTransform: 'uppercase', fontWeight: 600 }}>TMB (Basal)</p>
+                            <p style={{ margin: '0.5rem 0 0 0', fontWeight: 700, fontSize: '1.8rem', color: 'var(--text-color)' }}>{energyResult.tmb} <span style={{fontSize: '1rem', color: 'var(--text-light)', fontWeight: 500}}>kcal</span></p>
                         </div>
-                        <p style={{textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-light)', marginTop: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem'}}>
-                            GET = TMB ({energyResult.tmb}) × F. Actividad ({energyCalculator.activity}) × F. Estrés ({energyCalculator.stress})
-                        </p>
+                        <div style={{backgroundColor: 'var(--primary-light)', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', border: '1px solid var(--primary-color)'}}>
+                            <p style={{ margin: 0, color: 'var(--primary-dark)', fontSize: '0.85rem', textTransform: 'uppercase', fontWeight: 600 }}>GET (Total)</p>
+                            <p style={{ margin: '0.5rem 0 0 0', fontWeight: 800, fontSize: '2rem', color: 'var(--primary-color)' }}>{energyResult.get} <span style={{fontSize: '1rem', color: 'var(--primary-dark)', fontWeight: 500}}>kcal</span></p>
+                        </div>
                     </div>
                 }
             </CalculatorCard>

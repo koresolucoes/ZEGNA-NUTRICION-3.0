@@ -1,4 +1,5 @@
 
+// ... (imports remain the same)
 import React, { FC, useState, useEffect, useCallback, useMemo, FormEvent } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
@@ -188,9 +189,10 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
         if(defaultSubTab) setActiveSubTab(defaultSubTab);
     };
 
-    const fetchData = useCallback(async () => {
+    const fetchData = useCallback(async (silent = false) => {
         if (!clinic) return;
-        setLoading(true); setError(null);
+        if (!silent) setLoading(true); 
+        setError(null);
         try {
             const [
                 personRes, consultRes, logsRes, dietRes, exerciseRes,
@@ -260,7 +262,7 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
         } catch (err: any) {
             setError(err.message);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     }, [personId, clinic]);
 
@@ -377,7 +379,7 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
     // --- MAIN CONTENT WITH FOLDER TABS ---
     const MainContent = () => (
         <div>
-             <div style={styles.tabContainer}>
+             <div style={styles.tabContainer} className="hide-scrollbar">
                 {['resumen', 'expediente', 'planes', 'gestion'].map(tab => (
                     <button
                         key={tab}
@@ -421,7 +423,7 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
 
                 {activeTab === 'planes' && (
                      <section className="fade-in">
-                        <div style={{...styles.tabContainer, paddingLeft: 0, marginBottom: '-1px'}}>
+                        <div style={{...styles.tabContainer, paddingLeft: 0, marginBottom: '-1px'}} className="hide-scrollbar">
                             {[
                                 { key: 'current_plans', label: 'Planes Actuales' },
                                 { key: 'calculated_plans', label: 'Calculados' },
@@ -453,7 +455,7 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
 
                 {activeTab === 'gestion' && (
                      <section className="fade-in">
-                        <div style={{...styles.tabContainer, paddingLeft: 0, marginBottom: '-1px'}}>
+                        <div style={{...styles.tabContainer, paddingLeft: 0, marginBottom: '-1px'}} className="hide-scrollbar">
                             {[
                                 { key: 'appointments', label: 'Citas' },
                                 { key: 'team', label: 'Equipo' },

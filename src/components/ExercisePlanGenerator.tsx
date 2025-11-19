@@ -20,7 +20,7 @@ const modalRoot = document.getElementById('modal-root');
 const exerciseThinkingMessages = [
     "Interpretando objetivo de acondicionamiento...",
     "Analizando datos físicos del paciente...",
-    "Estructurando la división semanal (push/pull/legs, etc.)...",
+    "Estructurando la división de la rutina...",
     "Seleccionando ejercicios para el tren superior...",
     "Añadiendo rutinas de cardio y resistencia...",
     "Balanceando volumen e intensidad...",
@@ -31,6 +31,7 @@ const exerciseThinkingMessages = [
 
 const ExercisePlanGenerator: FC<ExercisePlanGeneratorProps> = ({ person, lastConsultation, onClose, onPlanSaved }) => {
     const { clinic } = useClinic();
+    const [numDays, setNumDays] = useState('7');
     const [healthGoal, setHealthGoal] = useState(person.health_goal || '');
     const [customInstructions, setCustomInstructions] = useState('');
     const [loading, setLoading] = useState(false);
@@ -57,7 +58,7 @@ const ExercisePlanGenerator: FC<ExercisePlanGeneratorProps> = ({ person, lastCon
         }, 2000);
 
         try {
-            let promptContext = `Actúa como un entrenador personal profesional. Genera una rutina de ejercicios semanal detallada (Lunes a Domingo) para una persona.`;
+            let promptContext = `Actúa como un entrenador personal profesional. Genera una rutina de ejercicios detallada para ${numDays} días para una persona.`;
             promptContext += `\n- Objetivo principal: ${healthGoal}.`;
             if (lastConsultation) {
                 promptContext += `\n- Datos físicos relevantes: Peso ${lastConsultation.weight_kg} kg, Altura ${lastConsultation.height_cm} cm, IMC ${lastConsultation.imc}.`;
@@ -72,13 +73,13 @@ const ExercisePlanGenerator: FC<ExercisePlanGeneratorProps> = ({ person, lastCon
                 properties: {
                     plan_semanal: {
                         type: Type.ARRAY,
-                        description: "Array de 7 días, de Lunes a Domingo.",
+                        description: `Array de ${numDays} días.`,
                         items: {
                             type: Type.OBJECT,
                             properties: {
                                 dia: { 
                                     type: Type.STRING,
-                                    description: "Día de la semana (ej. Lunes, Martes)."
+                                    description: "Día del plan (ej. Día 1, Día 2, o Lunes, Martes)."
                                 },
                                 enfoque: { 
                                     type: Type.STRING,
@@ -163,7 +164,7 @@ const ExercisePlanGenerator: FC<ExercisePlanGeneratorProps> = ({ person, lastCon
             // 1. Create a summary log entry for activity feed
             const summaryLogPayload = {
                 log_type: 'Rutina de Ejercicio (IA)',
-                description: `Se generó una rutina de ejercicios de 7 días. Objetivo: ${healthGoal}.`,
+                description: `Se generó una rutina de ejercicios de ${numDays} días. Objetivo: ${healthGoal}.`,
                 person_id: person.id,
                 log_time: new Date().toISOString(),
             };
@@ -224,16 +225,32 @@ const ExercisePlanGenerator: FC<ExercisePlanGeneratorProps> = ({ person, lastCon
                         <>
                             <p style={{marginTop: 0, color: 'var(--text-light)'}}>Se generará una rutina para <strong>{person.full_name}</strong>.</p>
                             
-                            <label htmlFor="health_goal">Objetivo Principal *</label>
-                            <textarea
-                                id="health_goal"
-                                name="health_goal"
-                                value={healthGoal}
-                                onChange={(e) => setHealthGoal(e.target.value)}
-                                rows={2}
-                                placeholder="Ej: Pérdida de peso, aumento de masa muscular, acondicionamiento cardiovascular..."
-                                required
-                            />
+                            <div style={{display: 'flex', gap: '1rem'}}>
+                                <div style={{width: '120px'}}>
+                                     <label htmlFor="num_days_exercise">Días de Rutina</label>
+                                    <input
+                                        id="num_days_exercise"
+                                        type="number"
+                                        min="1"
+                                        max="15"
+                                        value={numDays}
+                                        onChange={(e) => setNumDays(e.target.value)}
+                                    />
+                                </div>
+                                <div style={{flex: 1}}>
+                                    <label htmlFor="health_goal">Objetivo Principal *</label>
+                                    <textarea
+                                        id="health_goal"
+                                        name="health_goal"
+                                        value={healthGoal}
+                                        onChange={(e) => setHealthGoal(e.target.value)}
+                                        rows={2}
+                                        placeholder="Ej: Pérdida de peso, aumento de masa muscular, acondicionamiento cardiovascular..."
+                                        required
+                                        style={{resize: 'none'}}
+                                    />
+                                </div>
+                            </div>
 
                             <label htmlFor="custom_instructions">Instrucciones Adicionales (Opcional)</label>
                             <textarea
@@ -260,7 +277,7 @@ const ExercisePlanGenerator: FC<ExercisePlanGeneratorProps> = ({ person, lastCon
                     
                     {generatedPlan && !loading && (
                         <div style={{maxHeight: '45vh', overflowY: 'auto', paddingRight: '1rem'}}>
-                            <h3 style={{color: 'var(--primary-dark)', fontSize: '1.1rem'}}>Rutina Semanal Sugerida</h3>
+                            <h3 style={{color: 'var(--primary-dark)', fontSize: '1.1rem'}}>Rutina Sugerida ({numDays} días)</h3>
                             {generatedPlan.plan_semanal.map((day: any, dayIndex: number) => (
                                 <div key={day.dia + dayIndex} style={{marginBottom: '1rem', backgroundColor: 'var(--surface-hover-color)', padding: '1rem', borderRadius: '8px'}}>
                                     <h4 style={{borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem', margin: '0 0 0.5rem 0', color: 'var(--primary-color)'}}>{day.dia} - {day.enfoque}</h4>

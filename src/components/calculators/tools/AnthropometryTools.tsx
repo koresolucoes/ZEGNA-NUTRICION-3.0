@@ -1,9 +1,9 @@
 import React, { FC, useState, useMemo, useEffect } from 'react';
 import { ToolProps } from './tool-types';
-import { ICONS } from '../../../pages/AuthPage';
 import HelpTooltip from './shared/HelpTooltip';
+import CalculatorCard from './shared/CalculatorCard';
+import { styles } from '../../../constants';
 
-// Simple hook to detect mobile viewport
 const useIsMobile = (breakpoint = 960) => {
     const [isMobile, setIsMobile] = useState(window.innerWidth < breakpoint);
     useEffect(() => {
@@ -14,13 +14,13 @@ const useIsMobile = (breakpoint = 960) => {
     return isMobile;
 };
 
-const ResultItem: FC<{ label: string; value: string; interpretation?: { text: string; color: string; } }> = ({ label, value, interpretation }) => (
-    <div style={{ padding: '0.75rem', backgroundColor: 'var(--background-color)', borderRadius: '8px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <p style={{ margin: 0, color: 'var(--text-light)' }}>{label}</p>
-            {interpretation && <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 500, color: interpretation.color }}>{interpretation.text}</p>}
+const ResultMetricCard: FC<{ label: string; value: string; interpretation?: { text: string; color: string; } }> = ({ label, value, interpretation }) => (
+    <div style={{ padding: '1rem', backgroundColor: 'var(--surface-hover-color)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+        <p style={{ margin: 0, color: 'var(--text-light)', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: 700 }}>{label}</p>
+        <div style={{display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: '0.25rem'}}>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: '1.4rem', color: 'var(--text-color)' }}>{value}</p>
         </div>
-        <p style={{ margin: '0.25rem 0 0 0', fontWeight: 600, fontSize: '1.5rem', color: 'var(--text-color)' }}>{value}</p>
+        {interpretation && <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', fontWeight: 600, color: interpretation.color }}>{interpretation.text}</p>}
     </div>
 );
 
@@ -38,7 +38,6 @@ const AnthropometryTools: FC<ToolProps> = ({ selectedPerson, lastConsultation, h
     });
 
     useEffect(() => {
-        // FIX: Explicitly cast person gender to 'male' | 'female' to match state type.
         const gender = (selectedPerson?.gender as 'male' | 'female') || 'female';
         const weightStr = lastConsultation?.weight_kg?.toString() || '';
         const heightStr = lastConsultation?.height_cm?.toString() || '';
@@ -104,7 +103,7 @@ const AnthropometryTools: FC<ToolProps> = ({ selectedPerson, lastConsultation, h
         if (whrResult) {
             const highRisk = data.gender === 'male' ? 0.90 : 0.85;
             whrInterpretation = whrResult > highRisk
-                ? { text: 'Riesgo Cardiovascular Elevado', color: 'var(--error-color)' }
+                ? { text: 'Riesgo Elevado', color: 'var(--error-color)' }
                 : { text: 'Riesgo Bajo', color: 'var(--primary-color)' };
         }
         
@@ -112,11 +111,11 @@ const AnthropometryTools: FC<ToolProps> = ({ selectedPerson, lastConsultation, h
         let whtrInterpretation;
         if (whtrResult) {
              whtrInterpretation = whtrResult >= 0.5
-                ? { text: 'Riesgo Metabólico Elevado', color: 'var(--error-color)' }
+                ? { text: 'Riesgo Elevado', color: 'var(--error-color)' }
                 : { text: 'Riesgo Bajo', color: 'var(--primary-color)' };
         }
 
-        let weightChangeLabel = '% Cambio de Peso Involuntario';
+        let weightChangeLabel = 'Cambio de Peso';
         let weightChangeValue: string | null = null;
         let weightChangeInterpretation: { text: string; color: string; } | undefined = undefined;
 
@@ -125,28 +124,21 @@ const AnthropometryTools: FC<ToolProps> = ({ selectedPerson, lastConsultation, h
             
             if (changePercent < 0) { // Loss
                 const lossPercent = Math.abs(changePercent);
-                weightChangeLabel = '% Pérdida de Peso Involuntaria';
+                weightChangeLabel = 'Pérdida Involuntaria';
                 weightChangeValue = `${lossPercent.toFixed(1)}%`;
 
                 if ((months <= 1 && lossPercent > 5) || (months <= 3 && lossPercent > 7.5) || (months <= 6 && lossPercent > 10)) {
                     weightChangeInterpretation = { text: 'Pérdida Severa ⚠️', color: 'var(--error-color)' };
                 } else if (lossPercent > 2) {
-                    weightChangeInterpretation = { text: 'Pérdida Significativa', color: 'var(--accent-color)' };
+                    weightChangeInterpretation = { text: 'Significativa', color: 'var(--accent-color)' };
                 } else {
                     weightChangeInterpretation = { text: 'No Significativa', color: 'var(--primary-color)' };
                 }
             } else if (changePercent > 0) { // Gain
                 const gainPercent = changePercent;
-                weightChangeLabel = '% Aumento de Peso Involuntario';
+                weightChangeLabel = 'Ganancia Involuntaria';
                 weightChangeValue = `+${gainPercent.toFixed(1)}%`;
-
-                if ((months <= 1 && gainPercent > 5) || (months <= 3 && gainPercent > 7.5) || (months <= 6 && gainPercent > 10)) {
-                    weightChangeInterpretation = { text: 'Aumento Severo ⚠️', color: 'var(--error-color)' };
-                } else if (gainPercent > 2) {
-                    weightChangeInterpretation = { text: 'Aumento Significativo', color: 'var(--accent-color)' };
-                } else {
-                    weightChangeInterpretation = { text: 'No Significativo', color: 'var(--primary-color)' };
-                }
+                weightChangeInterpretation = { text: 'Aumento', color: 'var(--text-color)' };
             }
         }
 
@@ -161,11 +153,11 @@ const AnthropometryTools: FC<ToolProps> = ({ selectedPerson, lastConsultation, h
         const isMetabolicSyndrome = criteriaMetCount >= 3;
 
         return { 
-            imc: { value: imcResult?.toFixed(1) || 'N/A', interpretation: imcInterpretation },
-            healthyWeight: healthyWeightRange ? `${healthyWeightRange.min} - ${healthyWeightRange.max} kg` : 'N/A',
-            whr: { value: whrResult?.toFixed(2) || 'N/A', interpretation: whrInterpretation },
-            whtr: { value: whtrResult?.toFixed(2) || 'N/A', interpretation: whtrInterpretation },
-            weightChange: { label: weightChangeLabel, value: weightChangeValue || 'N/A', interpretation: weightChangeInterpretation },
+            imc: { value: imcResult?.toFixed(1) || '-', interpretation: imcInterpretation },
+            healthyWeight: healthyWeightRange ? `${healthyWeightRange.min} - ${healthyWeightRange.max} kg` : '-',
+            whr: { value: whrResult?.toFixed(2) || '-', interpretation: whrInterpretation },
+            whtr: { value: whtrResult?.toFixed(2) || '-', interpretation: whtrInterpretation },
+            weightChange: { label: weightChangeLabel, value: weightChangeValue || '-', interpretation: weightChangeInterpretation },
             metabolicSyndrome: { count: criteriaMetCount, diagnosis: isMetabolicSyndrome, criteria: criteria }
         };
     }, [data]);
@@ -179,123 +171,122 @@ const AnthropometryTools: FC<ToolProps> = ({ selectedPerson, lastConsultation, h
         );
     };
     
-    // --- Dynamic Styles ---
-    const panelStyle: React.CSSProperties = {
-        backgroundColor: 'var(--surface-color)',
-        borderRadius: '12px',
-        border: '1px solid var(--border-color)',
-        display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr' : '1fr 1.2fr',
-        gap: '2rem',
-        padding: isMobile ? '1rem' : '1.5rem',
-        maxWidth: '1000px',
-        margin: '0 auto',
+    const inputStyle = {
+        ...styles.input,
+        backgroundColor: 'var(--background-color)',
+        marginBottom: 0,
+        padding: '0.65rem 0.75rem'
     };
     
-    const inputColumnStyle: React.CSSProperties = {
-        paddingRight: isMobile ? '0' : '2rem',
-        borderRight: isMobile ? 'none' : '1px solid var(--border-color)',
-        paddingBottom: isMobile ? '2rem' : '0',
-        borderBottom: isMobile ? '1px solid var(--border-color)' : 'none',
-        marginBottom: isMobile ? '2rem' : '0',
+    const groupTitleStyle = {
+        fontSize: '0.9rem',
+        fontWeight: 700,
+        color: 'var(--text-color)',
+        marginBottom: '1rem',
+        textTransform: 'uppercase' as const,
+        letterSpacing: '0.5px',
+        borderBottom: '1px solid var(--border-color)',
+        paddingBottom: '0.5rem'
     };
-
-    const inputGroupStyle: React.CSSProperties = {
-        display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-        gap: '1rem',
-        marginBottom: '1rem'
-    };
-
-    const labInputContainerStyle: React.CSSProperties = {
-        display: 'flex',
-        alignItems: isMobile ? 'stretch' : 'flex-end',
-        flexDirection: isMobile ? 'column' : 'row',
-        gap: '1rem',
-        marginBottom: '1rem'
-    };
-
-    const labToggleStyle: React.CSSProperties = {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.5rem',
-        marginBottom: isMobile ? 0 : '1rem'
-    };
-    
-    const sectionTitleStyle: React.CSSProperties = { fontSize: '1.1rem', fontWeight: 600, color: 'var(--primary-color)', margin: '0 0 1rem 0' };
-    const subSectionTitleStyle: React.CSSProperties = { ...sectionTitleStyle, fontSize: '1rem', color: 'var(--text-color)', marginTop: '2rem' };
-    const resultColumnStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '1rem' };
-    const MS_CRITERIA_LABELS = { waist: 'Obesidad Abdominal', bp: 'Presión Arterial Elevada', tg: 'Triglicéridos Elevados', hdl: 'Colesterol HDL Bajo', glucose: 'Glucosa en Ayuno Elevada' };
 
     return (
-        <div className="fade-in">
-            <div style={panelStyle}>
-                <div style={inputColumnStyle}>
-                    <h3 style={sectionTitleStyle}>Datos del Paciente</h3>
-                    
-                    <h4 style={subSectionTitleStyle}>Antropometría</h4>
-                    <div style={inputGroupStyle}>
-                        <div><label>Peso (kg)</label><input type="number" name="weight" value={data.weight} onChange={handleChange} /></div>
-                        <div><label>Altura (cm)</label><input type="number" name="height" value={data.height} onChange={handleChange} /></div>
-                        <div><label>Cintura (cm)</label><input type="number" name="waist" value={data.waist} onChange={handleChange} /></div>
-                        <div><label>Cadera (cm)</label><input type="number" name="hip" value={data.hip} onChange={handleChange} /></div>
-                    </div>
-                     <div style={{marginBottom: '1rem'}}><label>Género</label><select name="gender" value={data.gender} onChange={handleChange}><option value="female">Mujer</option><option value="male">Hombre</option></select></div>
-                    
-                    <h4 style={{...subSectionTitleStyle, display: 'flex', alignItems: 'center'}}>
-                        Cambio de Peso
-                        <HelpTooltip content="Calcula el % de cambio de peso involuntario en un periodo. Una pérdida o ganancia significativa puede indicar riesgo nutricional." />
-                    </h4>
-                    <div style={inputGroupStyle}>
-                         <div><label>Peso Anterior (kg)</label><input type="number" name="prevWeight" value={data.prevWeight} onChange={handleChange} /></div>
-                         <div><label>Tiempo (meses)</label><input type="number" name="months" value={data.months} onChange={handleChange} /></div>
-                    </div>
-                    
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2rem' }}>
-                        <h4 style={{ ...subSectionTitleStyle, marginTop: 0, marginBottom: 0 }}>Laboratorios y Signos Vitales</h4>
-                        <HelpTooltip content='Marque "En tratamiento" si el paciente usa medicamentos para un valor específico. Esto es crucial para el diagnóstico de Síndrome Metabólico, ya que el tratamiento cuenta como criterio positivo, aún si el valor está controlado.' />
-                    </div>
-
-                    <div style={labInputContainerStyle}><div style={{flex: 1}}><label>P. Arterial</label><div style={{display: 'flex', gap: '0.5rem'}}><input type="number" name="bp_systolic" placeholder="Sistólica" value={data.bp_systolic} onChange={handleChange} /><input type="number" name="bp_diastolic" placeholder="Diastólica" value={data.bp_diastolic} onChange={handleChange} /></div></div><div style={labToggleStyle}><input type="checkbox" name="on_bp_meds" id="on_bp_meds" checked={data.on_bp_meds} onChange={handleChange} /><label htmlFor="on_bp_meds" style={{marginBottom:0}}>En tratamiento</label></div></div>
-                    <div style={labInputContainerStyle}><div style={{flex: 1}}><label>Triglicéridos (mg/dL)</label><input type="number" name="triglycerides" value={data.triglycerides} onChange={handleChange} /></div><div style={labToggleStyle}><input type="checkbox" name="on_tg_meds" id="on_tg_meds" checked={data.on_tg_meds} onChange={handleChange} /><label htmlFor="on_tg_meds" style={{marginBottom:0}}>En tratamiento</label></div></div>
-                    <div style={labInputContainerStyle}><div style={{flex: 1}}><label>HDL (mg/dL)</label><input type="number" name="hdl" value={data.hdl} onChange={handleChange} /></div><div style={labToggleStyle}><input type="checkbox" name="on_hdl_meds" id="on_hdl_meds" checked={data.on_hdl_meds} onChange={handleChange} /><label htmlFor="on_hdl_meds" style={{marginBottom:0}}>En tratamiento</label></div></div>
-                    <div style={labInputContainerStyle}><div style={{flex: 1}}><label>Glucosa Ayuno (mg/dL)</label><input type="number" name="glucose" value={data.glucose} onChange={handleChange} /></div><div style={labToggleStyle}><input type="checkbox" name="on_glucose_meds" id="on_glucose_meds" checked={data.on_glucose_meds} onChange={handleChange} /><label htmlFor="on_glucose_meds" style={{marginBottom:0}}>En tratamiento</label></div></div>
+        <div style={{display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr', gap: '2rem', alignItems: 'start'}}>
+            <CalculatorCard title="Datos Antropométricos" saveDisabled={true} extraActions={null}>
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem'}}>
+                    <div><label style={styles.label}>Peso (kg)</label><input type="number" name="weight" value={data.weight} onChange={handleChange} style={inputStyle} placeholder="0.0"/></div>
+                    <div><label style={styles.label}>Altura (cm)</label><input type="number" name="height" value={data.height} onChange={handleChange} style={inputStyle} placeholder="0"/></div>
+                    <div><label style={styles.label}>Cintura (cm)</label><input type="number" name="waist" value={data.waist} onChange={handleChange} style={inputStyle} placeholder="0"/></div>
+                    <div><label style={styles.label}>Cadera (cm)</label><input type="number" name="hip" value={data.hip} onChange={handleChange} style={inputStyle} placeholder="0"/></div>
                 </div>
-
-                <div style={resultColumnStyle}>
-                    <h3 style={sectionTitleStyle}>Resultados e Interpretación</h3>
-                    <ResultItem label="IMC (kg/m²)" value={results.imc.value} interpretation={results.imc.interpretation} />
-                    <ResultItem label="Rango de Peso Saludable" value={results.healthyWeight} />
-                    <ResultItem label="Índice Cintura-Cadera (ICC)" value={results.whr.value} interpretation={results.whr.interpretation} />
-                    <ResultItem label="Índice Cintura-Talla (ICT)" value={results.whtr.value} interpretation={results.whtr.interpretation} />
-                    <ResultItem label={results.weightChange.label} value={results.weightChange.value} interpretation={results.weightChange.interpretation} />
-                    
-                    <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'var(--background-color)', borderRadius: '8px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                             <p style={{ margin: 0, color: 'var(--text-light)' }}>Síndrome Metabólico (ATP III)</p>
-                             <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: 600, color: results.metabolicSyndrome.diagnosis ? 'var(--error-color)' : 'var(--primary-color)' }}>
-                                {results.metabolicSyndrome.diagnosis ? 'Presente ⚠️' : 'Ausente'} ({results.metabolicSyndrome.count}/5)
-                             </p>
+                <div style={{marginBottom: '1.5rem'}}>
+                    <label style={styles.label}>Género</label>
+                    <div className="select-wrapper">
+                        <select name="gender" value={data.gender} onChange={handleChange} style={inputStyle}>
+                            <option value="female">Mujer</option>
+                            <option value="male">Hombre</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <h4 style={groupTitleStyle}>Cambio de Peso</h4>
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem'}}>
+                     <div><label style={styles.label}>Peso Anterior</label><input type="number" name="prevWeight" value={data.prevWeight} onChange={handleChange} style={inputStyle} placeholder="kg"/></div>
+                     <div><label style={styles.label}>Hace (meses)</label><input type="number" name="months" value={data.months} onChange={handleChange} style={inputStyle} placeholder="#"/></div>
+                </div>
+                
+                <h4 style={groupTitleStyle}>
+                    <div style={{display: 'flex', alignItems: 'center'}}>
+                        Laboratorios y Signos
+                        <HelpTooltip content='Marca "En tratamiento" si el paciente usa medicamentos para controlar este valor.' />
+                    </div>
+                </h4>
+                
+                {[
+                    { label: 'P. Arterial', name: 'bp', units: 'mmHg', placeholder: '120/80', dual: true },
+                    { label: 'Triglicéridos', name: 'triglycerides', units: 'mg/dL', placeholder: '150' },
+                    { label: 'HDL', name: 'hdl', units: 'mg/dL', placeholder: '40' },
+                    { label: 'Glucosa', name: 'glucose', units: 'mg/dL', placeholder: '90' },
+                ].map(field => (
+                    <div key={field.name} style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem'}}>
+                        <div style={{flex: 2}}>
+                            <label style={{fontSize: '0.8rem', color: 'var(--text-light)', marginBottom: '2px'}}>{field.label}</label>
+                            {field.dual ? (
+                                <div style={{display: 'flex', gap: '0.25rem'}}>
+                                    <input type="number" name="bp_systolic" placeholder="SIS" value={data.bp_systolic} onChange={handleChange} style={{...inputStyle, padding: '0.5rem'}} />
+                                    <input type="number" name="bp_diastolic" placeholder="DIA" value={data.bp_diastolic} onChange={handleChange} style={{...inputStyle, padding: '0.5rem'}} />
+                                </div>
+                            ) : (
+                                <input type="number" name={field.name} value={(data as any)[field.name]} onChange={handleChange} style={{...inputStyle, padding: '0.5rem'}} placeholder={field.placeholder} />
+                            )}
                         </div>
-                        <ul style={{listStyle: 'none', padding: 0, margin: '1rem 0 0 0', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
-                            {Object.entries(results.metabolicSyndrome.criteria).map(([key, value]) => (
-                                <li key={key} style={{display: 'flex', alignItems: 'center', gap: '0.5rem', color: value ? 'var(--text-color)' : 'var(--text-light)'}}>
-                                    <span style={{color: value ? 'var(--primary-color)' : 'var(--border-color)'}}>{value ? '✅' : '❌'}</span>
-                                    <span>{MS_CRITERIA_LABELS[key as keyof typeof MS_CRITERIA_LABELS]}</span>
-                                </li>
-                            ))}
+                        <div style={{flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%', paddingBottom: '5px'}}>
+                            <label style={{display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem', cursor: 'pointer'}}>
+                                <input type="checkbox" name={field.name === 'bp' ? 'on_bp_meds' : field.name === 'triglycerides' ? 'on_tg_meds' : field.name === 'hdl' ? 'on_hdl_meds' : 'on_glucose_meds'} checked={(data as any)[field.name === 'bp' ? 'on_bp_meds' : field.name === 'triglycerides' ? 'on_tg_meds' : field.name === 'hdl' ? 'on_hdl_meds' : 'on_glucose_meds']} onChange={handleChange} style={{margin: 0}}/>
+                                Tx
+                            </label>
+                        </div>
+                    </div>
+                ))}
+            </CalculatorCard>
+
+            <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
+                <CalculatorCard 
+                    title="Diagnóstico y Riesgo" 
+                    onSave={handleSave} 
+                    saveDisabled={!selectedPerson} 
+                    saveStatus={saveStatus['anthropometryPanel']}
+                >
+                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                        <ResultMetricCard label="IMC" value={results.imc.value} interpretation={results.imc.interpretation} />
+                        <ResultMetricCard label="Peso Saludable" value={results.healthyWeight} />
+                        <ResultMetricCard label="Cintura/Cadera" value={results.whr.value} interpretation={results.whr.interpretation} />
+                        <ResultMetricCard label={results.weightChange.label} value={results.weightChange.value} interpretation={results.weightChange.interpretation} />
+                    </div>
+                    
+                    <div style={{ marginTop: '1.5rem', padding: '1.25rem', backgroundColor: 'var(--background-color)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                             <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-color)' }}>Síndrome Metabólico (ATP III)</p>
+                             <span style={{ 
+                                 padding: '4px 10px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 700,
+                                 backgroundColor: results.metabolicSyndrome.diagnosis ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                                 color: results.metabolicSyndrome.diagnosis ? 'var(--error-color)' : 'var(--primary-color)'
+                             }}>
+                                {results.metabolicSyndrome.diagnosis ? 'Positivo' : 'Negativo'} ({results.metabolicSyndrome.count}/5)
+                             </span>
+                        </div>
+                        <ul style={{listStyle: 'none', padding: 0, margin: 0, fontSize: '0.85rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem'}}>
+                            {Object.entries(results.metabolicSyndrome.criteria).map(([key, value]) => {
+                                const labels: any = { waist: 'Cintura', bp: 'P. Arterial', tg: 'Triglicéridos', hdl: 'HDL Bajo', glucose: 'Glucosa' };
+                                return (
+                                    <li key={key} style={{display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: value ? 1 : 0.5}}>
+                                        <span style={{color: value ? 'var(--error-color)' : 'var(--text-light)'}}>{value ? '⚠️' : '○'}</span>
+                                        <span>{labels[key]}</span>
+                                    </li>
+                                );
+                            })}
                         </ul>
                     </div>
-                </div>
-            </div>
-            <div style={{maxWidth: '1000px', margin: '1.5rem auto 0 auto', display: 'flex', justifyContent: isMobile ? 'stretch' : 'flex-end'}}>
-                <button 
-                    onClick={handleSave} 
-                    disabled={!selectedPerson || saveStatus['anthropometryPanel'] === 'saving' || saveStatus['anthropometryPanel'] === 'success'} 
-                    style={{minWidth: '250px', width: isMobile ? '100%' : 'auto'}}
-                >
-                     {saveStatus['anthropometryPanel'] === 'saving' ? 'Guardando...' : saveStatus['anthropometryPanel'] === 'success' ? '¡Guardado!' : 'Guardar Evaluación en Expediente'}
-                </button>
+                </CalculatorCard>
             </div>
         </div>
     );

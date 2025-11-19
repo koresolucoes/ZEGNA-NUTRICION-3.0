@@ -1,3 +1,4 @@
+
 import React, { FC, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { CareTeamMemberProfile, TeamMember, InternalNoteWithAuthor } from '../../../types';
@@ -21,7 +22,7 @@ export const TeamTab: FC<TeamTabProps> = ({
     const [activeSubTab, setActiveSubTab] = useState('care_team');
 
     return (
-        <section className="fade-in">
+        <section className="fade-in" style={{ overflow: 'visible' }}>
             {/* Sub-navigation using Folder Tabs metaphor */}
             <div style={{...styles.tabContainer, paddingLeft: 0, marginBottom: '-1px'}}>
                 {[

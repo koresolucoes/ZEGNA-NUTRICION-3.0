@@ -134,7 +134,7 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
     const renderContent = () => {
         if (loading && !person) return <div style={{ padding: '2rem' }}><SkeletonLoader type="detail" count={4} /></div>;
         if (error) return <div style={{ padding: '2rem', textAlign: 'center' }}><p style={styles.error}>{error}</p></div>;
-        if (!person) return <div style={{ padding: '2rem', textAlign: 'center' }}>Perfil não encontrado.</div>;
+        if (!person) return <div style={{ padding: '2rem', textAlign: 'center' }}>Perfil no encontrado.</div>;
 
         return (
             <>
@@ -241,15 +241,15 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
                         </div>
                     </div>
                     <nav style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <NavItem viewName="home" icon={ICONS.home} label="Início" />
-                        <NavItem viewName="plans" icon={ICONS.book} label="Planos" />
-                        <NavItem viewName="progress" icon={ICONS.activity} label="Progresso" />
-                        <NavItem viewName="files" icon={ICONS.file} label="Arquivos" />
+                        <NavItem viewName="home" icon={ICONS.home} label="Inicio" />
+                        <NavItem viewName="plans" icon={ICONS.book} label="Planes" />
+                        <NavItem viewName="progress" icon={ICONS.activity} label="Progreso" />
+                        <NavItem viewName="files" icon={ICONS.file} label="Archivos" />
                         <NavItem viewName="appointments" icon={ICONS.calendar} label="Consultas" />
                         <NavItem viewName="notifications" icon={ICONS.settings} label="Ajustes" />
                     </nav>
                     <button onClick={handleLogout} style={{background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '0.5rem 1rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer'}} className="nav-item-hover">
-                        {ICONS.logout} Sair
+                        {ICONS.logout} Salir
                     </button>
                 </header>
             )}
@@ -286,9 +286,9 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
                     zIndex: 1000,
                     boxShadow: '0 -4px 10px rgba(0,0,0,0.05)'
                 }}>
-                    <BottomNavItem viewName="home" icon={ICONS.home} label="Início" />
-                    <BottomNavItem viewName="plans" icon={ICONS.book} label="Planos" />
-                    <BottomNavItem viewName="progress" icon={ICONS.activity} label="Progresso" />
+                    <BottomNavItem viewName="home" icon={ICONS.home} label="Inicio" />
+                    <BottomNavItem viewName="plans" icon={ICONS.book} label="Planes" />
+                    <BottomNavItem viewName="progress" icon={ICONS.activity} label="Progreso" />
                     <BottomNavItem viewName="appointments" icon={ICONS.calendar} label="Agenda" />
                     <BottomNavItem viewName="files" icon={ICONS.file} label="Docs" />
                 </nav>

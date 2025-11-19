@@ -1,4 +1,3 @@
-
 import React, { FC, useState, useMemo, useCallback } from 'react';
 import { supabase } from '../../supabase';
 import { styles } from '../../constants';
@@ -84,6 +83,8 @@ const ClinicalReferences: FC<ClinicalReferencesProps> = ({ references, selectedP
     }, [lastConsultation]);
 
     const handleEdit = (ref: ClinicalReference) => {
+        // Check if it's a default reference
+        if (ref.id.startsWith('default-')) return;
         setEditingReference(ref);
         setFormModalOpen(true);
     };
@@ -126,7 +127,7 @@ const ClinicalReferences: FC<ClinicalReferencesProps> = ({ references, selectedP
                              else if (ref.category === 'Renal') toolKey = 'renal';
                          }
                          const showButton = !!toolKey;
-                         const buttonLabel = toolKey ? toolLabels[toolKey] : 'Herramientas Clínicas';
+                         const isSystemDefault = ref.id.startsWith('default-');
 
                          return (
                             <div key={ref.id} onClick={() => setViewingReference(ref)} className="card-hover" style={{...styles.infoCard, flexDirection: 'column', alignItems: 'stretch', padding: 0, transition: 'transform 0.2s, box-shadow 0.2s', border: '1px solid var(--border-color)', cursor: 'pointer', backgroundColor: 'var(--surface-color)', borderRadius: '16px'}}>
@@ -165,7 +166,8 @@ const ClinicalReferences: FC<ClinicalReferencesProps> = ({ references, selectedP
                                         </button>
                                      ) : <div></div>}
                                      
-                                     {ref.user_id && (
+                                     {/* Hide actions for default references */}
+                                     {!isSystemDefault && ref.user_id && (
                                         <div style={{display: 'flex', gap: '0.5rem'}}>
                                             <button onClick={(e) => { e.stopPropagation(); handleEdit(ref); }} style={{...styles.iconButton, width: '28px', height: '28px', padding: '4px'}} title="Editar">{ICONS.edit}</button>
                                             <button onClick={(e) => { e.stopPropagation(); setDeletingReference(ref); }} style={{...styles.iconButton, color: 'var(--error-color)', width: '28px', height: '28px', padding: '4px'}} title="Eliminar">{ICONS.delete}</button>
@@ -191,7 +193,7 @@ const ClinicalReferences: FC<ClinicalReferencesProps> = ({ references, selectedP
                     width: '56px', 
                     height: '56px', 
                     borderRadius: '50%', 
-                    backgroundColor: 'var(--primary-color)',
+                    backgroundColor: 'var(--primary-color)', 
                     color: 'white',
                     display: 'flex', 
                     alignItems: 'center', 

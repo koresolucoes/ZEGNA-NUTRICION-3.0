@@ -40,8 +40,43 @@ import BetaFeedbackModal from '../shared/BetaFeedbackModal';
 import UserGuidePage from '../../pages/UserGuidePage';
 import { useThemeManager } from '../../contexts/ThemeContext';
 
+const PlanLockedView: FC<{ onGoToBilling: () => void }> = ({ onGoToBilling }) => (
+    <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '80vh',
+        textAlign: 'center',
+        color: 'var(--text-color)',
+        padding: '2rem'
+    }}>
+        <div style={{ 
+            fontSize: '3rem', 
+            marginBottom: '1.5rem', 
+            color: 'var(--text-light)', 
+            backgroundColor: 'var(--surface-hover-color)',
+            borderRadius: '50%',
+            width: '80px',
+            height: '80px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+        }}>
+            {ICONS.lock}
+        </div>
+        <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Acceso Restringido</h2>
+        <p style={{ color: 'var(--text-light)', maxWidth: '450px', marginBottom: '2rem', lineHeight: 1.6 }}>
+            Tu plan actual ha vencido o no tienes una suscripción activa. Para acceder a este módulo y continuar gestionando tu clínica, por favor actualiza tu plan.
+        </p>
+        <button onClick={onGoToBilling} className="button-primary" style={{ padding: '0.75rem 2rem', fontSize: '1rem' }}>
+            Ver Planes de Suscripción
+        </button>
+    </div>
+);
+
 const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
-    const { clinic, role } = useClinic(); 
+    const { clinic, role, subscription } = useClinic(); 
     const [view, setView] = useState({ page: 'home', context: {} as any });
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1100); 
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -66,6 +101,10 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
         'crecimiento': false,
         'mi-clinica': false
     });
+
+    const isSubscriptionActive = subscription?.status === 'active' || subscription?.status === 'trialing';
+    // Pages that are always accessible even without an active plan
+    const unrestrictedPages = ['profile', 'profile-form', 'settings', 'clinic-settings', 'billing', 'displays'];
 
     const toggleCategory = (key: string) => {
         setOpenCategories(prev => ({ ...prev, [key]: !prev[key] }));
@@ -146,6 +185,12 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
     
     const renderContent = () => {
         const { page, context } = view;
+
+        // Check if access is restricted
+        if (!isSubscriptionActive && !unrestrictedPages.includes(page)) {
+             return <PlanLockedView onGoToBilling={() => navigate('billing')} />;
+        }
+
         switch (page) {
             case 'home': return <HomePage user={session.user} isMobile={isMobile} navigate={navigate} openQuickConsult={() => setQuickConsultModalOpen(true)} />;
             case 'clients': return <ClientsPage onAddClient={() => navigate('client-form')} onEditClient={(personId) => navigate('client-form', { personId })} onViewDetails={(personId) => navigate('client-detail', { personId })} isMobile={isMobile} />;
@@ -208,31 +253,34 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
 
     const NavItem: FC<{ name: string, pageName: string, icon?: React.ReactNode, isSubItem?: boolean, context?: any }> = ({ name, pageName, icon, isSubItem = false, context }) => {
         const isActive = (view.page === pageName) && (context?.initialTab ? view.context?.initialTab === context.initialTab : true);
+        const isLocked = !isSubscriptionActive && !unrestrictedPages.includes(pageName);
         
-        // Style changes for new visual design
         const containerStyle: React.CSSProperties = {
             ...styles.navItem,
             backgroundColor: isActive ? 'var(--primary-light)' : 'transparent',
-            color: isActive ? 'var(--primary-color)' : 'var(--text-color)',
+            color: isActive ? 'var(--primary-color)' : isLocked ? 'var(--text-light)' : 'var(--text-color)',
             fontWeight: isActive ? 600 : 500,
-            borderRadius: '12px', // More rounded
+            borderRadius: '12px',
             padding: '0.65rem 1rem',
             marginBottom: '0.25rem',
             transition: 'all 0.2s ease',
-            ...(isSubItem && { paddingLeft: '2.75rem', fontSize: '0.9rem', color: isActive ? 'var(--primary-color)' : 'var(--text-light)' })
+            opacity: isLocked ? 0.6 : 1,
+            cursor: isLocked ? 'not-allowed' : 'pointer',
+            ...(isSubItem && { paddingLeft: '2.75rem', fontSize: '0.9rem', color: isActive ? 'var(--primary-color)' : isLocked ? 'var(--text-light)' : 'var(--text-light)' })
         };
 
         return (
             <div
-                onClick={() => navigate(pageName, context)}
+                onClick={isLocked ? undefined : () => navigate(pageName, context)}
                 style={containerStyle}
-                className="nav-item-hover"
+                className={!isLocked ? "nav-item-hover" : ""}
                 role="button"
                 aria-label={`Navegar a ${name}`}
+                title={isLocked ? "Requiere plan activo" : ""}
             >
                 {icon && (
                     <span style={{
-                        color: isActive ? 'var(--primary-color)' : 'var(--text-light)', 
+                        color: isActive ? 'var(--primary-color)' : isLocked ? 'var(--text-light)' : 'var(--text-light)', 
                         fontSize: isSubItem ? '1rem' : '1.2rem',
                         minWidth: '24px',
                         display: 'flex',
@@ -242,7 +290,10 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                     </span>
                 )}
                 <span style={{ flex: 1 }}>{name}</span>
-                {isActive && !isSubItem && (
+                {isLocked && (
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>{ICONS.lock}</span>
+                )}
+                {isActive && !isSubItem && !isLocked && (
                     <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--primary-color)' }} />
                 )}
             </div>
@@ -405,9 +456,11 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                             </h2>
                         </div>
                     </div>
-                    <button onClick={() => setQuickConsultModalOpen(true)} style={{...styles.iconButton, backgroundColor: 'var(--primary-light)', color: 'var(--primary-color)', borderRadius: '50%', width: '36px', height: '36px'}} title="Consulta Rápida">
-                        +
-                    </button>
+                    {isSubscriptionActive && (
+                        <button onClick={() => setQuickConsultModalOpen(true)} style={{...styles.iconButton, backgroundColor: 'var(--primary-light)', color: 'var(--primary-color)', borderRadius: '50%', width: '36px', height: '36px'}} title="Consulta Rápida">
+                            +
+                        </button>
+                    )}
                 </header>
             )}
 
@@ -508,7 +561,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                 {renderContent()}
             </main>
             
-            {!isFabHidden && (
+            {isSubscriptionActive && !isFabHidden && (
                 <FloatingActionButton
                     onNewClient={() => navigate('client-form')}
                     onNewAfiliado={() => navigate('afiliado-form')}

@@ -27,7 +27,7 @@ export const ClinicalHistoryTab: FC<ClinicalHistoryTabProps> = ({
     const [activeSubTab, setActiveSubTab] = useState('allergies');
 
     return (
-        <section className="fade-in">
+        <section className="fade-in" style={{ overflow: 'visible' }}>
             {/* Sub-navigation using Folder Tabs metaphor */}
             <div style={{...styles.tabContainer, paddingLeft: 0, marginBottom: '-1px'}}>
                 {[

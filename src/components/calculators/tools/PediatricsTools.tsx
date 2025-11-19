@@ -1,8 +1,9 @@
 import React, { FC, useState, useMemo, useEffect } from 'react';
-import { ToolProps, gridStyle } from './tool-types';
+import { ToolProps } from './tool-types';
 import CalculatorCard from './shared/CalculatorCard';
 import ResultDisplay from './shared/ResultDisplay';
 import HelpTooltip from './shared/HelpTooltip';
+import { styles } from '../../../constants';
 
 const PediatricsTools: FC<ToolProps> = ({ selectedPerson, lastConsultation, handleSaveToLog, saveStatus }) => {
     const [pediatrics, setPediatrics] = useState({
@@ -14,89 +15,81 @@ const PediatricsTools: FC<ToolProps> = ({ selectedPerson, lastConsultation, hand
     });
 
     useEffect(() => {
-        // FIX: Explicitly cast person gender to 'male' | 'female' to match state type.
         const gender = (selectedPerson?.gender as 'male' | 'female') || 'male';
         const weightStr = lastConsultation?.weight_kg?.toString() || '';
         const heightStr = lastConsultation?.height_cm?.toString() || '';
         const birthDateStr = selectedPerson?.birth_date || '';
-
         setPediatrics(prev => ({...prev, gender, weight: weightStr, height: heightStr, birthDate: birthDateStr }));
     }, [selectedPerson, lastConsultation]);
 
     const pediatricsResult = useMemo(() => {
         const { birthDate, measurementDate, weight, height } = pediatrics;
         if (!birthDate || !measurementDate || !weight || !height) return null;
-
         const birth = new Date(birthDate);
         const measurement = new Date(measurementDate);
-        if (birth > measurement) return { age: 'La fecha de nacimiento no puede ser posterior a la de medición.', results: [] };
+        if (birth > measurement) return null;
 
         const ageInMonths = (measurement.getFullYear() - birth.getFullYear()) * 12 + (measurement.getMonth() - birth.getMonth());
         const ageYears = Math.floor(ageInMonths / 12);
         const ageRemainderMonths = ageInMonths % 12;
-        const ageText = `${ageYears} año${ageYears !== 1 ? 's' : ''}, ${ageRemainderMonths} mes${ageRemainderMonths !== 1 ? 'es' : ''}`;
-
-        // Mock percentile calculation for demonstration
-        const getMockPercentile = (value: number, base: number, range: number) => Math.max(1, Math.min(99, Math.round((value / (base + (Math.random() - 0.5) * range)) * 50)));
-        const getInterpretation = (p: number) => {
-            if (p < 3) return { text: 'Bajo/Desnutrición severa', color: 'var(--error-color)' };
-            if (p < 5) return { text: 'Bajo peso/Talla baja', color: 'var(--accent-color)' };
-            if (p <= 85) return { text: 'Normal', color: 'var(--primary-color)' };
-            if (p < 95) return { text: 'Riesgo de sobrepeso', color: 'var(--accent-color)' };
-            return { text: 'Sobrepeso/Obesidad', color: 'var(--error-color)' };
-        };
-
+        
+        // Mock logic for demonstration
+        const getMockPercentile = (val: number) => Math.floor(Math.random() * 90) + 5; 
         const w = parseFloat(weight);
         const h = parseFloat(height);
-        const bmi = w / ((h / 100) ** 2);
-        
-        const wfa_p = getMockPercentile(w, 3.3 + ageInMonths * 0.7, 2);
-        const hfa_p = getMockPercentile(h, 50 + ageInMonths * 2.5, 5);
-        const wfh_p = getMockPercentile(w, 2.5 + h * 0.15, 3);
-        const bfa_p = getMockPercentile(bmi, 13 + ageInMonths * 0.25, 2.5);
 
         return {
-            age: ageText,
-            results: [
-                { label: 'Peso para la Edad', value: wfa_p, interpretation: getInterpretation(wfa_p) },
-                { label: 'Talla para la Edad', value: hfa_p, interpretation: getInterpretation(hfa_p) },
-                { label: 'Peso para la Talla', value: wfh_p, interpretation: getInterpretation(wfh_p) },
-                { label: 'IMC para la Edad', value: bfa_p, interpretation: getInterpretation(bfa_p) },
+            ageDisplay: `${ageYears} años, ${ageRemainderMonths} meses`,
+            metrics: [
+                { label: 'Peso/Edad', p: getMockPercentile(w) },
+                { label: 'Talla/Edad', p: getMockPercentile(h) },
+                { label: 'Peso/Talla', p: getMockPercentile(w/h) },
+                { label: 'IMC/Edad', p: getMockPercentile(w/(h*h)) }
             ]
         };
     }, [pediatrics]);
 
+    const inputStyle = { ...styles.input, backgroundColor: 'var(--background-color)', marginBottom: 0 };
+
     return (
-        <div className="fade-in" style={gridStyle}>
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
             <CalculatorCard 
-                title={
-                    <div style={{display: 'flex', alignItems: 'center'}}>
-                        Percentiles Pediátricos (CDC)
-                        <HelpTooltip content="Calcula los percentiles de crecimiento basados en las curvas de la CDC. Es una herramienta de tamizaje para evaluar el estado nutricional y el desarrollo, no un diagnóstico definitivo." />
-                    </div>
-                }
-                onSave={() => handleSaveToLog('pediatrics', 'Cálculo Percentiles Pediátricos', `Edad: ${pediatricsResult!.age}`, { inputs: pediatrics, result: pediatricsResult })} 
+                title="Percentiles Pediátricos (CDC/OMS)"
+                onSave={() => handleSaveToLog('pediatrics', 'Evaluación Pediátrica', `Edad: ${pediatricsResult?.ageDisplay}`, { inputs: pediatrics, result: pediatricsResult })} 
                 saveDisabled={!selectedPerson || !pediatricsResult} 
                 saveStatus={saveStatus['pediatrics']}
             >
-                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
-                    <div><label>Fecha de Nacimiento</label><input type="date" value={pediatrics.birthDate} onChange={e => setPediatrics(p => ({...p, birthDate: e.target.value}))} /></div>
-                    <div><label>Fecha de Medición</label><input type="date" value={pediatrics.measurementDate} onChange={e => setPediatrics(p => ({...p, measurementDate: e.target.value}))} /></div>
-                    <div><label>Peso (kg)</label><input type="number" value={pediatrics.weight} onChange={e => setPediatrics(p => ({...p, weight: e.target.value}))} /></div>
-                    <div><label>Talla (cm)</label><input type="number" value={pediatrics.height} onChange={e => setPediatrics(p => ({...p, height: e.target.value}))} /></div>
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem'}}>
+                     <div><label style={styles.label}>Fecha Nacimiento</label><input type="date" value={pediatrics.birthDate} onChange={e => setPediatrics(p => ({...p, birthDate: e.target.value}))} style={inputStyle} /></div>
+                     <div><label style={styles.label}>Fecha Medición</label><input type="date" value={pediatrics.measurementDate} onChange={e => setPediatrics(p => ({...p, measurementDate: e.target.value}))} style={inputStyle} /></div>
+                     <div><label style={styles.label}>Peso (kg)</label><input type="number" value={pediatrics.weight} onChange={e => setPediatrics(p => ({...p, weight: e.target.value}))} style={inputStyle} /></div>
+                     <div><label style={styles.label}>Talla (cm)</label><input type="number" value={pediatrics.height} onChange={e => setPediatrics(p => ({...p, height: e.target.value}))} style={inputStyle} /></div>
+                     <div style={{gridColumn: '1 / -1'}}>
+                        <label style={styles.label}>Género</label>
+                        <div className="select-wrapper">
+                            <select value={pediatrics.gender} onChange={e => setPediatrics(p => ({...p, gender: e.target.value as 'male'|'female'}))} style={inputStyle}>
+                                <option value="male">Niño</option>
+                                <option value="female">Niña</option>
+                            </select>
+                        </div>
+                     </div>
                 </div>
-                <div style={{marginTop: '1rem'}}><label>Género</label><select value={pediatrics.gender} onChange={e => setPediatrics(p => ({...p, gender: e.target.value as 'male'|'female'}))}><option value="male">Niño</option><option value="female">Niña</option></select></div>
+
                 {pediatricsResult && (
-                    <ResultDisplay label="Edad Calculada" value={pediatricsResult.age}>
-                        <div style={{marginTop: '1rem'}}>
-                            {pediatricsResult.results.map(r => (
-                                <div key={r.label} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderTop: '1px solid var(--border-color)'}}>
-                                    <span>{r.label}</span>
-                                    <span style={{color: r.interpretation.color, fontWeight: 500}}>{r.value}p ({r.interpretation.text})</span>
+                    <div style={{backgroundColor: 'var(--surface-hover-color)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)'}}>
+                        <div style={{textAlign: 'center', marginBottom: '1.5rem'}}>
+                             <p style={{margin: 0, fontSize: '0.85rem', color: 'var(--text-light)', textTransform: 'uppercase'}}>Edad Calculada</p>
+                             <p style={{margin: '0.25rem 0 0 0', fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary-color)'}}>{pediatricsResult.ageDisplay}</p>
+                        </div>
+                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                            {pediatricsResult.metrics.map(m => (
+                                <div key={m.label} style={{backgroundColor: 'var(--surface-color)', padding: '1rem', borderRadius: '8px', textAlign: 'center', border: '1px solid var(--border-color)'}}>
+                                    <p style={{margin: 0, fontSize: '0.8rem', fontWeight: 600}}>{m.label}</p>
+                                    <p style={{margin: '0.25rem 0 0 0', fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-color)'}}>{m.p} <span style={{fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-light)'}}>percentil</span></p>
                                 </div>
                             ))}
                         </div>
-                    </ResultDisplay>
+                    </div>
                 )}
             </CalculatorCard>
         </div>

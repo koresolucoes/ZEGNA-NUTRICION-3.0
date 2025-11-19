@@ -29,7 +29,7 @@ interface ConsultationModePageProps {
     medications?: Medication[];
     lifestyleHabits?: LifestyleHabits | null;
     internalNotes?: InternalNoteWithAuthor[];
-    onDataRefresh: () => void;
+    onDataRefresh: (silent?: boolean) => void;
     onExit: () => void;
     isMobile: boolean;
     setViewingConsultation: (consultation: ConsultationWithLabs | null) => void;
@@ -46,6 +46,21 @@ const areDatesEqual = (d1: Date, d2: Date) =>
     d1.getMonth() === d2.getMonth() && 
     d1.getDate() === d2.getDate();
 
+// Define Modal Component outside to prevent re-rendering flicker
+const ToolsModal: FC<{ onClose: () => void; children: ReactNode; isMobile: boolean }> = ({ onClose, children, isMobile }) => (
+    <div style={{ ...styles.modalOverlay, zIndex: 1100, padding: isMobile ? '0.5rem' : '2rem', backdropFilter: 'blur(5px)' }}>
+        <div style={{ ...styles.modalContent, width: '95%', maxWidth: '1400px', height: isMobile ? '95vh' : '90vh' }} className="fade-in">
+            <div style={styles.modalHeader}>
+                <h2 style={styles.modalTitle}>Herramientas y Calculadoras</h2>
+                <button onClick={onClose} style={{ ...styles.iconButton, border: 'none' }}>{ICONS.close}</button>
+            </div>
+            <div style={{ ...styles.modalBody, display: 'flex', flexDirection: 'column' }}>
+                {children}
+            </div>
+        </div>
+    </div>
+);
+
 const ConsultationModePage: FC<ConsultationModePageProps> = ({ 
     person, personType, consultations, logs, dietLogs, exerciseLogs, planHistory, appointments, allergies = [], medicalHistory = [], medications = [], lifestyleHabits, internalNotes, 
     onDataRefresh, onExit, isMobile, setViewingConsultation, setViewingLog, setViewingDietLog, setViewingExerciseLog, clinic, subscription
@@ -53,6 +68,22 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
     
     const personName = person.full_name;
     const personBirthDate = person.birth_date;
+    
+    // Timer State
+    const [elapsedTime, setElapsedTime] = useState(0);
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setElapsedTime(prev => prev + 1);
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const formatTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
     
     const hasAiFeature = useMemo(() => {
         return subscription?.plans?.features ? (subscription.plans.features as any).ai_assistant === true : false;
@@ -82,12 +113,11 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                 if (error) {
                     console.error("Failed to update appointment status to 'in-consultation'", error);
                 } else {
-                    onDataRefresh();
+                    onDataRefresh(true);
                 }
             }
         };
         startConsultation();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sessionAppointment?.id, onDataRefresh]);
 
     const latestMetrics = useMemo(() => {
@@ -125,6 +155,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
     const [quickLog, setQuickLog] = useState('');
     const [formLoading, setFormLoading] = useState<'consult' | 'log' | null>(null);
     const [appointmentUpdateLoading, setAppointmentUpdateLoading] = useState(false);
+    const [quickSuccess, setQuickSuccess] = useState<string | null>(null);
 
     // AI Assistant States
     const [messages, setMessages] = useState<AiMessage[]>([]);
@@ -158,6 +189,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
     const handleQuickConsultSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setFormLoading('consult');
+        setQuickSuccess(null);
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) throw new Error("User not authenticated.");
@@ -174,7 +206,13 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                 nutritionist_id: session.user.id,
             });
             setQuickConsult({ weight_kg: '', height_cm: '' });
-            onDataRefresh();
+            
+            // Show success message locally without triggering full loading spinner
+            setQuickSuccess("Mediciones registradas con éxito.");
+            setTimeout(() => setQuickSuccess(null), 3000);
+            
+            // Refresh data silently (without skeleton loader)
+            onDataRefresh(true); 
         } catch (error) { console.error("Error saving quick consult:", error); }
         finally { setFormLoading(null); }
     };
@@ -183,6 +221,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
         e.preventDefault();
         if (!quickLog.trim()) return;
         setFormLoading('log');
+        setQuickSuccess(null);
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) throw new Error("User not authenticated.");
@@ -197,7 +236,13 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
 
             await supabase.from('logs').insert(payload);
             setQuickLog('');
-            onDataRefresh();
+            
+            // Show success message locally without triggering full loading spinner
+            setQuickSuccess("Nota guardada con éxito.");
+            setTimeout(() => setQuickSuccess(null), 3000);
+
+            // Refresh data silently (without skeleton loader)
+            onDataRefresh(true);
         } catch (error) { console.error("Error saving quick log:", error); }
         finally { setFormLoading(null); }
     };
@@ -222,7 +267,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
 
         return sorted.filter(item => {
             const itemDate = new Date(item.date);
-            itemDate.setUTCHours(12,0,0,0); // Normalize date for comparison
+            itemDate.setUTCHours(12,0,0,0);
 
             if (startDate && itemDate < startDate) return false;
             if (endDate && itemDate > endDate) return false;
@@ -247,7 +292,6 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                     }
                     case 'exercise': {
                         const e = item as unknown as ExerciseLog;
-                        // Safe cast for exercises array
                         const exercises = (e.ejercicios as any[] || []).map(ex => ex.nombre).join(' ');
                         contentToSearch = `rutina ${e.enfoque || ''} ${exercises}`; 
                         break;
@@ -311,12 +355,11 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
         if (error) {
             console.error("Error updating appointment status:", error);
         } else {
-            onDataRefresh();
+            onDataRefresh(true); // Silent update
         }
         setAppointmentUpdateLoading(false);
     };
 
-    // --- AI CONTEXT HELPERS ---
     const formatDate = (date: Date) => date.toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' });
 
     const sendContextToAi = (context: { displayText: string; fullText: string; }) => {
@@ -355,7 +398,6 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                 break;
             case 'diet':
                  displayText = `Dieta ${formatDate(item.date)}`;
-                // FIX: Type assertion for DietLog keys access
                  const dietLog = item as DietLog;
                 fullText = `Plan Alimenticio (${formatDate(item.date)}): ${['desayuno', 'comida', 'cena'].map(m => (dietLog as any)[m] ? `${m.charAt(0).toUpperCase()}${m.slice(1)}: ${(dietLog as any)[m]}` : '').filter(Boolean).join('. ')}`;
                 break;
@@ -368,13 +410,18 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
         return { displayText, fullText };
     };
 
-    const handleAiSubmit = async (e: FormEvent) => {
-        e.preventDefault();
-        if (!userInput.trim() || aiLoading) return;
+    const handleAiSubmit = async (e: FormEvent | string) => {
+        if (typeof e !== 'string') {
+             e.preventDefault();
+        }
+        
+        const textInput = typeof e === 'string' ? e : userInput;
+
+        if (!textInput.trim() || aiLoading) return;
         
         const userMessage: AiMessage = {
             role: 'user',
-            content: userInput,
+            content: textInput,
             context: aiContext,
         };
 
@@ -389,7 +436,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
             
             let systemInstruction = `Eres un asistente experto en nutrición. Analiza el siguiente contexto clínico de un paciente y responde la pregunta del nutriólogo. Sé conciso y profesional.
             ---
-            CONTEXTO GENERAL DEL PACiente:
+            CONTEXTO GENERAL DEL PACIENTE:
             - Nombre: ${personName}
             - Edad: ${calculateAge(personBirthDate)} años
             - Objetivo Principal: ${person.health_goal || 'No especificado'}
@@ -426,35 +473,48 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
             setAiLoading(false);
         }
     };
-    
-    const ToolsModal: FC<{ onClose: () => void; children: ReactNode }> = ({ onClose, children }) => (
-        <div style={{ ...styles.modalOverlay, zIndex: 1100, padding: isMobile ? '0.5rem' : '2rem', backdropFilter: 'blur(5px)' }}>
-            <div style={{ ...styles.modalContent, width: '95%', maxWidth: '1400px', height: isMobile ? '95vh' : '90vh' }}>
-                <div style={styles.modalHeader}>
-                    <h2 style={styles.modalTitle}>Herramientas y Calculadoras</h2>
-                    <button onClick={onClose} style={{ ...styles.iconButton, border: 'none' }}>{ICONS.close}</button>
-                </div>
-                <div style={{ ...styles.modalBody, display: 'flex', flexDirection: 'column' }}>
-                    {children}
-                </div>
-            </div>
-        </div>
-    );
 
     return (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'var(--background-color)', zIndex: 1000, display: 'flex', flexDirection: 'column' }}>
+            {/* Render Modal conditionally here to avoid flicker from unmounting/mounting */}
             {isToolsModalOpen && (
-                <ToolsModal onClose={() => setIsToolsModalOpen(false)}>
+                <ToolsModal onClose={() => setIsToolsModalOpen(false)} isMobile={isMobile}>
                     <CalculatorsPage isMobile={isMobile} initialPersonToLoad={person} />
                 </ToolsModal>
             )}
-            <header style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', flexShrink: 0 }}>
-                <h2 style={{ margin: 0, fontSize: isMobile ? '1.1rem' : '1.25rem', color: 'var(--primary-color)' }}>Modo Consulta: {personName}</h2>
-                <div style={{display: 'flex', gap: '1rem'}}>
-                    <button onClick={() => setIsToolsModalOpen(true)} className="button-secondary">{ICONS.calculator} Herramientas</button>
-                    <button onClick={onExit} className="button-danger">Finalizar</button>
+            
+            {/* Global Header for Consultation Mode */}
+            <header style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    {/* Heuristic 1: Visibility of System Status (Timer) */}
+                    <div style={{ backgroundColor: 'var(--primary-light)', color: 'var(--primary-dark)', padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: 700, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span className="pulse-dot" style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--error-color)', display: 'block' }}></span>
+                        {formatTime(elapsedTime)}
+                    </div>
+                    <h2 style={{ margin: 0, fontSize: isMobile ? '1rem' : '1.1rem', color: 'var(--text-color)' }}>{personName}</h2>
+                </div>
+                
+                <div style={{display: 'flex', gap: '0.5rem'}}>
+                     {/* Heuristic 7: Flexibility (Tools Shortcut) */}
+                    <button onClick={() => setIsToolsModalOpen(true)} className="button-secondary" title="Herramientas y Calculadoras">
+                         {isMobile ? ICONS.calculator : 'Herramientas'}
+                    </button>
+                    <button onClick={onExit} className="button-danger">
+                         {isMobile ? ICONS.check : 'Finalizar Consulta'}
+                    </button>
                 </div>
             </header>
+
+            <style>{`
+                @keyframes pulse-red {
+                    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+                    70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+                    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+                }
+                .pulse-dot {
+                    animation: pulse-red 2s infinite;
+                }
+            `}</style>
 
             <main style={isMobile 
                 ? { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' } 
@@ -464,11 +524,11 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                     <>
                         <nav className="tabs" style={{ padding: '0 0.5rem', flexShrink: 0 }}>
                             <button className={`tab-button ${activeMobileTab === 'summary' ? 'active' : ''}`} onClick={() => setActiveMobileTab('summary')}>Resumen</button>
-                            <button className={`tab-button ${activeMobileTab === 'timeline' ? 'active' : ''}`} onClick={() => setActiveMobileTab('timeline')}>Timeline</button>
+                            <button className={`tab-button ${activeMobileTab === 'timeline' ? 'active' : ''}`} onClick={() => setActiveMobileTab('timeline')}>Expediente</button>
                             <button className={`tab-button ${activeMobileTab === 'ai' ? 'active' : ''}`} onClick={() => setActiveMobileTab('ai')}>Asistente</button>
                         </nav>
                         <div style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
-                            {activeMobileTab === 'summary' && <SummaryPanel person={person} latestMetrics={latestMetrics} relevantAppointment={relevantAppointment} updateAppointmentStatus={updateAppointmentStatus} appointmentUpdateLoading={appointmentUpdateLoading} quickConsult={quickConsult} setQuickConsult={setQuickConsult} handleQuickConsultSubmit={handleQuickConsultSubmit} formLoading={formLoading} quickLog={quickLog} setQuickLog={setQuickLog} handleQuickLogSubmit={handleQuickLogSubmit} sendContextToAi={sendContextToAi} formatSummaryForAI={formatSummaryForAI} calculateAge={calculateAge} />}
+                            {activeMobileTab === 'summary' && <SummaryPanel person={person} latestMetrics={latestMetrics} relevantAppointment={relevantAppointment} updateAppointmentStatus={updateAppointmentStatus} appointmentUpdateLoading={appointmentUpdateLoading} quickConsult={quickConsult} setQuickConsult={setQuickConsult} handleQuickConsultSubmit={handleQuickConsultSubmit} formLoading={formLoading} quickLog={quickLog} setQuickLog={setQuickLog} handleQuickLogSubmit={handleQuickLogSubmit} sendContextToAi={sendContextToAi} formatSummaryForAI={formatSummaryForAI} calculateAge={calculateAge} quickSuccess={quickSuccess} />}
                             {activeMobileTab === 'timeline' && <TimelinePanel timeline={timeline} timelineFilters={timelineFilters} setTimelineFilters={setTimelineFilters} handleTimelineItemClick={handleTimelineItemClick} sendContextToAi={sendContextToAi} formatItemForAI={formatItemForAI} />}
                             {activeMobileTab === 'ai' && (
                                 hasAiFeature ? (
@@ -487,12 +547,17 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                     </>
                 ) : (
                     <>
+                        {/* Left Panel: Quick Actions & Vitals */}
                         <aside style={{ width: '25%', display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto' }}>
-                            <SummaryPanel person={person} latestMetrics={latestMetrics} relevantAppointment={relevantAppointment} updateAppointmentStatus={updateAppointmentStatus} appointmentUpdateLoading={appointmentUpdateLoading} quickConsult={quickConsult} setQuickConsult={setQuickConsult} handleQuickConsultSubmit={handleQuickConsultSubmit} formLoading={formLoading} quickLog={quickLog} setQuickLog={setQuickLog} handleQuickLogSubmit={handleQuickLogSubmit} sendContextToAi={sendContextToAi} formatSummaryForAI={formatSummaryForAI} calculateAge={calculateAge} />
+                            <SummaryPanel person={person} latestMetrics={latestMetrics} relevantAppointment={relevantAppointment} updateAppointmentStatus={updateAppointmentStatus} appointmentUpdateLoading={appointmentUpdateLoading} quickConsult={quickConsult} setQuickConsult={setQuickConsult} handleQuickConsultSubmit={handleQuickConsultSubmit} formLoading={formLoading} quickLog={quickLog} setQuickLog={setQuickLog} handleQuickLogSubmit={handleQuickLogSubmit} sendContextToAi={sendContextToAi} formatSummaryForAI={formatSummaryForAI} calculateAge={calculateAge} quickSuccess={quickSuccess} />
                         </aside>
+
+                        {/* Center Panel: Timeline (The "Source of Truth") */}
                         <section style={{ flex: 1.5, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                            <TimelinePanel timeline={timeline} timelineFilters={timelineFilters} setTimelineFilters={setTimelineFilters} handleTimelineItemClick={handleTimelineItemClick} sendContextToAi={sendContextToAi} formatItemForAI={formatItemForAI} />
                         </section>
+
+                        {/* Right Panel: AI Assistant (The "Copilot") */}
                         <aside style={{ width: '30%', display: 'flex' }}>
                             {hasAiFeature ? (
                                 <AiAssistantPanel messages={messages} aiLoading={aiLoading} chatEndRef={chatEndRef} handleAiSubmit={handleAiSubmit} aiContext={aiContext} setAiContext={setAiContext} userInput={userInput} setUserInput={setUserInput} aiInputRef={aiInputRef} />
