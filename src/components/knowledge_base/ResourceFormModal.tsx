@@ -1,5 +1,5 @@
 
-import React, { FC, useState, useEffect, FormEvent } from 'react';
+import React, { FC, useState, useEffect, FormEvent, useRef } from 'react';
 import { createPortal } from 'react-dom';
 // FIX: In Supabase v2, User is exported via `import type`.
 import type { User } from '@supabase/supabase-js';
@@ -50,6 +50,7 @@ const ResourceFormModal: FC<ResourceFormModalProps> = ({ isOpen, onClose, user, 
     const [fileToUpload, setFileToUpload] = useState<File | null>(null);
     const [existingFileUrl, setExistingFileUrl] = useState<string | null>(null);
     const [isFileRemoved, setIsFileRemoved] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
 
     useEffect(() => {
@@ -89,9 +90,11 @@ const ResourceFormModal: FC<ResourceFormModalProps> = ({ isOpen, onClose, user, 
     const handleRemoveExistingFile = () => {
         setIsFileRemoved(true);
         setExistingFileUrl(null); // Visually remove it for the user
+        setFileToUpload(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
-    // Helper to clean filenames strictly (Alphanumeric, dots, underscores ONLY) to avoid Invalid Key errors
+    // Helper to clean filenames strictly (Alphanumeric, dots, underscores ONLY)
     const sanitizeFileName = (name: string) => {
         return name
             .replace(/[^a-zA-Z0-9.]/g, '_') // Replace ANY special char with underscore
@@ -103,84 +106,74 @@ const ResourceFormModal: FC<ResourceFormModalProps> = ({ isOpen, onClose, user, 
         if (!clinic) { setError("No se pudo identificar la clínica. Intenta refrescar la página."); return; }
         setLoading(true);
         setError(null);
+
         try {
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
+            if (!currentUser) throw new Error("Usuario no autenticado.");
+
             const tagsArray = formData.tags.split(',').map(tag => tag.trim()).filter(Boolean);
             
-            // 1. Prepare base payload for database
+            // 1. Handle File Upload FIRST (Generate the URL)
+            let finalFileUrl = resourceToEdit?.file_url || null;
+
+            if (isFileRemoved) {
+                finalFileUrl = null;
+                // Optional: Delete old file from storage here if desired
+            }
+
+            if (fileToUpload) {
+                const fileExt = fileToUpload.name.split('.').pop() || '';
+                const baseName = fileToUpload.name.substring(0, fileToUpload.name.lastIndexOf('.')) || fileToUpload.name;
+                const cleanName = sanitizeFileName(baseName);
+                
+                // Construct path similar to profile images: userID/timestamp_filename
+                const filePath = `resources/${currentUser.id}/${Date.now()}_${cleanName}.${fileExt}`;
+
+                const { error: uploadError } = await supabase.storage
+                    .from('files')
+                    .upload(filePath, fileToUpload, {
+                        cacheControl: '3600',
+                        upsert: true 
+                    });
+
+                if (uploadError) throw new Error(`Error al subir archivo: ${uploadError.message}`);
+
+                const { data: urlData } = supabase.storage
+                    .from('files')
+                    .getPublicUrl(filePath);
+                
+                // Add timestamp param to bust cache if overwriting
+                finalFileUrl = `${urlData.publicUrl}?t=${new Date().getTime()}`;
+            }
+
+            // 2. Prepare Payload with the URL included
             const dbPayload = {
                 title: formData.title,
                 type: formData.type,
                 content: formData.content || null,
                 tags: tagsArray,
                 clinic_id: clinic.id,
+                file_url: finalFileUrl, // Save the URL generated above
             };
 
-            let resourceId = resourceToEdit?.id;
-            
-            // 2. Insert or Update the main resource data
+            // 3. Insert or Update Database Record
             if (resourceToEdit) {
-                // FIX: Remove clinic_id from update payload to avoid RLS violations (new row violates row-level security policy)
+                // Remove clinic_id from update payload to be safe with RLS
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const { clinic_id, ...updatePayload } = dbPayload;
-                const { error: updateError } = await supabase.from('knowledge_base_resources').update(updatePayload).eq('id', resourceToEdit.id);
+                
+                const { error: updateError } = await supabase
+                    .from('knowledge_base_resources')
+                    .update(updatePayload)
+                    .eq('id', resourceToEdit.id);
+                
                 if (updateError) throw updateError;
             } else {
-                const { data: newResource, error: insertError } = await supabase.from('knowledge_base_resources').insert(dbPayload).select('id').single();
+                const { error: insertError } = await supabase
+                    .from('knowledge_base_resources')
+                    .insert(dbPayload);
+                
                 if (insertError) throw insertError;
-                resourceId = newResource.id;
-            }
-
-            if (!resourceId) throw new Error("No se pudo obtener el ID del recurso.");
-
-            // 3. Handle file operations
-            const oldFileUrl = resourceToEdit?.file_url;
-            
-            // Case A: User explicitly removed an existing file
-            if (isFileRemoved && oldFileUrl) {
-                try {
-                    const url = new URL(oldFileUrl);
-                    const oldFilePath = decodeURIComponent(url.pathname.split('/files/')[1]);
-                    await supabase.storage.from('files').remove([oldFilePath]);
-                } catch (e) { console.warn("Error parsing old file URL", e); }
-                
-                await supabase.from('knowledge_base_resources').update({ file_url: null }).eq('id', resourceId);
-            }
-
-            // Case B: User uploaded a new file (replaces old one if it exists)
-            if (fileToUpload) {
-                // Ensure user.id is available
-                const { data: { user: currentUser } } = await supabase.auth.getUser();
-                if (!currentUser) throw new Error("Usuario no autenticado para subir archivos.");
-
-                // Remove old file first to keep bucket clean
-                if (oldFileUrl && !isFileRemoved) { 
-                    try {
-                        const url = new URL(oldFileUrl);
-                        const oldFilePath = decodeURIComponent(url.pathname.split('/files/')[1]);
-                        await supabase.storage.from('files').remove([oldFilePath]);
-                    } catch (e) { console.warn("Error removing old file", e); }
-                }
-                
-                // Upload new file
-                const fileExt = fileToUpload.name.split('.').pop() || '';
-                const baseName = fileToUpload.name.substring(0, fileToUpload.name.lastIndexOf('.')) || fileToUpload.name;
-                const cleanName = sanitizeFileName(baseName);
-                // Use user ID as root folder. This is standard RLS for storage.
-                const filePath = `${currentUser.id}/${Date.now()}_${cleanName}.${fileExt}`;
-
-                // Upsert false to ensure we don't accidentally overwrite something we shouldn't, though timestamp prevents it.
-                const { error: uploadError } = await supabase.storage.from('files').upload(filePath, fileToUpload, {
-                    cacheControl: '3600',
-                    upsert: false 
-                });
-                
-                if (uploadError) throw uploadError;
-
-                const { data: urlData } = supabase.storage.from('files').getPublicUrl(filePath);
-                
-                // Update DB with new URL
-                const { error: fileUpdateError } = await supabase.from('knowledge_base_resources').update({ file_url: urlData.publicUrl }).eq('id', resourceId);
-                if (fileUpdateError) throw fileUpdateError;
             }
 
             onClose();
@@ -225,6 +218,8 @@ const ResourceFormModal: FC<ResourceFormModalProps> = ({ isOpen, onClose, user, 
                     />
                     
                     <label htmlFor="file_upload">Archivo Adjunto (Opcional)</label>
+                    
+                    {/* Show existing file if exists and not removed */}
                     {existingFileUrl && !fileToUpload && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', backgroundColor: 'var(--surface-hover-color)', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.9rem' }}>
                             <a href={existingFileUrl} target="_blank" rel="noopener noreferrer" style={{ ...styles.link, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -233,8 +228,14 @@ const ResourceFormModal: FC<ResourceFormModalProps> = ({ isOpen, onClose, user, 
                             <button type="button" onClick={handleRemoveExistingFile} style={{...styles.iconButton, color: 'var(--error-color)'}} aria-label="Quitar archivo existente">&times;</button>
                         </div>
                     )}
-                    <input id="file_upload" name="file_upload" type="file" onChange={handleFileChange} />
-                    {fileToUpload && <p style={{fontSize: '0.9rem', color: 'var(--text-light)', marginTop: '0.5rem'}}>Seleccionado: <strong>{fileToUpload.name}</strong></p>}
+
+                    <input ref={fileInputRef} id="file_upload" name="file_upload" type="file" onChange={handleFileChange} />
+                    
+                    {fileToUpload && (
+                        <p style={{fontSize: '0.9rem', color: 'var(--primary-color)', marginTop: '0.5rem', fontWeight: 500}}>
+                            Nuevo archivo seleccionado: {fileToUpload.name}
+                        </p>
+                    )}
 
 
                     <label htmlFor="tags" style={{marginTop: '1rem'}}>Etiquetas (separadas por coma)</label>
