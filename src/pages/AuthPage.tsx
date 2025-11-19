@@ -55,9 +55,15 @@ const AuthPage: FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [message, setMessage] = useState<string | null>(null);
+    
+    // Responsive state for split screen
+    const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 900);
 
     useEffect(() => {
-        // Check for a referral code in the URL hash on initial load
+        const handleResize = () => setIsDesktop(window.innerWidth >= 900);
+        window.addEventListener('resize', handleResize);
+        
+        // Check URL params for referrals
         const hash = window.location.hash;
         if (hash.includes('?ref=')) {
             try {
@@ -71,7 +77,9 @@ const AuthPage: FC = () => {
                 console.error("Could not parse referral code from URL.", e);
             }
         }
-    }, []); // Empty array ensures this runs only once on mount
+        
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const handleAuth = async (e: FormEvent) => {
         e.preventDefault();
@@ -170,159 +178,254 @@ const AuthPage: FC = () => {
         setReferralCode('');
     };
 
-    const inputLightStyle: React.CSSProperties = {
-        backgroundColor: '#f1f3f5',
-        color: '#212529',
-        border: '1px solid #ced4da'
+    // --- Inline Styles for White Design ---
+    const containerStyle: React.CSSProperties = {
+        display: 'flex',
+        minHeight: '100vh',
+        backgroundColor: '#FFFFFF',
+        width: '100%',
+        overflow: 'hidden',
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    };
+
+    const imageSideStyle: React.CSSProperties = {
+        flex: '1',
+        background: 'linear-gradient(135deg, #0284C7 0%, #0F172A 100%)', // Ocean to Dark Slate
+        display: isDesktop ? 'flex' : 'none',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        color: 'white',
+        padding: '4rem',
+        position: 'relative'
+    };
+
+    const formSideStyle: React.CSSProperties = {
+        flex: '1',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '2rem',
+        backgroundColor: '#FFFFFF',
+        color: '#1E293B'
+    };
+
+    const formWrapperStyle: React.CSSProperties = {
+        width: '100%',
+        maxWidth: '400px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1.5rem'
+    };
+
+    const inputNewStyle: React.CSSProperties = {
+        width: '100%',
+        padding: '0.875rem 1rem',
+        borderRadius: '12px',
+        border: '1px solid #E2E8F0',
+        backgroundColor: '#F8FAFC',
+        fontSize: '1rem',
+        color: '#1E293B',
+        transition: 'all 0.2s',
+        outline: 'none',
+        marginTop: '0.5rem'
+    };
+
+    const labelStyle: React.CSSProperties = {
+        fontSize: '0.9rem',
+        fontWeight: 600,
+        color: '#475569',
+        display: 'block'
     };
     
+    const buttonStyle: React.CSSProperties = {
+        width: '100%',
+        padding: '0.875rem',
+        borderRadius: '12px',
+        backgroundColor: '#0F172A', // Dark button for contrast
+        color: 'white',
+        border: 'none',
+        fontSize: '1rem',
+        fontWeight: 600,
+        cursor: loading ? 'not-allowed' : 'pointer',
+        opacity: loading ? 0.7 : 1,
+        marginTop: '1rem',
+        transition: 'background-color 0.2s'
+    };
+
+    const secondaryButtonStyle: React.CSSProperties = {
+        ...buttonStyle,
+        backgroundColor: '#FFFFFF',
+        color: '#475569',
+        border: '1px solid #E2E8F0',
+        marginTop: '0.5rem'
+    };
+    
+    const linkStyle: React.CSSProperties = {
+        color: '#0284C7',
+        textDecoration: 'none',
+        fontWeight: 600,
+        cursor: 'pointer'
+    };
+
     const pageTitles = {
-        login: 'Inicia sesión para continuar',
-        signupClinic: 'Crea una cuenta para tu clínica',
-        signupAlly: 'Regístrate como colaborador',
-        resetPassword: 'Recupera tu contraseña',
-        magicLink: 'Inicia Sesión sin Contraseña'
+        login: 'Inicia sesión',
+        signupClinic: 'Registra tu clínica',
+        signupAlly: 'Únete como colaborador',
+        resetPassword: 'Recuperar contraseña',
+        magicLink: 'Acceso sin contraseña'
     };
     
-    const buttonTitles = {
-        login: 'Iniciar Sesión',
-        signupClinic: 'Registrar Clínica',
-        signupAlly: 'Registrarme'
-    }
+    const pageSubtitles = {
+        login: 'Ingresa tus credenciales para acceder.',
+        signupClinic: 'Comienza gratis hoy mismo.',
+        signupAlly: 'Conecta con clínicas y expande tu red.',
+        resetPassword: 'Te enviaremos las instrucciones.',
+        magicLink: 'Te enviaremos un enlace mágico.'
+    };
 
     return (
-        <div style={styles.authContainer}>
-            <div style={styles.authBox} className="fade-in">
-                <div style={styles.header}>
-                    <img src="https://i.imgur.com/NOdUorv.png" alt="Zegna Nutrición Logo" style={{ maxWidth: '250px', height: 'auto', margin: '0 auto 1.5rem auto', display: 'block' }} />
-                    <p style={{ color: '#495057', margin: 0 }}>{pageTitles[authMode]}</p>
+        <div style={containerStyle}>
+            {/* Left Side - Artwork */}
+            {isDesktop && (
+                <div style={imageSideStyle}>
+                    <div style={{maxWidth: '500px', zIndex: 10}}>
+                        <div style={{marginBottom: '2rem', width: '64px', height: '64px', borderRadius: '16px', background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', boxShadow: '0 8px 32px rgba(0,0,0,0.1)'}}>
+                           🧬
+                        </div>
+                        <h1 style={{fontSize: '3.5rem', fontWeight: 800, lineHeight: 1.1, marginBottom: '1.5rem', letterSpacing: '-0.02em'}}>
+                            El futuro de tu <span style={{color: '#38BDF8'}}>consultorio nutricional</span>.
+                        </h1>
+                        <p style={{fontSize: '1.2rem', opacity: 0.9, lineHeight: 1.6, color: '#E2E8F0'}}>
+                            Gestiona pacientes, crea planes con IA y automatiza tu agenda en una sola plataforma unificada.
+                        </p>
+                        
+                        {/* Abstract floating cards simulation */}
+                         <div style={{marginTop: '4rem', display: 'flex', gap: '1.5rem'}}>
+                             <div style={{backgroundColor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', padding: '1.25rem 2rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)'}}>
+                                 <div style={{fontSize: '2rem', fontWeight: 800}}>15+</div>
+                                 <div style={{fontSize: '0.9rem', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px', marginTop: '0.25rem'}}>Herramientas</div>
+                             </div>
+                             <div style={{backgroundColor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', padding: '1.25rem 2rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)'}}>
+                                 <div style={{fontSize: '2rem', fontWeight: 800}}>24/7</div>
+                                 <div style={{fontSize: '0.9rem', opacity: 0.8, textTransform: 'uppercase', letterSpacing: '1px', marginTop: '0.25rem'}}>Soporte IA</div>
+                             </div>
+                         </div>
+                    </div>
+                    {/* Decorative Elements */}
+                    <div style={{position: 'absolute', top: '-20%', left: '-20%', width: '600px', height: '600px', borderRadius: '50%', background: 'rgba(56, 189, 248, 0.15)', filter: 'blur(100px)'}}></div>
+                    <div style={{position: 'absolute', bottom: '-10%', right: '-10%', width: '500px', height: '500px', borderRadius: '50%', background: 'rgba(2, 132, 199, 0.15)', filter: 'blur(100px)'}}></div>
                 </div>
+            )}
 
-                {error && <p style={styles.error}>{error}</p>}
-                {message && <p style={{...styles.error, backgroundColor: 'var(--primary-light)', color: 'var(--primary-dark)', borderColor: 'var(--primary-color)'}}>{message}</p>}
+            {/* Right Side - Form */}
+            <div style={formSideStyle}>
+                 <div style={formWrapperStyle}>
+                     {/* Header */}
+                     <div style={{marginBottom: '2rem'}}>
+                         <img src="https://i.imgur.com/NOdUorv.png" alt="Zegna" style={{height: '36px', marginBottom: '2rem', display: 'block'}} />
+                         <h2 style={{fontSize: '2rem', fontWeight: 800, color: '#0F172A', margin: '0 0 0.5rem 0', letterSpacing: '-0.5px'}}>
+                             {pageTitles[authMode]}
+                         </h2>
+                         <p style={{color: '#64748B', margin: 0, fontSize: '1.05rem'}}>
+                             {pageSubtitles[authMode]}
+                         </p>
+                     </div>
 
-                {(authMode === 'login' || authMode === 'signupClinic' || authMode === 'signupAlly') && (
-                    <form onSubmit={handleAuth} style={styles.form}>
-                        {authMode === 'signupAlly' && (
-                            <div>
-                                <label style={styles.label} htmlFor="full_name">Nombre Completo</label>
-                                <input id="full_name" type="text" value={fullName} onChange={e => setFullName(e.target.value)} required style={inputLightStyle} />
-                            </div>
-                        )}
-                        <div>
-                            <label style={styles.label} htmlFor="email">Correo Electrónico</label>
-                            <input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required style={inputLightStyle} />
-                        </div>
-                        <div style={{marginTop: '1rem'}}>
-                            <label style={styles.label} htmlFor="password">Contraseña</label>
-                            <input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required style={inputLightStyle} />
-                        </div>
-                        {authMode === 'signupClinic' && (
-                            <div style={{marginTop: '1rem'}}>
-                                <label style={styles.label} htmlFor="referral_code">Código de Referido (Opcional)</label>
-                                <input id="referral_code" type="text" value={referralCode} onChange={e => setReferralCode(e.target.value)} style={inputLightStyle} />
-                            </div>
-                        )}
-                        {authMode === 'login' && (
-                            <>
-                                <div style={{ marginTop: '0.5rem', textAlign: 'right', fontSize: '0.9rem' }}>
-                                    <span onClick={() => { setAuthMode('resetPassword'); resetFormState(); }} style={styles.link} role="button">
-                                        ¿Olvidaste tu contraseña?
-                                    </span>
+                     {/* Messages */}
+                     {error && <div style={{backgroundColor: '#FEF2F2', color: '#DC2626', padding: '1rem', borderRadius: '12px', fontSize: '0.9rem', border: '1px solid #FEE2E2'}}>{error}</div>}
+                     {message && <div style={{backgroundColor: '#EFF6FF', color: '#1D4ED8', padding: '1rem', borderRadius: '12px', fontSize: '0.9rem', border: '1px solid #DBEAFE'}}>{message}</div>}
+
+                     {/* Forms */}
+                     {(authMode === 'login' || authMode === 'signupClinic' || authMode === 'signupAlly') && (
+                        <form onSubmit={handleAuth} style={{display: 'flex', flexDirection: 'column', gap: '1.25rem'}}>
+                            {authMode === 'signupAlly' && (
+                                <div>
+                                    <label style={labelStyle} htmlFor="full_name">Nombre Completo</label>
+                                    <input id="full_name" type="text" value={fullName} onChange={e => setFullName(e.target.value)} required style={inputNewStyle} placeholder="Tu nombre" />
                                 </div>
-                                <div style={{ textAlign: 'center', marginTop: '1rem', color: '#6c757d', fontSize: '0.9rem' }}>o</div>
-                                <button type="button" onClick={() => { setAuthMode('magicLink'); resetFormState(); }} className="button-secondary" style={{ width: '100%', marginTop: '1rem' }}>
-                                    Iniciar sesión con enlace mágico
+                            )}
+                            <div>
+                                <label style={labelStyle} htmlFor="email">Correo Electrónico</label>
+                                <input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required style={inputNewStyle} placeholder="nombre@ejemplo.com" />
+                            </div>
+                            <div>
+                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                    <label style={labelStyle} htmlFor="password">Contraseña</label>
+                                    {authMode === 'login' && (
+                                        <span onClick={() => { setAuthMode('resetPassword'); resetFormState(); }} style={{...linkStyle, fontSize: '0.85rem'}} role="button">
+                                            ¿Olvidaste tu contraseña?
+                                        </span>
+                                    )}
+                                </div>
+                                <input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required style={inputNewStyle} placeholder="••••••••" />
+                            </div>
+                            {authMode === 'signupClinic' && (
+                                <div>
+                                    <label style={labelStyle} htmlFor="referral_code">Código de Referido (Opcional)</label>
+                                    <input id="referral_code" type="text" value={referralCode} onChange={e => setReferralCode(e.target.value)} style={inputNewStyle} placeholder="Código promocional" />
+                                </div>
+                            )}
+                            
+                            {authMode === 'signupAlly' && (
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginTop: '0.5rem' }}>
+                                    <input id="terms" type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)} required style={{ marginTop: '4px', width: '16px', height: '16px', accentColor: '#0F172A' }} />
+                                    <label htmlFor="terms" style={{ fontSize: '0.85rem', color: '#64748B', lineHeight: 1.5, fontWeight: 400 }}>
+                                        Acepto los <a href="#" style={linkStyle}>Términos</a> y <a href="#" style={linkStyle}>Políticas</a>, y entiendo que mis datos serán visibles en la red Zegna.
+                                    </label>
+                                </div>
+                            )}
+
+                            <button type="submit" style={buttonStyle} disabled={loading || (authMode === 'signupAlly' && !agreedToTerms)}>
+                                {loading ? 'Procesando...' : authMode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}
+                            </button>
+
+                            {authMode === 'login' && (
+                                <button type="button" onClick={() => { setAuthMode('magicLink'); resetFormState(); }} style={secondaryButtonStyle}>
+                                    Ingresar con enlace mágico
                                 </button>
-                            </>
-                        )}
-                        {authMode === 'signupAlly' && (
-                            <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                                <input id="terms" type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)} required style={{ marginTop: '4px', flexShrink: 0, width: '16px', height: '16px' }} />
-                                <label htmlFor="terms" style={{ ...styles.label, marginBottom: 0, fontSize: '0.85rem', lineHeight: 1.5, fontWeight: 400 }}>
-                                    Acepto los <a href="https://www.zegnanutricion.com.mx/#terms" target="_blank" rel="noopener noreferrer" style={styles.link}>Términos y Condiciones</a> y las <a href="https://www.zegnanutricion.com.mx/#privacy" target="_blank" rel="noopener noreferrer" style={styles.link}>Políticas de Privacidad</a>, y entiendo que mis datos profesionales serán compartidos dentro de la red de clínicas y colaboradores de Zegna.
-                                </label>
+                            )}
+                        </form>
+                     )}
+
+                    {(authMode === 'resetPassword' || authMode === 'magicLink') && (
+                        <form onSubmit={authMode === 'resetPassword' ? handlePasswordReset : handleMagicLink} style={{display: 'flex', flexDirection: 'column', gap: '1.25rem'}}>
+                            <div>
+                                <label style={labelStyle} htmlFor="email">Correo Electrónico</label>
+                                <input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required style={inputNewStyle} placeholder="nombre@ejemplo.com" />
                             </div>
-                        )}
-                        <div style={styles.formActions}>
-                            <button type="submit" disabled={loading || (authMode === 'signupAlly' && !agreedToTerms)}>{loading ? 'Cargando...' : buttonTitles[authMode as 'login' | 'signupClinic' | 'signupAlly']}</button>
-                        </div>
-                    </form>
-                )}
-
-                {authMode === 'resetPassword' && (
-                    <form onSubmit={handlePasswordReset} style={styles.form}>
-                        <div>
-                            <label style={styles.label} htmlFor="email">Correo Electrónico</label>
-                            <input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required style={inputLightStyle} />
-                        </div>
-                        <div style={{...styles.formActions, justifyContent: 'center'}}>
-                            <button type="submit" disabled={loading}>{loading ? 'Enviando...' : 'Enviar enlace de recuperación'}</button>
-                        </div>
-                    </form>
-                )}
-
-                {authMode === 'magicLink' && (
-                    <form onSubmit={handleMagicLink} style={styles.form}>
-                        <div>
-                            <label style={styles.label} htmlFor="email">Correo Electrónico</label>
-                            <input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required style={inputLightStyle} />
-                        </div>
-                        <div style={{...styles.formActions, justifyContent: 'center'}}>
-                            <button type="submit" disabled={loading}>{loading ? 'Enviando...' : 'Enviar enlace mágico'}</button>
-                        </div>
-                    </form>
-                )}
-
-
-                <div style={styles.toggleAuth}>
-                    {authMode === 'login' ? (
-                        <>
-                            <p style={{ marginBottom: '1.5rem' }}>
-                                ¿Aún no tienes cuenta?{' '}
-                                <span onClick={() => { setAuthMode('signupClinic'); resetFormState(); }} style={styles.link} role="button">
-                                    Registra tu clínica
-                                </span>
-                            </p>
-                            <div style={{
-                                padding: '1.25rem',
-                                backgroundColor: 'rgba(23, 162, 184, 0.1)',
-                                borderRadius: '8px',
-                                border: '1px solid var(--accent-color)',
-                                textAlign: 'left'
-                            }}>
-                                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', color: 'var(--accent-color)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    {ICONS.network}
-                                    ¿Eres un profesional colaborador?
-                                </h3>
-                                <p style={{ margin: 0, fontSize: '0.9rem', color: '#495057', lineHeight: 1.5 }}>
-                                    Únete a la red para recibir y enviar referidos a las clínicas.
-                                    {' '}
-                                    <span onClick={() => { setAuthMode('signupAlly'); resetFormState(); }} style={{...styles.link, fontWeight: 700}} role="button">
-                                        Regístrate aquí.
-                                    </span>
-                                </p>
-                            </div>
-                        </>
-                    ) : authMode === 'resetPassword' || authMode === 'magicLink' ? (
-                        <p>
-                            ¿Prefieres usar tu contraseña?{' '}
-                            <span onClick={() => { setAuthMode('login'); resetFormState(); }} style={{...styles.link, marginLeft: '0.5rem'}} role="button">
-                                Inicia Sesión
-                            </span>
-                        </p>
-                    ) : (
-                        <p>
-                            ¿Ya tienes una cuenta?{' '}
-                            <span onClick={() => { setAuthMode('login'); resetFormState(); }} style={{...styles.link, marginLeft: '0.5rem'}} role="button">
-                                Inicia Sesión
-                            </span>
-                        </p>
+                            <button type="submit" style={buttonStyle} disabled={loading}>
+                                {loading ? 'Enviando...' : 'Enviar enlace'}
+                            </button>
+                            <button type="button" onClick={() => { setAuthMode('login'); resetFormState(); }} style={{...secondaryButtonStyle, border: 'none', color: '#64748B'}}>
+                                Volver al inicio de sesión
+                            </button>
+                        </form>
                     )}
-                </div>
+
+                    {/* Footer Links */}
+                    {(authMode === 'login' || authMode === 'signupClinic' || authMode === 'signupAlly') && (
+                        <div style={{marginTop: '1.5rem', textAlign: 'center', fontSize: '0.95rem', color: '#64748B'}}>
+                            {authMode === 'login' ? (
+                                <>
+                                    ¿Aún no tienes cuenta? <span onClick={() => { setAuthMode('signupClinic'); resetFormState(); }} style={linkStyle} role="button">Regístrate gratis</span>
+                                    <div style={{marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #E2E8F0'}}>
+                                        <p style={{margin: 0, fontSize: '0.9rem'}}>¿Eres un profesional colaborador?</p>
+                                        <span onClick={() => { setAuthMode('signupAlly'); resetFormState(); }} style={{...linkStyle, color: '#0F766E'}} role="button">Únete a la red aquí</span>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    ¿Ya tienes una cuenta? <span onClick={() => { setAuthMode('login'); resetFormState(); }} style={linkStyle} role="button">Inicia Sesión</span>
+                                </>
+                            )}
+                        </div>
+                    )}
+                 </div>
             </div>
         </div>
-    );
-};
+    )
+}
 
 export default AuthPage;
