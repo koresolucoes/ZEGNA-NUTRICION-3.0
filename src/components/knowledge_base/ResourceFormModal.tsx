@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useEffect, FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 // FIX: In Supabase v2, User is exported via `import type`.
@@ -90,6 +91,13 @@ const ResourceFormModal: FC<ResourceFormModalProps> = ({ isOpen, onClose, user, 
         setExistingFileUrl(null); // Visually remove it for the user
     };
 
+    // Helper to clean filenames strictly (Alphanumeric, dots, underscores ONLY) to avoid Invalid Key errors
+    const sanitizeFileName = (name: string) => {
+        return name
+            .replace(/[^a-zA-Z0-9.]/g, '_') // Replace ANY special char with underscore
+            .toLowerCase();
+    };
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         if (!clinic) { setError("No se pudo identificar la clínica. Intenta refrescar la página."); return; }
@@ -111,7 +119,10 @@ const ResourceFormModal: FC<ResourceFormModalProps> = ({ isOpen, onClose, user, 
             
             // 2. Insert or Update the main resource data
             if (resourceToEdit) {
-                const { error: updateError } = await supabase.from('knowledge_base_resources').update(dbPayload).eq('id', resourceToEdit.id);
+                // FIX: Remove clinic_id from update payload to avoid RLS violations (new row violates row-level security policy)
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { clinic_id, ...updatePayload } = dbPayload;
+                const { error: updateError } = await supabase.from('knowledge_base_resources').update(updatePayload).eq('id', resourceToEdit.id);
                 if (updateError) throw updateError;
             } else {
                 const { data: newResource, error: insertError } = await supabase.from('knowledge_base_resources').insert(dbPayload).select('id').single();
@@ -126,23 +137,43 @@ const ResourceFormModal: FC<ResourceFormModalProps> = ({ isOpen, onClose, user, 
             
             // Case A: User explicitly removed an existing file
             if (isFileRemoved && oldFileUrl) {
-                const url = new URL(oldFileUrl);
-                const oldFilePath = decodeURIComponent(url.pathname.split('/files/')[1]);
-                await supabase.storage.from('files').remove([oldFilePath]);
+                try {
+                    const url = new URL(oldFileUrl);
+                    const oldFilePath = decodeURIComponent(url.pathname.split('/files/')[1]);
+                    await supabase.storage.from('files').remove([oldFilePath]);
+                } catch (e) { console.warn("Error parsing old file URL", e); }
+                
                 await supabase.from('knowledge_base_resources').update({ file_url: null }).eq('id', resourceId);
             }
 
             // Case B: User uploaded a new file (replaces old one if it exists)
             if (fileToUpload) {
-                if (oldFileUrl) { // Remove old file first
-                    const url = new URL(oldFileUrl);
-                    const oldFilePath = decodeURIComponent(url.pathname.split('/files/')[1]);
-                    await supabase.storage.from('files').remove([oldFilePath]);
+                // Ensure user.id is available
+                const { data: { user: currentUser } } = await supabase.auth.getUser();
+                if (!currentUser) throw new Error("Usuario no autenticado para subir archivos.");
+
+                // Remove old file first to keep bucket clean
+                if (oldFileUrl && !isFileRemoved) { 
+                    try {
+                        const url = new URL(oldFileUrl);
+                        const oldFilePath = decodeURIComponent(url.pathname.split('/files/')[1]);
+                        await supabase.storage.from('files').remove([oldFilePath]);
+                    } catch (e) { console.warn("Error removing old file", e); }
                 }
                 
                 // Upload new file
-                const filePath = `knowledge-base/${resourceId}/${fileToUpload.name}`;
-                const { error: uploadError } = await supabase.storage.from('files').upload(filePath, fileToUpload, { upsert: true });
+                const fileExt = fileToUpload.name.split('.').pop() || '';
+                const baseName = fileToUpload.name.substring(0, fileToUpload.name.lastIndexOf('.')) || fileToUpload.name;
+                const cleanName = sanitizeFileName(baseName);
+                // Use user ID as root folder. This is standard RLS for storage.
+                const filePath = `${currentUser.id}/${Date.now()}_${cleanName}.${fileExt}`;
+
+                // Upsert false to ensure we don't accidentally overwrite something we shouldn't, though timestamp prevents it.
+                const { error: uploadError } = await supabase.storage.from('files').upload(filePath, fileToUpload, {
+                    cacheControl: '3600',
+                    upsert: false 
+                });
+                
                 if (uploadError) throw uploadError;
 
                 const { data: urlData } = supabase.storage.from('files').getPublicUrl(filePath);

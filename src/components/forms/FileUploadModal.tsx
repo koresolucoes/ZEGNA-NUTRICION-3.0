@@ -1,3 +1,4 @@
+
 import React, { FC, useState, FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../supabase';
@@ -24,6 +25,13 @@ export const FileUploadModal: FC<FileUploadModalProps> = ({ isOpen, onClose, per
         }
     };
 
+    // Helper to clean filenames strictly (Alphanumeric, dots, underscores ONLY)
+    const sanitizeFileName = (name: string) => {
+        return name
+            .replace(/[^a-zA-Z0-9.]/g, '_') 
+            .toLowerCase();
+    };
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         if (!file) {
@@ -38,13 +46,17 @@ export const FileUploadModal: FC<FileUploadModalProps> = ({ isOpen, onClose, per
             if (!session) throw new Error("User not authenticated.");
 
             // 1. Upload the file to Supabase Storage
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Date.now()}.${fileExt}`;
-            const filePath = `${personId}/${fileName}`;
+            const cleanName = sanitizeFileName(file.name);
+            // Use session.user.id as root folder to satisfy RLS policies
+            const filePath = `${session.user.id}/${Date.now()}_${cleanName}`;
 
+            // Disable upsert to avoid permission conflicts on existing files (update vs insert)
             const { error: uploadError } = await supabase.storage
                 .from('files')
-                .upload(filePath, file);
+                .upload(filePath, file, {
+                    cacheControl: '3600',
+                    upsert: false 
+                });
 
             if (uploadError) {
                 throw new Error(`Error al subir archivo: ${uploadError.message}`);
@@ -53,7 +65,7 @@ export const FileUploadModal: FC<FileUploadModalProps> = ({ isOpen, onClose, per
             // 2. Insert metadata into the database table
             const payload = {
                 person_id: personId,
-                file_name: file.name,
+                file_name: file.name, // Keep original name for display
                 file_path: filePath,
                 file_type: file.type,
                 file_size: file.size,
@@ -118,7 +130,8 @@ export const FileUploadModal: FC<FileUploadModalProps> = ({ isOpen, onClose, per
                 </div>
                 <div style={styles.modalFooter}>
                     <button type="button" className="button-secondary" onClick={onClose}>Cancelar</button>
-                    <button type="submit" disabled={loading}>{loading ? 'Subiendo...' : 'Subir Archivo'}</button>
+                    <button type="submit" disabled={loading}>{loading ? 'Subiendo...' : 'Subir Archivo'}
+                    </button>
                 </div>
             </form>
         </div>,

@@ -210,7 +210,7 @@ const PatientHomePage: FC<{
             
             <div style={{marginBottom: '2rem', paddingLeft: '0.5rem'}}>
                  <p style={{color: 'var(--text-light)', margin: 0, fontSize: '0.95rem'}}>Bienvenido de nuevo,</p>
-                 <h1 style={{margin: '0.25rem 0 0 0', fontSize: '2rem', fontWeight: 800, color: 'var(--text-color)'}}>{person.full_name}</h1>
+                 <h1 style={{margin: '0.25rem 0 0 0', fontSize: '2rem', fontWeight: 800, color: 'var(--text-color)'}}>{person.full_name.split(' ')[0]}</h1>
                  <h2 style={{margin: '0.25rem 0 0 0', fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-light)'}}>Tu Panel de Control</h2>
             </div>
 
