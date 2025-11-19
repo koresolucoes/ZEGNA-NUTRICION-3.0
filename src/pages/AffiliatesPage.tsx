@@ -1,9 +1,75 @@
+
 import React, { FC, useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { styles } from '../constants';
 import { ICONS } from './AuthPage';
 import { AffiliateProgram, PopulatedAffiliateLink, PopulatedAffiliateEvent } from '../types';
 import FinancialSummaryCard from '../components/finanzas/FinancialSummaryCard';
+import SkeletonLoader from '../components/shared/SkeletonLoader';
+
+// --- Helper Components ---
+
+const StatusBadge: FC<{ status: string }> = ({ status }) => {
+    const config: any = {
+        pending: { color: '#EAB308', bg: 'rgba(234, 179, 8, 0.15)', label: 'Pendiente', icon: '⏳' },
+        approved: { color: '#10B981', bg: 'rgba(16, 185, 129, 0.15)', label: 'Aprobado', icon: '✅' },
+        paid: { color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.15)', label: 'Pagado', icon: '💵' },
+        rejected: { color: '#EF4444', bg: 'rgba(239, 68, 68, 0.15)', label: 'Rechazado', icon: '❌' }
+    };
+
+    const style = config[status] || { color: 'var(--text-light)', bg: 'var(--surface-hover-color)', label: status, icon: '' };
+
+    return (
+        <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '4px 10px',
+            borderRadius: '12px',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            backgroundColor: style.bg,
+            color: style.color,
+            border: `1px solid ${style.color}30` // 30% opacity border
+        }}>
+            <span>{style.icon}</span>
+            <span style={{textTransform: 'capitalize'}}>{style.label}</span>
+        </span>
+    );
+};
+
+const StepCard: FC<{ icon: React.ReactNode, title: string, desc: string, number: number }> = ({ icon, title, desc, number }) => (
+    <div style={{
+        flex: 1,
+        backgroundColor: 'var(--surface-color)',
+        borderRadius: '16px',
+        padding: '1.5rem',
+        border: '1px solid var(--border-color)',
+        position: 'relative',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        textAlign: 'center',
+        gap: '0.5rem'
+    }}>
+        <div style={{
+            position: 'absolute', top: '-10px', right: '-10px', fontSize: '4rem', fontWeight: 800, 
+            color: 'var(--text-color)', opacity: 0.03, lineHeight: 1
+        }}>{number}</div>
+        
+        <div style={{
+            width: '48px', height: '48px', borderRadius: '50%', 
+            backgroundColor: 'var(--primary-light)', color: 'var(--primary-color)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem',
+            marginBottom: '0.5rem'
+        }}>
+            {icon}
+        </div>
+        <h4 style={{margin: 0, fontWeight: 600, color: 'var(--text-color)'}}>{title}</h4>
+        <p style={{margin: 0, fontSize: '0.85rem', color: 'var(--text-light)', lineHeight: 1.5}}>{desc}</p>
+    </div>
+);
 
 const ProgramCard: FC<{
     program: AffiliateProgram;
@@ -23,83 +89,112 @@ const ProgramCard: FC<{
     
     const rewardText = useMemo(() => {
         if (program.reward_type === 'monetary_commission') {
-            return `$${program.reward_value} MXN por cada suscripción`;
+            return `$${program.reward_value} MXN`;
         }
-        return `${program.reward_value} créditos de servicio`;
+        return `${program.reward_value} Créditos`;
     }, [program]);
 
-    // New styles for the card
     const cardStyle: React.CSSProperties = {
-        ...styles.infoCard, 
+        backgroundColor: 'var(--surface-color)',
+        borderRadius: '20px',
+        border: '1px solid var(--border-color)',
+        boxShadow: '0 10px 30px -10px rgba(0,0,0,0.1)',
         display: 'flex', 
         flexDirection: 'column', 
         height: '100%',
-        padding: '1.5rem',
-        justifyContent: 'space-between',
+        padding: '0',
+        overflow: 'hidden',
+        transition: 'transform 0.2s ease',
     };
-    
-    const codeBlockStyle: React.CSSProperties = {
-        backgroundColor: 'var(--background-color)',
-        padding: '1rem',
-        borderRadius: '8px',
-        marginTop: '1rem',
+
+    const headerStyle: React.CSSProperties = {
+        background: 'linear-gradient(135deg, var(--primary-color), var(--primary-dark))',
+        padding: '1.5rem',
+        color: 'white'
+    };
+
+    const bodyStyle: React.CSSProperties = {
+        padding: '1.5rem',
+        flex: 1,
         display: 'flex',
         flexDirection: 'column',
         gap: '1rem'
     };
-    
-    const codeRowStyle: React.CSSProperties = {
+
+    const inputGroupStyle: React.CSSProperties = {
         display: 'flex',
         alignItems: 'center',
-        gap: '0.5rem'
+        backgroundColor: 'var(--background-color)',
+        border: '1px solid var(--border-color)',
+        borderRadius: '8px',
+        padding: '4px',
+        marginTop: '0.5rem'
     };
     
     const inputStyle: React.CSSProperties = {
         flex: 1,
         margin: 0,
-        backgroundColor: 'var(--surface-color)',
-        cursor: 'pointer',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap'
+        border: 'none',
+        background: 'transparent',
+        padding: '8px',
+        fontSize: '0.9rem',
+        color: 'var(--text-color)',
+        outline: 'none',
+        fontFamily: 'monospace'
     };
 
     return (
-        <div style={cardStyle}>
-            <div>
-                <h3 style={{margin: '0 0 0.5rem 0', fontSize: '1.2rem', color: 'var(--primary-color)'}}>{program.name}</h3>
-                <p style={{margin: 0, color: 'var(--text-light)', minHeight: '3em'}}>{program.description}</p>
+        <div style={cardStyle} className="card-hover">
+            <div style={headerStyle}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem'}}>
+                    <div style={{backgroundColor: 'rgba(255,255,255,0.2)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600, backdropFilter: 'blur(5px)'}}>
+                        PROGRAMA ACTIVO
+                    </div>
+                    <span style={{fontSize: '1.5rem'}}>🚀</span>
+                </div>
+                <h3 style={{margin: '0 0 0.5rem 0', fontSize: '1.4rem', fontWeight: 800}}>{program.name}</h3>
+                <p style={{margin: 0, opacity: 0.9, fontSize: '0.9rem', lineHeight: 1.5}}>{program.description}</p>
             </div>
 
-            <div>
-                <div style={{borderTop: `1px solid var(--border-color)`, paddingTop: '1rem', marginTop: '1rem'}}>
-                     <p style={{margin: 0, fontWeight: 600}}>Recompensa: <span style={{color: 'var(--primary-color)'}}>{rewardText}</span></p>
+            <div style={bodyStyle}>
+                <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+                    <div style={{flex: 1}}>
+                        <p style={{margin: '0 0 0.25rem 0', fontSize: '0.8rem', color: 'var(--text-light)', textTransform: 'uppercase', fontWeight: 600}}>Recompensa</p>
+                        <p style={{margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary-color)'}}>{rewardText}</p>
+                        <p style={{margin: 0, fontSize: '0.75rem', color: 'var(--text-light)'}}>por cada clínica referida</p>
+                    </div>
+                    <div style={{width: '1px', height: '40px', backgroundColor: 'var(--border-color)'}}></div>
+                    <div style={{flex: 1, paddingLeft: '1rem'}}>
+                         <p style={{margin: '0 0 0.25rem 0', fontSize: '0.8rem', color: 'var(--text-light)', textTransform: 'uppercase', fontWeight: 600}}>Validez</p>
+                         <p style={{margin: 0, fontSize: '1rem', fontWeight: 600}}>Ilimitada</p>
+                    </div>
                 </div>
                 
                 {link ? (
-                    <div style={codeBlockStyle}>
+                    <div style={{marginTop: '0.5rem'}}>
                         <div>
-                            <label style={{fontSize: '0.8rem'}}>Tu Código Único</label>
-                            <div style={codeRowStyle}>
-                                <input type="text" readOnly value={link.code} onClick={() => handleCopy(link.code, 'code')} style={{...inputStyle, fontFamily: 'monospace', fontWeight: 'bold' }}/>
-                                <button type="button" onClick={() => handleCopy(link.code, 'code')} className="button-secondary" style={{padding: '10px 12px'}}>
-                                    {copySuccess === 'code' ? 'Copiado' : ICONS.copy}
+                            <label style={{fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-color)'}}>Tu Enlace de Registro</label>
+                            <div style={inputGroupStyle}>
+                                <input type="text" readOnly value={referralLink} onClick={() => handleCopy(referralLink, 'link')} style={{...inputStyle, color: 'var(--primary-color)'}}/>
+                                <button type="button" onClick={() => handleCopy(referralLink, 'link')} style={{background: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '6px 10px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, color: copySuccess === 'link' ? 'var(--primary-color)' : 'var(--text-color)'}}>
+                                    {copySuccess === 'link' ? 'Copiado' : 'Copiar'}
                                 </button>
                             </div>
                         </div>
-                        <div>
-                            <label style={{fontSize: '0.8rem'}}>Tu Enlace de Registro</label>
-                            <div style={codeRowStyle}>
-                                <input type="text" readOnly value={referralLink} onClick={() => handleCopy(referralLink, 'link')} style={inputStyle}/>
-                                <button type="button" onClick={() => handleCopy(referralLink, 'link')} className="button-secondary" style={{padding: '10px 12px'}}>
-                                    {copySuccess === 'link' ? 'Copiado' : ICONS.copy}
+                        
+                        <div style={{marginTop: '1rem'}}>
+                            <label style={{fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-color)'}}>Tu Código Manual</label>
+                            <div style={inputGroupStyle}>
+                                <input type="text" readOnly value={link.code} onClick={() => handleCopy(link.code, 'code')} style={{...inputStyle, fontWeight: 800, letterSpacing: '1px'}}/>
+                                <button type="button" onClick={() => handleCopy(link.code, 'code')} style={{background: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '6px 10px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, color: copySuccess === 'code' ? 'var(--primary-color)' : 'var(--text-color)'}}>
+                                    {copySuccess === 'code' ? 'Copiado' : 'Copiar'}
                                 </button>
                             </div>
                         </div>
                     </div>
                 ) : (
-                    <button onClick={() => onJoin(program.id)} disabled={isJoining} style={{marginTop: '1rem', width: '100%'}}>
-                        {isJoining ? 'Generando...' : 'Obtener mi enlace'}
+                    <button onClick={() => onJoin(program.id)} disabled={isJoining} className="button-primary" style={{marginTop: '1rem', width: '100%', padding: '0.8rem', borderRadius: '12px', fontSize: '1rem'}}>
+                        {isJoining ? 'Generando enlace...' : '¡Quiero Unirme!'}
                     </button>
                 )}
             </div>
@@ -107,6 +202,7 @@ const ProgramCard: FC<{
     );
 };
 
+// --- Main Page ---
 
 const AffiliatesPage: FC<{ navigate: (page: string, context?: any) => void; }> = ({ navigate }) => {
     const [myLinks, setMyLinks] = useState<PopulatedAffiliateLink[]>([]);
@@ -163,7 +259,7 @@ const AffiliatesPage: FC<{ navigate: (page: string, context?: any) => void; }> =
         try {
             const { error } = await supabase.rpc('create_user_affiliate_link', { p_program_id: programId });
             if (error) throw error;
-            fetchData(); // Refetch everything to update the UI
+            fetchData(); 
         } catch (err: any) {
             setError(`Error al unirse al programa: ${err.message}`);
         } finally {
@@ -187,27 +283,53 @@ const AffiliatesPage: FC<{ navigate: (page: string, context?: any) => void; }> =
         };
     }, [events, myLinks]);
     
-     const unjoinedPrograms = useMemo(() => {
+    const unjoinedPrograms = useMemo(() => {
         const joinedProgramIds = new Set(myLinks.map(l => l.program_id));
         return allPrograms.filter(p => !joinedProgramIds.has(p.id));
     }, [myLinks, allPrograms]);
 
-    if (loading) return <p>Cargando programa de afiliados...</p>;
+    // --- UI Render ---
+
+    if (loading && allPrograms.length === 0) return <div className="fade-in" style={{padding: '2rem'}}><SkeletonLoader type="card" count={3} /></div>;
     if (error) return <p style={styles.error}>{error}</p>;
 
-    if (myLinks.length === 0) {
-        return (
-            <div className="fade-in" style={{ maxWidth: '800px', margin: '2rem auto' }}>
-                <div style={{textAlign: 'center'}}>
-                    <h1 style={{...styles.modalTitle, margin: '0 0 1rem 0'}}>Programa de Afiliados de Zegna</h1>
-                    <p style={{color: 'var(--text-light)', marginBottom: '2rem'}}>
-                        ¡Bienvenido! Gana recompensas por cada nueva clínica que traigas a la plataforma. 
-                        Elige un programa para obtener tu enlace de referido único y comenzar a compartir.
-                    </p>
+    return (
+        <div className="fade-in" style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '4rem' }}>
+            
+            <div style={{textAlign: 'center', marginBottom: '3rem', padding: '2rem', background: 'linear-gradient(135deg, var(--surface-color) 0%, var(--surface-hover-color) 100%)', borderRadius: '24px', border: '1px solid var(--border-color)'}}>
+                <h1 style={{fontSize: '2.5rem', fontWeight: 800, background: 'linear-gradient(to right, var(--primary-color), var(--accent-color))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: '0 0 1rem 0'}}>Programa de Afiliados</h1>
+                <p style={{color: 'var(--text-light)', fontSize: '1.1rem', maxWidth: '600px', margin: '0 auto'}}>
+                    Comparte el éxito de Zegna. Gana comisiones refiriendo a otras clínicas y profesionales a nuestra plataforma.
+                </p>
+            </div>
+
+            {/* How it Works */}
+            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '3rem'}}>
+                <StepCard number={1} icon={ICONS.link} title="Obtén tu Enlace" desc="Únete a un programa y recibe tu enlace único de referido." />
+                <StepCard number={2} icon={ICONS.send} title="Comparte" desc="Envía tu enlace a colegas o publícalo en tus redes." />
+                <StepCard number={3} icon={ICONS.dollar} title="Gana Comisiones" desc="Recibe dinero cuando tus referidos se suscriban a un plan." />
+            </div>
+
+            {/* Programs Section */}
+            {myLinks.length === 0 && unjoinedPrograms.length === 0 ? (
+                <div style={{textAlign: 'center', padding: '3rem', border: '2px dashed var(--border-color)', borderRadius: '16px'}}>
+                    <p>No hay programas de afiliados activos en este momento.</p>
                 </div>
-                <div className="info-grid">
-                    {allPrograms.map(program => (
+            ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem', marginBottom: '4rem' }}>
+                     {/* Joined Programs */}
+                    {myLinks.map(link => link.affiliate_programs && (
                         <ProgramCard 
+                            key={link.id}
+                            program={link.affiliate_programs}
+                            link={link}
+                            onJoin={() => {}}
+                            isJoining={false}
+                        />
+                    ))}
+                    {/* Unjoined Programs */}
+                    {unjoinedPrograms.map(program => (
+                         <ProgramCard 
                             key={program.id}
                             program={program}
                             onJoin={handleJoinProgram}
@@ -215,76 +337,51 @@ const AffiliatesPage: FC<{ navigate: (page: string, context?: any) => void; }> =
                         />
                     ))}
                 </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="fade-in">
-            <div style={styles.pageHeader}><h1>Portal de Afiliados</h1></div>
-
-            <section>
-                <h2 style={{ fontSize: '1.5rem' }}>Tus Programas y Enlaces</h2>
-                <div className="info-grid">
-                    {myLinks.map(link => link.affiliate_programs && (
-                        <ProgramCard 
-                            key={link.id}
-                            program={link.affiliate_programs}
-                            link={link}
-                            onJoin={() => {}} // Should not be called in this mode
-                            isJoining={false}
-                        />
-                    ))}
-                </div>
-            </section>
+            )}
             
-            <section style={{marginTop: '2rem'}}>
-                <h2 style={{ fontSize: '1.5rem' }}>Rendimiento General</h2>
-                <div style={{...styles.dashboardGrid, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', marginBottom: '2rem'}}>
-                    <FinancialSummaryCard title="Clics en tus Enlaces" value={stats.totalClicks.toString()} icon={ICONS.activity} />
-                    <FinancialSummaryCard title="Clínicas Registradas" value={stats.registrations.toString()} icon={ICONS.users} />
-                    <FinancialSummaryCard title="Ganancias Pendientes" value={`$${stats.pendingCommission.toFixed(2)}`} icon={ICONS.clock} />
-                    <FinancialSummaryCard title="Ganancias Totales Pagadas" value={`$${stats.totalPaidCommission.toFixed(2)}`} icon={ICONS.dollar} />
-                </div>
-            </section>
-
-            <section>
-                <h2 style={{ fontSize: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '2rem', marginTop: '2rem' }}>Clínicas Referidas</h2>
-                <div style={styles.tableContainer}>
-                    {events.length === 0 ? <p style={{padding: '2rem', textAlign: 'center'}}>Aún no tienes clínicas referidas.</p> :
-                    (
-                        <table style={styles.table}>
-                            <thead><tr>
-                                <th style={styles.th}>Clínica Referida</th><th style={styles.th}>Fecha de Registro</th><th style={{...styles.th, textAlign: 'right'}}>Comisión</th><th style={styles.th}>Estado</th>
-                            </tr></thead>
-                            <tbody>{events.map(e => (
-                                    <tr key={e.id} className="table-row-hover">
-                                        <td style={styles.td}>{e.clinics?.name || 'Clínica Eliminada'}</td>
-                                        <td style={styles.td}>{new Date(e.created_at).toLocaleDateString('es-MX')}</td>
-                                        <td style={{...styles.td, textAlign: 'right', fontWeight: 600}}>${parseFloat(String(e.commission_amount || 0)).toFixed(2)}</td>
-                                        <td style={styles.td}><span style={{textTransform: 'capitalize'}}>{e.status}</span></td>
-                                    </tr>
-                                )
-                            )}</tbody>
-                        </table>
-                    )}
-                </div>
-            </section>
-
-            {unjoinedPrograms.length > 0 && (
-                 <section style={{marginTop: '2rem'}}>
-                    <h2 style={{ fontSize: '1.5rem' }}>Descubre Otros Programas</h2>
-                    <div className="info-grid">
-                        {unjoinedPrograms.map(program => (
-                            <ProgramCard 
-                                key={program.id}
-                                program={program}
-                                onJoin={handleJoinProgram}
-                                isJoining={actionLoading === program.id}
-                            />
-                        ))}
+            {/* Dashboard Stats */}
+            {myLinks.length > 0 && (
+                <>
+                    <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', paddingLeft: '0.5rem', borderLeft: '4px solid var(--primary-color)' }}>Tu Rendimiento</h2>
+                    <div style={{...styles.dashboardGrid, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', marginBottom: '3rem'}}>
+                        <FinancialSummaryCard title="Clics Totales" value={stats.totalClicks.toString()} icon={ICONS.activity} />
+                        <FinancialSummaryCard title="Registros Exitosos" value={stats.registrations.toString()} icon={ICONS.users} />
+                        <FinancialSummaryCard title="Comisiones Pendientes" value={`$${stats.pendingCommission.toFixed(2)}`} icon={ICONS.clock} />
+                        <FinancialSummaryCard title="Total Pagado" value={`$${stats.totalPaidCommission.toFixed(2)}`} icon={ICONS.dollar} />
                     </div>
-                </section>
+
+                    <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', paddingLeft: '0.5rem', borderLeft: '4px solid var(--primary-color)' }}>Historial de Referidos</h2>
+                    <div style={styles.tableContainer}>
+                        {events.length === 0 ? (
+                            <div style={{padding: '3rem', textAlign: 'center', color: 'var(--text-light)'}}>
+                                <div style={{fontSize: '2rem', marginBottom: '1rem', opacity: 0.5}}>📭</div>
+                                <p>Aún no se han registrado clínicas con tu enlace.</p>
+                            </div>
+                        ) : (
+                            <table style={styles.table}>
+                                <thead><tr>
+                                    <th style={styles.th}>Clínica</th>
+                                    <th style={styles.th}>Fecha</th>
+                                    <th style={{...styles.th, textAlign: 'right'}}>Comisión</th>
+                                    <th style={styles.th}>Estado</th>
+                                </tr></thead>
+                                <tbody>{events.map(e => (
+                                        <tr key={e.id} className="table-row-hover">
+                                            <td style={styles.td}>
+                                                <div style={{fontWeight: 600, color: 'var(--text-color)'}}>{e.clinics?.name || 'Desconocida'}</div>
+                                            </td>
+                                            <td style={styles.td}>{new Date(e.created_at).toLocaleDateString('es-MX', {day: 'numeric', month: 'short', year: 'numeric'})}</td>
+                                            <td style={{...styles.td, textAlign: 'right', fontWeight: 600, color: e.status === 'paid' || e.status === 'approved' ? 'var(--primary-color)' : 'var(--text-light)'}}>
+                                                ${parseFloat(String(e.commission_amount || 0)).toFixed(2)}
+                                            </td>
+                                            <td style={styles.td}><StatusBadge status={e.status} /></td>
+                                        </tr>
+                                    )
+                                )}</tbody>
+                            </table>
+                        )}
+                    </div>
+                </>
             )}
         </div>
     );
