@@ -222,7 +222,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
             case 'profile': return <ProfilePage user={session.user} onEditProfile={() => navigate('profile-form')} />;
             case 'profile-form': return <ProfileFormPage user={session.user} onBack={() => navigate('profile')} />;
             case 'settings': return <SettingsPage user={session.user} initialTab={context.initialTab} />;
-            case 'clinic-settings': return <ClinicSettingsPage user={session.user} isMobile={isMobile} />;
+            case 'clinic-settings': return <ClinicSettingsPage user={session.user} isMobile={isMobile} navigate={navigate} />;
             case 'fiscal-settings': return (
                 <div className="fade-in" style={{ maxWidth: '1000px', margin: '0 auto' }}>
                      <div style={styles.pageHeader}>

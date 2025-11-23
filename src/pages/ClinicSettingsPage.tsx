@@ -1,3 +1,4 @@
+
 import React, { FC, useState, FormEvent, useEffect, useMemo } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
@@ -10,6 +11,7 @@ import { themes, ThemeType } from '../theme'; // Import theme definitions for pr
 interface ClinicSettingsPageProps {
     user: User;
     isMobile: boolean;
+    navigate: (page: string) => void;
 }
 
 const themeOptions = [
@@ -87,7 +89,7 @@ const ThemePreview: FC<{ themeKey: string }> = ({ themeKey }) => {
     );
 };
 
-const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile }) => {
+const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile, navigate }) => {
     const { clinic, setClinic } = useClinic();
     const [activeTab, setActiveTab] = useState<'general' | 'theme' | 'schedule' | 'fiscal'>('general');
     
@@ -459,7 +461,7 @@ const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile }) => 
                             </div>
                             <div style={{marginTop: '2rem', padding: '1rem', backgroundColor: 'var(--primary-light)', borderRadius: '8px', border: '1px solid var(--primary-color)'}}>
                                 <p style={{margin: 0, fontSize: '0.9rem', color: 'var(--primary-dark)'}}>
-                                    <strong>Nota:</strong> Para configurar los certificados (CSD) y la llave privada para la facturación automática, ve a la sección "Facturación" en el menú principal.
+                                    <strong>Nota:</strong> Para configurar los certificados (CSD) y la llave privada para la facturación automática, ve a la sección <span onClick={() => navigate('fiscal-settings')} style={{cursor: 'pointer', textDecoration: 'underline', fontWeight: 700}}>"Facturación"</span> en el menú principal.
                                 </p>
                             </div>
                         </div>

@@ -233,7 +233,8 @@ const AppointmentRequestModal: FC<AppointmentRequestModalProps> = ({ isOpen, onC
                     <button type="submit" disabled={loading || !selectedSlot} className="button-primary" style={{padding: '1rem', borderRadius: '12px', flex: 2, fontSize: '1rem', fontWeight: 700}}>{loading ? 'Enviando...' : 'Enviar Solicitud'}</button>
                 </div>
             </form>
-        </div>
+        </div>,
+        modalRoot
     );
 };
 
