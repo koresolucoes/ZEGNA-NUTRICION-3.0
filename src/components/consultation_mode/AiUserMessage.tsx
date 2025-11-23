@@ -2,7 +2,7 @@
 import React, { FC, useState, useRef } from 'react';
 import { ICONS } from '../../pages/AuthPage';
 
-const AiUserMessage: FC<{ text: string; context: { displayText: string; fullText: string; } | null }> = ({ text, context }) => {
+const AiUserMessage: FC<{ text: string; context: { displayText: string; fullText: string; file_url?: string; } | null }> = ({ text, context }) => {
     const [isPopoverVisible, setPopoverVisible] = useState(false);
     const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({});
     const capsuleRef = useRef<HTMLDivElement>(null);
@@ -72,12 +72,19 @@ const AiUserMessage: FC<{ text: string; context: { displayText: string; fullText
                     onMouseLeave={handleMouseLeave}
                 >
                     <div ref={capsuleRef} style={smallCapsuleStyle}>
-                        <span style={{color: 'var(--primary-color)'}}>{ICONS.send}</span>
+                        <span style={{color: 'var(--primary-color)'}}>
+                            {context.file_url ? '📄' : ICONS.send}
+                        </span>
                         <span>{context.displayText}</span>
                     </div>
                     {isPopoverVisible && (
                         <div style={popoverStyle}>
-                            {context.fullText}
+                             {context.file_url ? (
+                                <>
+                                    <p style={{fontWeight: 600, marginBottom: '0.5rem', margin: 0}}>Archivo adjunto enviado para análisis.</p>
+                                    <p style={{margin: 0, fontSize: '0.8rem', opacity: 0.8}}>{context.displayText}</p>
+                                </>
+                             ) : context.fullText}
                         </div>
                     )}
                 </div>

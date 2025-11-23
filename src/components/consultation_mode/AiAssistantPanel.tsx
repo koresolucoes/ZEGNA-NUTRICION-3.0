@@ -7,7 +7,7 @@ import AiUserMessage from './AiUserMessage';
 interface Message {
     role: 'user' | 'model';
     content: string;
-    context?: { displayText: string; fullText: string; } | null;
+    context?: { displayText: string; fullText: string; file_url?: string; } | null;
 }
 
 interface AiAssistantPanelProps {
@@ -15,8 +15,8 @@ interface AiAssistantPanelProps {
     aiLoading: boolean;
     chatEndRef: RefObject<HTMLDivElement>;
     handleAiSubmit: (e: FormEvent | string) => Promise<void>;
-    aiContext: { displayText: string; fullText: string; } | null;
-    setAiContext: React.Dispatch<React.SetStateAction<{ displayText: string; fullText: string; } | null>>;
+    aiContext: { displayText: string; fullText: string; file_url?: string; } | null;
+    setAiContext: React.Dispatch<React.SetStateAction<{ displayText: string; fullText: string; file_url?: string; } | null>>;
     userInput: string;
     setUserInput: React.Dispatch<React.SetStateAction<string>>;
     aiInputRef: RefObject<HTMLInputElement>;
@@ -136,9 +136,17 @@ const AiAssistantPanel: FC<AiAssistantPanelProps> = ({
                 }}>
                     {aiContext && (
                          <div style={contextCapsuleStyle} onMouseEnter={() => setContextPopoverVisible(true)} onMouseLeave={() => setContextPopoverVisible(false)}>
+                            {aiContext.file_url && <span style={{fontSize: '1rem'}}>📄</span>}
                             <span style={{whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '120px'}}>{aiContext.displayText}</span>
                             <button type="button" onClick={() => setAiContext(null)} style={{...styles.iconButton, color: 'var(--primary-color)', width: '18px', height: '18px', padding: 0 }}>&times;</button>
-                            <div style={contextPopoverStyle}>{aiContext.fullText}</div>
+                            <div style={contextPopoverStyle}>
+                                {aiContext.file_url ? (
+                                    <>
+                                        <p style={{fontWeight: 600, marginBottom: '0.5rem'}}>Archivo Adjunto:</p>
+                                        <p>{aiContext.displayText}</p>
+                                    </>
+                                ) : aiContext.fullText}
+                            </div>
                         </div>
                     )}
                     <input 
@@ -146,7 +154,7 @@ const AiAssistantPanel: FC<AiAssistantPanelProps> = ({
                         type="text" 
                         value={userInput} 
                         onChange={e => setUserInput(e.target.value)} 
-                        placeholder={aiContext ? "Pregunta sobre esto..." : "Escribe tu consulta..."} 
+                        placeholder={aiContext ? (aiContext.file_url ? "Analiza este documento..." : "Pregunta sobre esto...") : "Escribe tu consulta..."} 
                         style={{ 
                             flex: 1, margin: 0, border: 'none', background: 'transparent', 
                             padding: '8px 0', color: 'var(--text-color)', outline: 'none', fontSize: '0.95rem'

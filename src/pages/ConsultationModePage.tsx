@@ -3,7 +3,7 @@ import React, { FC, useState, useEffect, useMemo, useRef, FormEvent, ReactNode }
 import { supabase } from '../supabase';
 import { styles } from '../constants';
 import { ICONS } from './AuthPage';
-import { Person, ConsultationWithLabs, Log, DietLog, ExerciseLog, Allergy, MedicalHistory, Medication, LifestyleHabits, InternalNoteWithAuthor, DietPlanHistoryItem, AppointmentWithPerson, Clinic, ClinicSubscription, Plan } from '../types';
+import { Person, ConsultationWithLabs, Log, DietLog, ExerciseLog, Allergy, MedicalHistory, Medication, LifestyleHabits, InternalNoteWithAuthor, DietPlanHistoryItem, AppointmentWithPerson, Clinic, ClinicSubscription, Plan, File as PersonFile } from '../types';
 import CalculatorsPage from './CalculatorsPage';
 import SummaryPanel from '../components/consultation_mode/SummaryPanel';
 import TimelinePanel from '../components/consultation_mode/TimelinePanel';
@@ -12,7 +12,7 @@ import AiAssistantPanel from '../components/consultation_mode/AiAssistantPanel';
 interface AiMessage {
     role: 'user' | 'model';
     content: string;
-    context?: { displayText: string; fullText: string; } | null;
+    context?: { displayText: string; fullText: string; file_url?: string; } | null;
 }
 
 interface ConsultationModePageProps {
@@ -29,6 +29,8 @@ interface ConsultationModePageProps {
     medications?: Medication[];
     lifestyleHabits?: LifestyleHabits | null;
     internalNotes?: InternalNoteWithAuthor[];
+    // Added files prop for RAG
+    files?: PersonFile[]; 
     onDataRefresh: (silent?: boolean) => void;
     onExit: () => void;
     isMobile: boolean;
@@ -62,7 +64,7 @@ const ToolsModal: FC<{ onClose: () => void; children: ReactNode; isMobile: boole
 );
 
 const ConsultationModePage: FC<ConsultationModePageProps> = ({ 
-    person, personType, consultations, logs, dietLogs, exerciseLogs, planHistory, appointments, allergies = [], medicalHistory = [], medications = [], lifestyleHabits, internalNotes, 
+    person, personType, consultations, logs, dietLogs, exerciseLogs, planHistory, appointments, allergies = [], medicalHistory = [], medications = [], lifestyleHabits, internalNotes, files = [],
     onDataRefresh, onExit, isMobile, setViewingConsultation, setViewingLog, setViewingDietLog, setViewingExerciseLog, clinic, subscription
 }) => {
     
@@ -160,7 +162,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
     // AI Assistant States
     const [messages, setMessages] = useState<AiMessage[]>([]);
     const [userInput, setUserInput] = useState('');
-    const [aiContext, setAiContext] = useState<{ displayText: string; fullText: string; } | null>(null);
+    const [aiContext, setAiContext] = useState<{ displayText: string; fullText: string; file_url?: string; } | null>(null);
     const [aiLoading, setAiLoading] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
     const aiInputRef = useRef<HTMLInputElement>(null);
@@ -254,6 +256,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
             ...dietLogs.map(d => ({ ...d, type: 'diet', date: new Date(d.log_date) })),
             ...exerciseLogs.map(e => ({ ...e, type: 'exercise', date: new Date(e.log_date) })),
             ...planHistory.map(p => ({ ...p, type: 'diet_plan_history', date: new Date(p.created_at) })),
+            ...files.map(f => ({ ...f, type: 'file', date: new Date(f.created_at || new Date()) })),
         ];
         const sorted = combined.sort((a, b) => b.date.getTime() - a.date.getTime());
         
@@ -301,6 +304,11 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                         contentToSearch = `plan calculado ${p.person_name || ''}`; 
                         break;
                     }
+                    case 'file': {
+                        const f = item as unknown as PersonFile;
+                        contentToSearch = `archivo ${f.file_name || ''} ${f.description || ''}`;
+                        break;
+                    }
                 }
                 if (!contentToSearch.toLowerCase().includes(searchLower)) {
                     return false;
@@ -308,7 +316,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
             }
             return true;
         });
-    }, [consultations, logs, dietLogs, exerciseLogs, planHistory, timelineFilters]);
+    }, [consultations, logs, dietLogs, exerciseLogs, planHistory, files, timelineFilters]);
 
     const handleTimelineItemClick = (item: any) => {
         switch (item.type) {
@@ -323,6 +331,9 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                 break;
             case 'exercise':
                 setViewingExerciseLog(item as ExerciseLog);
+                break;
+            case 'file':
+                window.open(supabase.storage.from('files').getPublicUrl(item.file_path).data.publicUrl, '_blank');
                 break;
             default:
                 console.warn("Unknown timeline item type:", item.type);
@@ -362,7 +373,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
 
     const formatDate = (date: Date) => date.toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' });
 
-    const sendContextToAi = (context: { displayText: string; fullText: string; }) => {
+    const sendContextToAi = (context: { displayText: string; fullText: string; file_url?: string; }) => {
         setAiContext(context);
         setUserInput('');
         aiInputRef.current?.focus();
@@ -387,6 +398,8 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
     const formatItemForAI = (item: any) => {
         let displayText = '';
         let fullText = '';
+        let file_url: string | undefined = undefined;
+
         switch (item.type) {
             case 'consultation':
                 displayText = `Consulta ${formatDate(item.date)}`;
@@ -406,8 +419,14 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                 const exercises = item.ejercicios as any[];
                 fullText = `Rutina (${formatDate(item.date)}): Enfoque: ${item.enfoque}. Ejercicios: ${exercises.length > 0 ? exercises.map(ex => ex.nombre).join(', ') : 'Descanso'}`;
                 break;
+            case 'file':
+                const file = item as PersonFile;
+                displayText = `Archivo: ${file.file_name}`;
+                fullText = `Archivo adjunto: ${file.file_name} (Tipo: ${file.file_type}). Descripción: ${file.description || 'Sin descripción'}.`;
+                file_url = supabase.storage.from('files').getPublicUrl(file.file_path).data.publicUrl;
+                break;
         }
-        return { displayText, fullText };
+        return { displayText, fullText, file_url };
     };
 
     const handleAiSubmit = async (e: FormEvent | string) => {
@@ -455,7 +474,9 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                 body: JSON.stringify({
                     clinic_id: clinic?.id,
                     contents: `PREGUNTA DEL NUTRIÓLOGO: ${userMessage.content}`,
-                    config: { systemInstruction: systemInstruction }
+                    config: { systemInstruction: systemInstruction },
+                    // Pass file_url to backend if present in context for RAG
+                    file_url: userMessage.context?.file_url
                 })
             });
 
