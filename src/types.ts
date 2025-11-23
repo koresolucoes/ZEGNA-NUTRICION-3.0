@@ -1,3 +1,4 @@
+
 import { Database } from './database.types';
 
 // Core Types
@@ -97,6 +98,10 @@ export type PatientServicePlan = Database['public']['Tables']['patient_service_p
         gamification_enabled?: boolean;
         file_storage_limit_mb?: number;
     } | null;
+    // New SAT Fields
+    sat_product_code?: string | null;
+    sat_unit_code?: string | null;
+    sat_tax_object_code?: string | null;
 };
 
 // Other specific types
@@ -167,7 +172,12 @@ export type ClinicalReference = Omit<Database['public']['Tables']['clinical_refe
 
 // --- Invoicing & Financial Types ---
 export type FiscalCredentials = Database['public']['Tables']['fiscal_credentials']['Row'];
-export type Service = Database['public']['Tables']['services']['Row'];
+export type Service = Database['public']['Tables']['services']['Row'] & {
+    // New SAT Fields
+    sat_product_code?: string | null;
+    sat_unit_code?: string | null;
+    sat_tax_object_code?: string | null;
+};
 export type Payment = Database['public']['Tables']['payments']['Row'];
 export type Invoice = Database['public']['Tables']['invoices']['Row'];
 

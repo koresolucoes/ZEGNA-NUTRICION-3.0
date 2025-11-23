@@ -34,70 +34,66 @@ export const supabase = supabaseClient as ReturnType<typeof createClient<Databas
 
 /*
 -- =================================================================
--- SOLUCIÓN DE ERROR DE SUBIDA DE ARCHIVOS (STORAGE RLS)
--- Ejecuta este script en Supabase para configurar los buckets y permisos.
+-- V22.0 SCRIPT DE MIGRACIÓN (Datos Fiscales para Servicios y Planes)
+-- Ejecuta este script para permitir la configuración SAT por servicio.
 -- =================================================================
 BEGIN;
 
--- 1. Crear buckets necesarios y hacerlos públicos (excepto fiscal-files)
-INSERT INTO storage.buckets (id, name, public) VALUES ('files', 'files', true) ON CONFLICT (id) DO UPDATE SET public = true;
-INSERT INTO storage.buckets (id, name, public) VALUES ('avatars', 'avatars', true) ON CONFLICT (id) DO UPDATE SET public = true;
-INSERT INTO storage.buckets (id, name, public) VALUES ('log_images', 'log_images', true) ON CONFLICT (id) DO UPDATE SET public = true;
-INSERT INTO storage.buckets (id, name, public) VALUES ('fiscal-files', 'fiscal-files', false) ON CONFLICT (id) DO NOTHING;
+-- 1. Agregar columnas SAT a la tabla de servicios
+ALTER TABLE public.services 
+ADD COLUMN IF NOT EXISTS sat_product_code text DEFAULT '85101702',
+ADD COLUMN IF NOT EXISTS sat_unit_code text DEFAULT 'E48',
+ADD COLUMN IF NOT EXISTS sat_tax_object_code text DEFAULT '02';
 
--- 2. Habilitar RLS en objetos de almacenamiento
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
-
--- 3. Políticas para 'files' (Archivos de pacientes)
-DROP POLICY IF EXISTS "Authenticated users can upload to files" ON storage.objects;
-CREATE POLICY "Authenticated users can upload to files" ON storage.objects
-FOR INSERT TO authenticated WITH CHECK (bucket_id = 'files');
-
-DROP POLICY IF EXISTS "Authenticated users can update their own files" ON storage.objects;
-CREATE POLICY "Authenticated users can update their own files" ON storage.objects
-FOR UPDATE TO authenticated USING (bucket_id = 'files' AND owner = auth.uid());
-
-DROP POLICY IF EXISTS "Authenticated users can delete their own files" ON storage.objects;
-CREATE POLICY "Authenticated users can delete their own files" ON storage.objects
-FOR DELETE TO authenticated USING (bucket_id = 'files' AND owner = auth.uid());
-
-DROP POLICY IF EXISTS "Public Read Access for files" ON storage.objects;
-CREATE POLICY "Public Read Access for files" ON storage.objects
-FOR SELECT TO public USING (bucket_id = 'files');
-
--- 4. Políticas para 'avatars' (Fotos de perfil y logos)
-DROP POLICY IF EXISTS "Authenticated users can upload avatars" ON storage.objects;
-CREATE POLICY "Authenticated users can upload avatars" ON storage.objects
-FOR INSERT TO authenticated WITH CHECK (bucket_id = 'avatars');
-
-DROP POLICY IF EXISTS "Authenticated users can update avatars" ON storage.objects;
-CREATE POLICY "Authenticated users can update avatars" ON storage.objects
-FOR UPDATE TO authenticated USING (bucket_id = 'avatars');
-
-DROP POLICY IF EXISTS "Public Read Access for avatars" ON storage.objects;
-CREATE POLICY "Public Read Access for avatars" ON storage.objects
-FOR SELECT TO public USING (bucket_id = 'avatars');
-
--- 5. Políticas para 'log_images' (Fotos de comidas)
-DROP POLICY IF EXISTS "Authenticated users can upload log images" ON storage.objects;
-CREATE POLICY "Authenticated users can upload log images" ON storage.objects
-FOR INSERT TO authenticated WITH CHECK (bucket_id = 'log_images');
-
-DROP POLICY IF EXISTS "Public Read Access for log_images" ON storage.objects;
-CREATE POLICY "Public Read Access for log_images" ON storage.objects
-FOR SELECT TO public USING (bucket_id = 'log_images');
-
--- 6. Políticas para 'fiscal-files' (PRIVADO - Certificados SAT)
-DROP POLICY IF EXISTS "Authenticated users can upload fiscal files" ON storage.objects;
-CREATE POLICY "Authenticated users can upload fiscal files" ON storage.objects
-FOR INSERT TO authenticated WITH CHECK (bucket_id = 'fiscal-files');
-
-DROP POLICY IF EXISTS "Authenticated users can read their own fiscal files" ON storage.objects;
-CREATE POLICY "Authenticated users can read their own fiscal files" ON storage.objects
-FOR SELECT TO authenticated USING (bucket_id = 'fiscal-files' AND owner = auth.uid());
+-- 2. Agregar columnas SAT a la tabla de planes
+ALTER TABLE public.patient_service_plans 
+ADD COLUMN IF NOT EXISTS sat_product_code text DEFAULT '85101702',
+ADD COLUMN IF NOT EXISTS sat_unit_code text DEFAULT 'E48',
+ADD COLUMN IF NOT EXISTS sat_tax_object_code text DEFAULT '02';
 
 COMMIT;
 -- =================================================================
--- Fin del Script de Storage
+-- Fin del Script de Migración
+-- =================================================================
+
+
+-- =================================================================
+-- SCRIPT PARA CAPTURA DE FEEDBACK BETA (Temporal)
+-- POR FAVOR, EJECUTA ESTE SCRIPT EN TU EDITOR SQL DE SUPABASE.
+-- =================================================================
+BEGIN;
+
+-- 1. Crear la tabla 'beta_feedback'
+CREATE TABLE IF NOT EXISTS public.beta_feedback (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE SET NULL,
+    clinic_id uuid REFERENCES public.clinics(id) ON DELETE SET NULL,
+    feedback_type text NOT NULL,
+    message text NOT NULL,
+    contact_allowed boolean DEFAULT false NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+COMMENT ON TABLE public.beta_feedback IS 'Tabla temporal para recolectar feedback de usuarios beta.';
+
+-- 2. Habilitar RLS
+ALTER TABLE public.beta_feedback ENABLE ROW LEVEL SECURITY;
+
+-- 3. Crear Políticas de RLS
+-- Los usuarios autenticados pueden insertar su propio feedback.
+DROP POLICY IF EXISTS "Los usuarios pueden enviar su propio feedback" ON public.beta_feedback;
+CREATE POLICY "Los usuarios pueden enviar su propio feedback"
+ON public.beta_feedback FOR INSERT
+WITH CHECK (auth.uid() = user_id);
+
+-- Los usuarios pueden ver su propio feedback (opcional, pero buena práctica).
+DROP POLICY IF EXISTS "Los usuarios pueden ver su propio feedback" ON public.beta_feedback;
+CREATE POLICY "Los usuarios pueden ver su propio feedback"
+ON public.beta_feedback FOR SELECT
+USING (auth.uid() = user_id);
+
+
+COMMIT;
+-- =================================================================
+-- Fin del Script de Feedback
 -- =================================================================
 */

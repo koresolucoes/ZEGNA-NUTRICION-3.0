@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useEffect, FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase, Json } from '../../supabase';
@@ -27,7 +28,10 @@ const ServicePlanFormModal: FC<ServicePlanFormModalProps> = ({ isOpen, onClose, 
             patient_portal_ai_enabled: true,
             gamification_enabled: true,
             file_storage_limit_mb: 100,
-        }
+        },
+        sat_product_code: '85101702',
+        sat_unit_code: 'E48',
+        sat_tax_object_code: '02'
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -45,17 +49,23 @@ const ServicePlanFormModal: FC<ServicePlanFormModalProps> = ({ isOpen, onClose, 
                     patient_portal_ai_enabled: features.patient_portal_ai_enabled !== false,
                     gamification_enabled: features.gamification_enabled !== false,
                     file_storage_limit_mb: features.file_storage_limit_mb || 100,
-                }
+                },
+                sat_product_code: planToEdit.sat_product_code || '85101702',
+                sat_unit_code: planToEdit.sat_unit_code || 'E48',
+                sat_tax_object_code: planToEdit.sat_tax_object_code || '02'
             });
         } else {
             setFormData({
                 name: '', duration_days: 30, description: '', max_consultations: '', price: '',
-                features: { patient_portal_ai_enabled: true, gamification_enabled: true, file_storage_limit_mb: 100 }
+                features: { patient_portal_ai_enabled: true, gamification_enabled: true, file_storage_limit_mb: 100 },
+                sat_product_code: '85101702',
+                sat_unit_code: 'E48',
+                sat_tax_object_code: '02'
             });
         }
     }, [planToEdit, isOpen]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
@@ -86,6 +96,9 @@ const ServicePlanFormModal: FC<ServicePlanFormModalProps> = ({ isOpen, onClose, 
                 max_consultations: formData.max_consultations ? Number(formData.max_consultations) : null,
                 price: parseFloat(formData.price) || 0,
                 features: formData.features as unknown as Json,
+                sat_product_code: formData.sat_product_code,
+                sat_unit_code: formData.sat_unit_code,
+                sat_tax_object_code: formData.sat_tax_object_code
             };
 
             if (planToEdit) {
@@ -145,6 +158,32 @@ const ServicePlanFormModal: FC<ServicePlanFormModalProps> = ({ isOpen, onClose, 
                                 <div>
                                     <label htmlFor="plan-duration" style={styles.label}>Duración (días) *</label>
                                     <input id="plan-duration" name="duration_days" type="number" value={formData.duration_days} onChange={handleChange} required style={styles.input} />
+                                </div>
+                            </div>
+
+                            {/* New Fiscal Section */}
+                            <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem', marginTop: '1.5rem' }}>
+                                <h3 style={{ fontSize: '1rem', color: 'var(--primary-color)', marginBottom: '1rem', marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    {ICONS.briefcase} Datos Fiscales
+                                </h3>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                    <div>
+                                        <label htmlFor="sat_product_code" style={{...styles.label, fontSize: '0.8rem'}}>Clave Producto</label>
+                                        <input id="sat_product_code" name="sat_product_code" type="text" value={formData.sat_product_code} onChange={handleChange} placeholder="85101702" style={{...styles.input, fontSize: '0.9rem', padding: '0.5rem'}} />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="sat_unit_code" style={{...styles.label, fontSize: '0.8rem'}}>Clave Unidad</label>
+                                        <input id="sat_unit_code" name="sat_unit_code" type="text" value={formData.sat_unit_code} onChange={handleChange} placeholder="E48" style={{...styles.input, fontSize: '0.9rem', padding: '0.5rem'}} />
+                                    </div>
+                                    <div style={{ gridColumn: '1 / -1' }}>
+                                        <label htmlFor="sat_tax_object_code" style={{...styles.label, fontSize: '0.8rem'}}>Objeto de Impuesto</label>
+                                        <select id="sat_tax_object_code" name="sat_tax_object_code" value={formData.sat_tax_object_code} onChange={handleChange} style={{...styles.input, fontSize: '0.9rem', padding: '0.5rem'}}>
+                                            <option value="01">01 - No objeto de impuesto</option>
+                                            <option value="02">02 - Sí objeto de impuesto</option>
+                                            <option value="03">03 - Sí objeto y no obligado al desglose</option>
+                                            <option value="04">04 - Sí objeto y no causa impuesto</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                         </div>

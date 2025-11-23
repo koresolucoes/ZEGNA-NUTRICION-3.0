@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useEffect, FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../supabase';
@@ -17,7 +18,14 @@ const modalRoot = document.getElementById('modal-root');
 
 const ServiceFormModal: FC<ServiceFormModalProps> = ({ isOpen, onClose, onSave, serviceToEdit }) => {
     const { clinic } = useClinic();
-    const [formData, setFormData] = useState({ name: '', description: '', price: '' });
+    const [formData, setFormData] = useState({ 
+        name: '', 
+        description: '', 
+        price: '',
+        sat_product_code: '85101702',
+        sat_unit_code: 'E48',
+        sat_tax_object_code: '02'
+    });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -27,13 +35,23 @@ const ServiceFormModal: FC<ServiceFormModalProps> = ({ isOpen, onClose, onSave, 
                 name: serviceToEdit.name,
                 description: serviceToEdit.description || '',
                 price: String(serviceToEdit.price),
+                sat_product_code: serviceToEdit.sat_product_code || '85101702',
+                sat_unit_code: serviceToEdit.sat_unit_code || 'E48',
+                sat_tax_object_code: serviceToEdit.sat_tax_object_code || '02'
             });
         } else {
-            setFormData({ name: '', description: '', price: '' });
+            setFormData({ 
+                name: '', 
+                description: '', 
+                price: '',
+                sat_product_code: '85101702',
+                sat_unit_code: 'E48',
+                sat_tax_object_code: '02'
+            });
         }
     }, [serviceToEdit, isOpen]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
@@ -50,6 +68,9 @@ const ServiceFormModal: FC<ServiceFormModalProps> = ({ isOpen, onClose, onSave, 
                 name: formData.name,
                 description: formData.description,
                 price: parseFloat(formData.price) || 0,
+                sat_product_code: formData.sat_product_code,
+                sat_unit_code: formData.sat_unit_code,
+                sat_tax_object_code: formData.sat_tax_object_code
             };
 
             if (serviceToEdit) {
@@ -79,7 +100,7 @@ const ServiceFormModal: FC<ServiceFormModalProps> = ({ isOpen, onClose, onSave, 
 
     return createPortal(
         <div style={styles.modalOverlay}>
-            <form onSubmit={handleSubmit} style={{...styles.modalContent, maxWidth: '500px', borderRadius: '16px', padding: '0'}} className="fade-in">
+            <form onSubmit={handleSubmit} style={{...styles.modalContent, maxWidth: '550px', borderRadius: '16px', padding: '0'}} className="fade-in">
                 <div style={{...styles.modalHeader, borderBottom: 'none', paddingBottom: '0'}}>
                     <h2 style={{...styles.modalTitle, fontSize: '1.5rem'}}>{serviceToEdit ? 'Editar Servicio' : 'Nuevo Servicio'}</h2>
                     <button type="button" onClick={onClose} style={{...styles.iconButton, border: 'none', backgroundColor: 'var(--surface-hover-color)'}}>{ICONS.close}</button>
@@ -121,7 +142,7 @@ const ServiceFormModal: FC<ServiceFormModalProps> = ({ isOpen, onClose, onSave, 
                         </div>
                     </div>
 
-                    <div>
+                    <div style={{ marginBottom: '1.5rem' }}>
                         <label htmlFor="service-description" style={styles.label}>Descripción (Opcional)</label>
                         <textarea 
                             id="service-description" 
@@ -132,6 +153,31 @@ const ServiceFormModal: FC<ServiceFormModalProps> = ({ isOpen, onClose, onSave, 
                             placeholder="Detalles sobre qué incluye este servicio."
                             style={{...styles.input, resize: 'vertical'}}
                         />
+                    </div>
+
+                    <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem', marginTop: '1.5rem' }}>
+                        <h3 style={{ fontSize: '1rem', color: 'var(--primary-color)', marginBottom: '1rem', marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            {ICONS.briefcase} Datos Fiscales (SAT)
+                        </h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div>
+                                <label htmlFor="sat_product_code" style={styles.label}>Clave Producto</label>
+                                <input id="sat_product_code" name="sat_product_code" type="text" value={formData.sat_product_code} onChange={handleChange} placeholder="85101702" style={styles.input} />
+                            </div>
+                            <div>
+                                <label htmlFor="sat_unit_code" style={styles.label}>Clave Unidad</label>
+                                <input id="sat_unit_code" name="sat_unit_code" type="text" value={formData.sat_unit_code} onChange={handleChange} placeholder="E48" style={styles.input} />
+                            </div>
+                            <div style={{ gridColumn: '1 / -1' }}>
+                                <label htmlFor="sat_tax_object_code" style={styles.label}>Objeto de Impuesto</label>
+                                <select id="sat_tax_object_code" name="sat_tax_object_code" value={formData.sat_tax_object_code} onChange={handleChange} style={styles.input}>
+                                    <option value="01">01 - No objeto de impuesto</option>
+                                    <option value="02">02 - Sí objeto de impuesto</option>
+                                    <option value="03">03 - Sí objeto y no obligado al desglose</option>
+                                    <option value="04">04 - Sí objeto y no causa impuesto</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 

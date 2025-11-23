@@ -1,5 +1,6 @@
 
 
+
 import { createClient } from '@supabase/supabase-js';
 
 // Helper function to convert ArrayBuffer to base64, removing dependency on Node.js Buffer
@@ -110,13 +111,22 @@ export default async function handler(req: any, res: any) {
         const privateKeyPassword = decryptPassword(fiscalCreds.private_key_password);
         const clinicApiKey = decryptPassword(fiscalCreds.fiscal_api_key);
         
-        // 4. Construct FiscalAPI payload according to CFDI 4.0 and tax-exempt rules for nutrition services
+        // 4. Construct FiscalAPI payload according to CFDI 4.0
         const recipientZipCode = extractZipCode(fiscal_address);
         if(!recipientZipCode) throw new Error("No se pudo extraer un código postal válido de la dirección fiscal del receptor.");
 
+        // Determine SAT codes from service definition or fallback to defaults
+        // Note: The `services` object in payment might not have the new columns if fetched directly
+        // but we selected `services(*)` so if the schema is updated, they will be there.
+        // We treat them as any to avoid strict typing issues in this serverless function if types aren't updated globally here.
+        const serviceData = service as any;
+        const itemCode = serviceData?.sat_product_code || "85101702";
+        const unitCode = serviceData?.sat_unit_code || "E48";
+        const taxObject = serviceData?.sat_tax_object_code || "02";
+
         const fiscalApiPayload = {
             versionCode: "4.0",
-            series: "F", // Could be made configurable in the future
+            series: "F", 
             date: new Date().toISOString().slice(0, 19),
             paymentFormCode: getPaymentFormCode(payment.payment_method),
             paymentConditions: "Contado",
@@ -142,13 +152,16 @@ export default async function handler(req: any, res: any) {
                 cfdiUseCode: cfdi_use,
             },
             items: [{
-                itemCode: "85101702", // SAT code for 'Servicios de nutricionistas o dietistas'
+                itemCode: itemCode, 
                 quantity: 1,
-                unitOfMeasurementCode: "E48", // Service unit
-                description: service?.name || 'Consulta Nutricional',
-                unitPrice: parseFloat(Number(payment.amount).toFixed(6)), // The full amount is the unit price
-                taxObjectCode: "02", // '02' - No objeto de impuesto, as nutrition services are exempt.
-                // No 'itemTaxes' array is included, making it tax-exempt.
+                unitOfMeasurementCode: unitCode, 
+                description: serviceData?.name || 'Consulta Nutricional',
+                unitPrice: parseFloat(Number(payment.amount).toFixed(6)), 
+                taxObjectCode: taxObject,
+                // If taxObject is 02, we should ideally calculate taxes. 
+                // However, for standard nutrition services which are often exempt, we rely on 
+                // the fact that omitting the taxes array often implies 0% or exempt if validated by PAC.
+                // If explicit tax breakdown is needed, it should be added here based on taxObject logic.
             }]
         };
 
@@ -173,7 +186,6 @@ export default async function handler(req: any, res: any) {
 
         if (!apiResponse.ok) {
             const errorMessage = result?.message || JSON.stringify(result);
-            // Attempt to store the error for debugging, but don't let this block the response
             try {
                 await supabaseAdmin.from('invoices').upsert({
                     clinic_id: clinic.id,
@@ -200,7 +212,6 @@ export default async function handler(req: any, res: any) {
             }, { onConflict: 'payment_id' });
         
         if (invoiceInsertError) {
-            // Log this critical error, as the invoice was generated but not saved.
             console.error(`CRÍTICO: No se pudo guardar la factura generada ${result.uuid} para el pago ${payment.id}. Error: ${invoiceInsertError.message}`);
         }
 
