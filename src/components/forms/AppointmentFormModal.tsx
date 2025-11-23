@@ -1,5 +1,5 @@
 
-import React, { FC, useState, useEffect, FormEvent } from 'react';
+import React, { FC, useState, useEffect, FormEvent, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../../supabase';
@@ -43,6 +43,11 @@ const AppointmentFormModal: FC<AppointmentModalProps> = ({
     const [durationInMinutes, setDurationInMinutes] = useState<number>(60);
     const [consultationLimitReached, setConsultationLimitReached] = useState(false);
 
+    // Search State
+    const [searchTerm, setSearchTerm] = useState('');
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const searchContainerRef = useRef<HTMLDivElement>(null);
+
     const [formData, setFormData] = useState({
         id: '', title: '', person_id: personId || '', user_id: currentUser.id,
         start_time: toLocalISOString(new Date()), end_time: toLocalISOString(new Date(new Date().getTime() + 60*60000)),
@@ -74,6 +79,10 @@ const AppointmentFormModal: FC<AppointmentModalProps> = ({
                 status: appointmentToEdit.status,
                 notes: appointmentToEdit.notes || ''
             });
+            // Pre-fill search term if editing
+            if (appointmentToEdit.persons) {
+                setSearchTerm(appointmentToEdit.persons.full_name);
+            }
         } else if (initialSlot) {
             const initialDuration = (initialSlot.end.getTime() - initialSlot.start.getTime()) / 60000;
             setDurationInMinutes(initialDuration > 0 ? initialDuration : 60);
@@ -87,6 +96,7 @@ const AppointmentFormModal: FC<AppointmentModalProps> = ({
                 end_time: toLocalISOString(initialSlot.end),
                 status: 'scheduled', notes: ''
             }));
+            if (personForSlot) setSearchTerm(personForSlot.full_name);
         } else {
             setDurationInMinutes(60);
             const defaultStartTime = new Date();
@@ -102,6 +112,7 @@ const AppointmentFormModal: FC<AppointmentModalProps> = ({
                 status: 'scheduled',
                 notes: ''
             });
+            if (personForNew) setSearchTerm(personForNew.full_name);
         }
     }, [appointmentToEdit, initialSlot, currentUser.id, personId, persons, isCurrentUserAdmin, teamMembers]);
     
@@ -112,6 +123,17 @@ const AppointmentFormModal: FC<AppointmentModalProps> = ({
             setFormData(prev => ({ ...prev, end_time: toLocalISOString(endDate) }));
         }
     }, [formData.start_time, durationInMinutes]);
+
+    // Click outside handler for dropdown
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+                setIsDropdownOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
     
     useEffect(() => {
         const checkConsultationLimit = async () => {
@@ -138,8 +160,6 @@ const AppointmentFormModal: FC<AppointmentModalProps> = ({
             const isCreatingNew = !formData.id;
             const isApproving = formData.status === 'pending-approval';
             
-            // Limit is only enforced when creating a new appointment or approving a pending one.
-            // Editing an existing 'scheduled' appointment is allowed.
             if (count !== null && count >= plan.max_consultations) {
                 const warningMsg = `Advertencia: El paciente ha utilizado ${count} de ${plan.max_consultations} citas de su plan.`;
                 if (isCreatingNew || isApproving) {
@@ -156,16 +176,28 @@ const AppointmentFormModal: FC<AppointmentModalProps> = ({
         checkConsultationLimit();
     }, [formData.id, formData.person_id, formData.status, persons, servicePlans]);
 
+    const filteredPersons = useMemo(() => {
+        if (!searchTerm) return persons;
+        const lowerTerm = searchTerm.toLowerCase();
+        return persons.filter(p => 
+            p.full_name.toLowerCase().includes(lowerTerm) || 
+            p.folio?.toLowerCase().includes(lowerTerm)
+        );
+    }, [persons, searchTerm]);
+
+    const handlePersonSelect = (person: Person) => {
+        setFormData(prev => ({
+            ...prev,
+            person_id: person.id,
+            title: (!prev.title || prev.title.startsWith('Consulta')) ? `Consulta ${person.full_name}` : prev.title
+        }));
+        setSearchTerm(person.full_name);
+        setIsDropdownOpen(false);
+    };
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => {
-            const newState = { ...prev, [name]: value };
-            if (name === 'person_id' && (!prev.title || prev.title.startsWith('Consulta'))) {
-                const person = persons.find(p => p.id === value);
-                newState.title = person ? `Consulta ${person.full_name}` : '';
-            }
-            return newState;
-        });
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
     
     const handleSubmit = async (e: FormEvent) => {
@@ -179,7 +211,6 @@ const AppointmentFormModal: FC<AppointmentModalProps> = ({
 
             await onSave(formData);
             
-            // After successfully saving, check if we need to send a notification
             if ((wasPending && isNowScheduled) || (isNewAppointment && isNowScheduled)) {
                 const person = persons.find(p => p.id === formData.person_id);
                 if (person && person.user_id) {
@@ -220,7 +251,6 @@ const AppointmentFormModal: FC<AppointmentModalProps> = ({
             const updatedFormData = { ...formData, status: 'scheduled' };
             await onSave(updatedFormData);
 
-            // Send notification after successful approval
             const person = persons.find(p => p.id === formData.person_id);
             if (person && person.user_id) {
                 fetch('/api/send-notification', {
@@ -246,75 +276,171 @@ const AppointmentFormModal: FC<AppointmentModalProps> = ({
     const isPending = formData.status === 'pending-approval';
     const isNewAppointment = !formData.id;
 
+    // Modern Styling
+    const modernInputStyle = {
+        ...styles.input,
+        backgroundColor: 'var(--surface-hover-color)',
+        border: '1px solid var(--border-color)',
+        borderRadius: '10px',
+        padding: '0.8rem 1rem',
+        fontSize: '0.95rem',
+        marginBottom: '0',
+        transition: 'all 0.2s'
+    };
+
+    const labelStyle = {
+        fontSize: '0.85rem',
+        fontWeight: 600,
+        color: 'var(--text-color)',
+        marginBottom: '0.4rem',
+        display: 'block'
+    };
+
     return createPortal(
         <div style={styles.modalOverlay}>
-            <form onSubmit={handleSubmit} style={{...styles.modalContent, maxWidth: '600px'}}>
-                <div style={styles.modalHeader}>
-                    <h2 style={styles.modalTitle}>{formData.id ? 'Editar Cita' : 'Nueva Cita'}</h2>
-                    <button type="button" onClick={onClose} style={{...styles.iconButton, border: 'none'}}>{ICONS.close}</button>
+            <form onSubmit={handleSubmit} style={{...styles.modalContent, maxWidth: '550px', borderRadius: '20px', padding: 0}}>
+                <div style={{...styles.modalHeader, padding: '1.5rem 2rem', borderBottom: '1px solid var(--border-color)'}}>
+                    <div>
+                        <h2 style={{...styles.modalTitle, fontSize: '1.3rem'}}>{formData.id ? 'Editar Cita' : 'Nueva Cita'}</h2>
+                        <p style={{margin: '0.25rem 0 0 0', fontSize: '0.9rem', color: 'var(--text-light)'}}>
+                            {formData.id ? 'Modifica los detalles del evento' : 'Programa un nuevo espacio en la agenda'}
+                        </p>
+                    </div>
+                    <button type="button" onClick={onClose} style={{...styles.iconButton, border: 'none', backgroundColor: 'var(--surface-hover-color)'}}>{ICONS.close}</button>
                 </div>
-                <div style={styles.modalBody}>
+                
+                <div style={{...styles.modalBody, padding: '2rem'}}>
                     {formError && <p style={styles.error}>{formError}</p>}
-                    {planWarning && <p style={{...styles.error, backgroundColor: 'rgba(234, 179, 8, 0.15)', color: '#EAB308', borderColor: '#EAB308'}}>{planWarning}</p>}
+                    {planWarning && <div style={{padding: '0.75rem 1rem', backgroundColor: 'rgba(234, 179, 8, 0.1)', color: '#B45309', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.9rem', border: '1px solid rgba(234, 179, 8, 0.3)'}}>⚠️ {planWarning}</div>}
                     {isPending && (
-                        <div style={{ padding: '0.75rem', marginBottom: '1rem', backgroundColor: 'rgba(234, 179, 8, 0.15)', border: '1px solid #EAB308', borderRadius: '8px', color: '#EAB308', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
-                           {ICONS.clock} Esta cita es una solicitud pendiente de aprobación.
+                        <div style={{ padding: '0.75rem 1rem', marginBottom: '1.5rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid #3B82F6', borderRadius: '8px', color: '#1D4ED8', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.9rem'}}>
+                           {ICONS.clock} Solicitud pendiente de aprobación por el paciente.
                         </div>
                     )}
-                    <label>Título</label><input name="title" value={formData.title} onChange={handleChange} required />
-                    <label>Paciente / Afiliado</label>
-                    <select name="person_id" value={formData.person_id} onChange={handleChange}>
-                        <option value="">-- Cita sin paciente --</option>
-                        {persons.map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
-                    </select>
+
+                    <div style={{marginBottom: '1.5rem'}}>
+                        <label style={labelStyle}>Paciente / Afiliado</label>
+                        <div ref={searchContainerRef} style={{position: 'relative'}}>
+                            <div style={{display: 'flex', alignItems: 'center', position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)', pointerEvents: 'none'}}>
+                                {ICONS.user}
+                            </div>
+                            <input 
+                                type="text" 
+                                value={searchTerm}
+                                onChange={(e) => { setSearchTerm(e.target.value); setIsDropdownOpen(true); }}
+                                onFocus={() => setIsDropdownOpen(true)}
+                                placeholder="Buscar paciente por nombre o folio..."
+                                style={{...modernInputStyle, paddingLeft: '2.8rem'}}
+                            />
+                            {isDropdownOpen && (
+                                <div style={{
+                                    position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+                                    backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)',
+                                    borderRadius: '10px', marginTop: '4px', maxHeight: '200px', overflowY: 'auto',
+                                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+                                }}>
+                                    {filteredPersons.length > 0 ? (
+                                        filteredPersons.map(p => (
+                                            <div 
+                                                key={p.id} 
+                                                onClick={() => handlePersonSelect(p)}
+                                                className="nav-item-hover"
+                                                style={{padding: '0.75rem 1rem', cursor: 'pointer', borderBottom: '1px solid var(--border-color)', fontSize: '0.9rem'}}
+                                            >
+                                                <div style={{fontWeight: 500}}>{p.full_name}</div>
+                                                {p.folio && <div style={{fontSize: '0.75rem', color: 'var(--text-light)'}}>{p.folio}</div>}
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div style={{padding: '1rem', color: 'var(--text-light)', fontSize: '0.9rem', textAlign: 'center'}}>No se encontraron pacientes.</div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div style={{marginBottom: '1.5rem'}}>
+                        <label style={labelStyle}>Título de la Cita</label>
+                        <input name="title" value={formData.title} onChange={handleChange} required style={modernInputStyle} placeholder="Ej: Consulta de Seguimiento" />
+                    </div>
+                    
                     {isCurrentUserAdmin && (
-                        <><label>Asignado a</label>
-                        <select name="user_id" value={formData.user_id} onChange={handleChange}>
-                            {teamMembers.map(m => <option key={m.user_id} value={m.user_id!}>{m.full_name}</option>)}
-                        </select></>
+                        <div style={{marginBottom: '1.5rem'}}>
+                            <label style={labelStyle}>Asignar a Especialista</label>
+                            <select name="user_id" value={formData.user_id} onChange={handleChange} style={modernInputStyle}>
+                                {teamMembers.map(m => <option key={m.user_id} value={m.user_id!}>{m.full_name}</option>)}
+                            </select>
+                        </div>
                     )}
                     
-                    <label>Inicio</label>
-                    <input type="datetime-local" name="start_time" value={formData.start_time} onChange={handleChange} style={{marginBottom: '1rem'}} />
+                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem'}}>
+                        <div>
+                            <label style={labelStyle}>Fecha y Hora de Inicio</label>
+                            <input type="datetime-local" name="start_time" value={formData.start_time} onChange={handleChange} style={modernInputStyle} />
+                        </div>
+                         <div>
+                            <label style={labelStyle}>Estado</label>
+                            <select name="status" value={formData.status} onChange={handleChange} style={modernInputStyle}>
+                                <option value="scheduled">Agendada</option>
+                                <option value="pending-approval">Pendiente</option>
+                                <option value="completed">Completada</option>
+                                <option value="cancelled">Cancelada</option>
+                                <option value="no-show">No se presentó</option>
+                            </select>
+                        </div>
+                    </div>
 
-                    <label>Duración</label>
-                    <div style={{display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem'}}>
-                        <div style={{display: 'flex', gap: '0.5rem'}}>
-                            {[30, 60, 120].map(mins => (
+                    <div style={{marginBottom: '1.5rem'}}>
+                        <label style={labelStyle}>Duración</label>
+                        <div style={{display: 'flex', gap: '0.5rem', flexWrap: 'wrap'}}>
+                            {[30, 45, 60, 90].map(mins => (
                                 <button
                                     type="button"
                                     key={mins}
                                     onClick={() => setDurationInMinutes(mins)}
-                                    className={`filter-button ${durationInMinutes === mins ? 'active' : ''}`}
+                                    style={{
+                                        flex: 1,
+                                        padding: '0.6rem',
+                                        borderRadius: '8px',
+                                        border: durationInMinutes === mins ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
+                                        backgroundColor: durationInMinutes === mins ? 'var(--primary-light)' : 'transparent',
+                                        color: durationInMinutes === mins ? 'var(--primary-color)' : 'var(--text-color)',
+                                        fontWeight: 600,
+                                        fontSize: '0.9rem',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
                                 >
-                                    {mins === 60 ? '1 hr' : mins === 120 ? '2 hr' : `${mins} min`}
+                                    {mins} min
                                 </button>
                             ))}
-                        </div>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1}}>
-                            <input
-                                type="number"
-                                value={durationInMinutes}
-                                onChange={(e) => setDurationInMinutes(parseInt(e.target.value, 10) || 0)}
-                                style={{margin: 0, width: '80px', textAlign: 'center'}}
-                            />
-                            <span>minutos</span>
+                             <div style={{position: 'relative', width: '80px'}}>
+                                <input
+                                    type="number"
+                                    value={durationInMinutes}
+                                    onChange={(e) => setDurationInMinutes(parseInt(e.target.value, 10) || 0)}
+                                    style={{...modernInputStyle, textAlign: 'center', paddingRight: '0.5rem'}}
+                                />
+                            </div>
                         </div>
                     </div>
 
-                    <label>Estado</label>
-                    <select name="status" value={formData.status} onChange={handleChange}>
-                        <option value="pending-approval">Pendiente Aprobación</option>
-                        <option value="scheduled">Agendada</option><option value="completed">Completada</option><option value="cancelled">Cancelada</option><option value="no-show">No se presentó</option>
-                    </select>
-                    <label>Notas</label><textarea name="notes" value={formData.notes} onChange={handleChange} rows={3}></textarea>
+                    <div>
+                        <label style={labelStyle}>Notas Internas</label>
+                        <textarea name="notes" value={formData.notes} onChange={handleChange} rows={3} style={{...modernInputStyle, resize: 'vertical'}} placeholder="Detalles adicionales sobre la cita..."></textarea>
+                    </div>
                 </div>
-                <div style={{...styles.modalFooter, justifyContent: 'space-between'}}>
-                    <div>{formData.id && <button type="button" onClick={handleDelete} className="button-danger" disabled={loading}>Eliminar Cita</button>}</div>
+
+                <div style={{...styles.modalFooter, backgroundColor: 'var(--surface-color)', padding: '1.5rem 2rem', borderTop: '1px solid var(--border-color)'}}>
+                    <div style={{marginRight: 'auto'}}>
+                         {formData.id && <button type="button" onClick={handleDelete} className="button-danger" disabled={loading} style={{backgroundColor: 'transparent', color: 'var(--error-color)', border: '1px solid var(--error-bg)', padding: '0.7rem 1rem'}}>{ICONS.delete}</button>}
+                    </div>
                     <div style={{display: 'flex', gap: '1rem'}}>
-                        <button type="button" onClick={onClose} className="button-secondary" disabled={loading}>Cancelar</button>
-                        {isPending && <button type="button" onClick={handleApprove} disabled={loading || consultationLimitReached}>Aprobar Cita</button>}
-                        <button type="submit" disabled={loading || ((isNewAppointment || isPending) && consultationLimitReached)}>{loading ? 'Guardando...' : 'Guardar Cambios'}</button>
+                        <button type="button" onClick={onClose} className="button-secondary" disabled={loading} style={{padding: '0.7rem 1.5rem'}}>Cancelar</button>
+                        {isPending && <button type="button" onClick={handleApprove} disabled={loading || consultationLimitReached} style={{backgroundColor: '#EAB308', color: 'white', border: 'none', borderRadius: '8px', padding: '0.7rem 1.5rem', fontWeight: 600, cursor: 'pointer'}}>Aprobar</button>}
+                        <button type="submit" disabled={loading || ((isNewAppointment || isPending) && consultationLimitReached)} className="button-primary" style={{padding: '0.7rem 1.5rem'}}>
+                            {loading ? 'Guardando...' : 'Guardar Cita'}
+                        </button>
                     </div>
                 </div>
             </form>

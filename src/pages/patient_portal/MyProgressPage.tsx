@@ -1,3 +1,4 @@
+
 import React, { FC, useMemo, useState } from 'react';
 import { supabase } from '../../supabase';
 import { ConsultationWithLabs, GamificationLog, DailyCheckin } from '../../types';
@@ -60,7 +61,7 @@ const MyProgressPage: FC<MyProgressPageProps> = ({ consultations, gamificationLo
         return '⭐';
     };
     
-    const renderEmptyState = (text: string, icon: string) => (
+    const renderEmptyState = (text: string, icon: React.ReactNode) => (
         <div style={{ 
             textAlign: 'center', 
             padding: '4rem 2rem', 

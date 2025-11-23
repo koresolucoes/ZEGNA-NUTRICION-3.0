@@ -98,9 +98,6 @@ const ProgressChart: FC<ProgressChartProps> = ({ title, data, unit, color = 'var
         return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
     }).join(' ');
     
-    // Area path (for gradient)
-    const areaPath = `${path} L ${xScale(new Date(data[data.length-1].date).getTime())} ${chartHeight} L ${xScale(new Date(data[0].date).getTime())} ${chartHeight} Z`;
-
     // Generate Y-axis labels (3 labels max for mobile cleanliness)
     const yAxisLabels = [minValue, (minValue + maxValue) / 2, maxValue].map(v => ({
         y: yScale(v),
@@ -124,13 +121,6 @@ const ProgressChart: FC<ProgressChartProps> = ({ title, data, unit, color = 'var
             
             <div style={{ position: 'relative', overflow: 'hidden' }}>
                 <svg viewBox={`0 0 ${safeWidth} ${height}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
-                    <defs>
-                        <linearGradient id={`gradient-${title}`} x1="0" x2="0" y1="0" y2="1">
-                            <stop offset="0%" stopColor={lineColor} stopOpacity="0.2" />
-                            <stop offset="100%" stopColor={lineColor} stopOpacity="0" />
-                        </linearGradient>
-                    </defs>
-
                     <g transform={`translate(${padding.left}, ${padding.top})`}>
                         {/* Grid Lines */}
                         {yAxisLabels.map((label, i) => (
@@ -141,9 +131,6 @@ const ProgressChart: FC<ProgressChartProps> = ({ title, data, unit, color = 'var
                         {yAxisLabels.map((label, i) => (
                            <text key={i} x="-10" y={label.y} dy="0.32em" textAnchor="end" fill={lightTextColor} fontSize="10">{label.label}</text>
                         ))}
-
-                        {/* Area fill */}
-                        <path d={areaPath} fill={`url(#gradient-${title})`} stroke="none" />
 
                         {/* Line */}
                         <path d={path} fill="none" stroke={lineColor} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />

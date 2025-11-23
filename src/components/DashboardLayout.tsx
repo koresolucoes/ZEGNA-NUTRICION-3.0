@@ -34,6 +34,7 @@ import ClinicSettingsPage from '../pages/ClinicSettingsPage';
 import ServiceManagement from '../components/dashboard/ServiceManagement';
 import ServicePlansManagement from '../components/dashboard/ServicePlansManagement';
 import DisplayManagement from '../components/dashboard/DisplayManagement';
+import FiscalApiManagement from '../components/dashboard/FiscalApiManagement';
 import SubscriptionPage from '../pages/SubscriptionPage';
 import AffiliatesPage from '../pages/AffiliatesPage';
 import BetaFeedbackModal from './shared/BetaFeedbackModal';
@@ -55,12 +56,12 @@ const PlanLockedView: FC<{ onGoToBilling: () => void }> = ({ onGoToBilling }) =>
             fontSize: '3rem', 
             marginBottom: '1.5rem', 
             color: 'var(--text-light)', 
-            backgroundColor: 'var(--surface-hover-color)',
-            borderRadius: '50%',
-            width: '80px',
-            height: '80px',
-            display: 'flex',
-            alignItems: 'center',
+            backgroundColor: 'var(--surface-hover-color)', 
+            borderRadius: '50%', 
+            width: '80px', 
+            height: '80px', 
+            display: 'flex', 
+            alignItems: 'center', 
             justifyContent: 'center'
         }}>
             {ICONS.lock}
@@ -94,7 +95,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
 
     const isSubscriptionActive = subscription?.status === 'active' || subscription?.status === 'trialing';
     // List of pages that are allowed even when subscription is inactive
-    const unrestrictedPages = ['profile', 'profile-form', 'settings', 'clinic-settings', 'billing'];
+    const unrestrictedPages = ['profile', 'profile-form', 'settings', 'clinic-settings', 'billing', 'fiscal-settings'];
 
     const fetchPersons = useCallback(async () => {
         if (!clinic) return;
@@ -156,7 +157,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
     const navigate = (page: string, context = {}) => {
         setView({ page, context });
         // Smarter sidebar: close for content-heavy pages or on mobile
-        const contentHeavyPages = ['client-detail', 'afiliado-detail', 'calculators', 'consultation-form', 'log-form', 'profile-form', 'aliado-form', 'afiliado-form', 'client-form', 'agenda', 'queue', 'clinic-network', 'chat', 'finanzas', 'affiliates', 'user-guide'];
+        const contentHeavyPages = ['client-detail', 'afiliado-detail', 'calculators', 'consultation-form', 'log-form', 'profile-form', 'aliado-form', 'afiliado-form', 'client-form', 'agenda', 'queue', 'clinic-network', 'chat', 'finanzas', 'affiliates', 'user-guide', 'fiscal-settings'];
         if (contentHeavyPages.includes(page) || isMobile) {
             setSidebarOpen(false);
         }
@@ -222,6 +223,17 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
             case 'profile-form': return <ProfileFormPage user={session.user} onBack={() => navigate('profile')} />;
             case 'settings': return <SettingsPage user={session.user} initialTab={context.initialTab} />;
             case 'clinic-settings': return <ClinicSettingsPage user={session.user} isMobile={isMobile} />;
+            case 'fiscal-settings': return (
+                <div className="fade-in" style={{ maxWidth: '1000px', margin: '0 auto' }}>
+                     <div style={styles.pageHeader}>
+                        <h1>Configuración de Facturación</h1>
+                    </div>
+                    <p style={{marginTop: '-1.5rem', marginBottom: '2rem', color: 'var(--text-light)'}}>
+                        Configura tus certificados digitales para emitir facturas fiscales.
+                    </p>
+                    <FiscalApiManagement />
+                </div>
+            );
             case 'services': return <ServiceManagement navigate={navigate} />;
             case 'service-plans': return <ServicePlansManagement />;
             case 'displays': return <DisplayManagement />;
@@ -291,7 +303,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
         ...(isMobile ? styles.mainContentMobile : (isSidebarOpen ? styles.mainContentDesktop : { ...styles.mainContentDesktop, marginLeft: '0' }))
     };
 
-    const pagesWithoutFab = ['client-form', 'afiliado-form', 'aliado-form', 'consultation-form', 'log-form', 'profile-form', 'settings', 'calculators', 'agenda', 'queue', 'client-detail', 'afiliado-detail', 'chat', 'finanzas', 'clinic-settings', 'affiliates', 'user-guide'];
+    const pagesWithoutFab = ['client-form', 'afiliado-form', 'aliado-form', 'consultation-form', 'log-form', 'profile-form', 'settings', 'calculators', 'agenda', 'queue', 'client-detail', 'afiliado-detail', 'chat', 'finanzas', 'clinic-settings', 'affiliates', 'user-guide', 'fiscal-settings'];
     const isFabHidden = pagesWithoutFab.includes(view.page);
 
     return (
@@ -361,8 +373,9 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                     </CollapsibleCategory>
 
                     {role === 'admin' && (
-                        <CollapsibleCategory name="Mi Clínica" icon={ICONS.clinic} categoryKey="mi-clinica" pageNames={['clinic-settings', 'services', 'service-plans', 'displays', 'billing']}>
+                        <CollapsibleCategory name="Mi Clínica" icon={ICONS.clinic} categoryKey="mi-clinica" pageNames={['clinic-settings', 'fiscal-settings', 'services', 'service-plans', 'displays', 'billing']}>
                             <NavItem name="Datos de la Clínica" pageName="clinic-settings" isSubItem />
+                            <NavItem name="Facturación" pageName="fiscal-settings" isSubItem />
                             <NavItem name="Servicios" pageName="services" isSubItem />
                             <NavItem name="Planes de Servicio" pageName="service-plans" isSubItem />
                             <NavItem name="Pantallas de Espera" pageName="displays" isSubItem />

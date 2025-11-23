@@ -155,7 +155,7 @@ const AppointmentRequestModal: FC<AppointmentRequestModalProps> = ({ isOpen, onC
                 })
             }).catch(err => console.error("Failed to send notification:", err));
 
-            setTimeout(onSave, 2500);
+            setTimeout(() => onSave(), 2500);
         } catch (err: any) {
             setError(`Error al enviar solicitud: ${err.message}`);
         } finally {

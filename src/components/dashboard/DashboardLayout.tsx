@@ -34,6 +34,7 @@ import ClinicSettingsPage from '../../pages/ClinicSettingsPage';
 import ServiceManagement from '../dashboard/ServiceManagement';
 import ServicePlansManagement from '../dashboard/ServicePlansManagement';
 import DisplayManagement from '../dashboard/DisplayManagement';
+import FiscalApiManagement from '../components/dashboard/FiscalApiManagement';
 import SubscriptionPage from '../../pages/SubscriptionPage';
 import AffiliatesPage from '../../pages/AffiliatesPage';
 import BetaFeedbackModal from '../shared/BetaFeedbackModal';
@@ -55,12 +56,12 @@ const PlanLockedView: FC<{ onGoToBilling: () => void }> = ({ onGoToBilling }) =>
             fontSize: '3rem', 
             marginBottom: '1.5rem', 
             color: 'var(--text-light)', 
-            backgroundColor: 'var(--surface-hover-color)',
-            borderRadius: '50%',
-            width: '80px',
-            height: '80px',
-            display: 'flex',
-            alignItems: 'center',
+            backgroundColor: 'var(--surface-hover-color)', 
+            borderRadius: '50%', 
+            width: '80px', 
+            height: '80px', 
+            display: 'flex', 
+            alignItems: 'center', 
             justifyContent: 'center'
         }}>
             {ICONS.lock}
@@ -83,10 +84,6 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
     const [profile, setProfile] = useState<NutritionistProfile | null>(null);
     const { setTheme } = useThemeManager();
 
-    // State for Dropdowns in Navbar
-    const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-    const dropdownTimeoutRef = useRef<number | null>(null);
-
     const [isQuickConsultModalOpen, setQuickConsultModalOpen] = useState(false);
     const [isFeedbackModalOpen, setFeedbackModalOpen] = useState(false);
     const [clients, setClients] = useState<Pick<Person, 'id' | 'full_name' | 'avatar_url'>[]>([]);
@@ -95,7 +92,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
     // State for collapsible sidebar categories
     const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
         'gestion-clinica': true,
-        'administracion': true,
+        'administracion': false,
         'red': false,
         'recursos': false,
         'crecimiento': false,
@@ -103,8 +100,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
     });
 
     const isSubscriptionActive = subscription?.status === 'active' || subscription?.status === 'trialing';
-    // Pages that are always accessible even without an active plan
-    const unrestrictedPages = ['profile', 'profile-form', 'settings', 'clinic-settings', 'billing', 'displays'];
+    const unrestrictedPages = ['profile', 'profile-form', 'settings', 'clinic-settings', 'billing', 'displays', 'fiscal-settings'];
 
     const toggleCategory = (key: string) => {
         setOpenCategories(prev => ({ ...prev, [key]: !prev[key] }));
@@ -167,26 +163,12 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
     const navigate = (page: string, context = {}) => {
         setView({ page, context });
         setIsMobileMenuOpen(false);
-        setActiveDropdown(null);
         window.scrollTo(0, 0);
     };
 
-    // Dropdown Logic
-    const handleMouseEnter = (key: string) => {
-        if (dropdownTimeoutRef.current) clearTimeout(dropdownTimeoutRef.current);
-        setActiveDropdown(key);
-    };
-
-    const handleMouseLeave = () => {
-        dropdownTimeoutRef.current = window.setTimeout(() => {
-            setActiveDropdown(null);
-        }, 200);
-    };
-    
     const renderContent = () => {
         const { page, context } = view;
 
-        // Check if access is restricted
         if (!isSubscriptionActive && !unrestrictedPages.includes(page)) {
              return <PlanLockedView onGoToBilling={() => navigate('billing')} />;
         }
@@ -242,6 +224,17 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
             case 'profile-form': return <ProfileFormPage user={session.user} onBack={() => navigate('profile')} />;
             case 'settings': return <SettingsPage user={session.user} initialTab={context.initialTab} />;
             case 'clinic-settings': return <ClinicSettingsPage user={session.user} isMobile={isMobile} />;
+            case 'fiscal-settings': return (
+                <div className="fade-in" style={{ maxWidth: '1000px', margin: '0 auto' }}>
+                     <div style={styles.pageHeader}>
+                        <h1>Configuración de Facturación</h1>
+                    </div>
+                    <p style={{marginTop: '-1.5rem', marginBottom: '2rem', color: 'var(--text-light)'}}>
+                        Configura tus certificados digitales para emitir facturas fiscales.
+                    </p>
+                    <FiscalApiManagement />
+                </div>
+            );
             case 'services': return <ServiceManagement navigate={navigate} />;
             case 'service-plans': return <ServicePlansManagement />;
             case 'displays': return <DisplayManagement />;
@@ -251,28 +244,44 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
         }
     }
 
+    // --- Modern Nav Components ---
+
+    const SectionLabel: FC<{ label: string }> = ({ label }) => (
+        <div style={{
+            padding: '1.5rem 1rem 0.5rem 1rem',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            color: 'var(--text-light)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            opacity: 0.8
+        }}>
+            {label}
+        </div>
+    );
+
     const NavItem: FC<{ name: string, pageName: string, icon?: React.ReactNode, isSubItem?: boolean, context?: any }> = ({ name, pageName, icon, isSubItem = false, context }) => {
         const isActive = (view.page === pageName) && (context?.initialTab ? view.context?.initialTab === context.initialTab : true);
         const isLocked = !isSubscriptionActive && !unrestrictedPages.includes(pageName);
         
-        const containerStyle: React.CSSProperties = {
-            ...styles.navItem,
-            backgroundColor: isActive ? 'var(--primary-light)' : 'transparent',
-            color: isActive ? 'var(--primary-color)' : isLocked ? 'var(--text-light)' : 'var(--text-color)',
-            fontWeight: isActive ? 600 : 500,
-            borderRadius: '12px',
-            padding: '0.65rem 1rem',
-            marginBottom: '0.25rem',
-            transition: 'all 0.2s ease',
-            opacity: isLocked ? 0.6 : 1,
-            cursor: isLocked ? 'not-allowed' : 'pointer',
-            ...(isSubItem && { paddingLeft: '2.75rem', fontSize: '0.9rem', color: isActive ? 'var(--primary-color)' : isLocked ? 'var(--text-light)' : 'var(--text-light)' })
-        };
-
         return (
             <div
                 onClick={isLocked ? undefined : () => navigate(pageName, context)}
-                style={containerStyle}
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.8rem',
+                    padding: isSubItem ? '0.6rem 1rem 0.6rem 3rem' : '0.75rem 1rem',
+                    margin: '0 0.5rem 2px 0.5rem',
+                    borderRadius: '8px',
+                    cursor: isLocked ? 'not-allowed' : 'pointer',
+                    backgroundColor: isActive ? 'var(--primary-light)' : 'transparent',
+                    color: isActive ? 'var(--primary-color)' : isLocked ? 'var(--text-light)' : 'var(--text-color)',
+                    fontWeight: isActive ? 600 : 500,
+                    fontSize: isSubItem ? '0.9rem' : '0.95rem',
+                    transition: 'all 0.2s ease',
+                    opacity: isLocked ? 0.6 : 1
+                }}
                 className={!isLocked ? "nav-item-hover" : ""}
                 role="button"
                 aria-label={`Navegar a ${name}`}
@@ -280,22 +289,18 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
             >
                 {icon && (
                     <span style={{
-                        color: isActive ? 'var(--primary-color)' : isLocked ? 'var(--text-light)' : 'var(--text-light)', 
-                        fontSize: isSubItem ? '1rem' : '1.2rem',
-                        minWidth: '24px',
-                        display: 'flex',
-                        justifyContent: 'center'
+                        fontSize: '1.2rem',
+                        display: 'flex', 
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '20px',
+                        color: isActive ? 'var(--primary-color)' : 'var(--text-light)'
                     }}>
                         {icon}
                     </span>
                 )}
                 <span style={{ flex: 1 }}>{name}</span>
-                {isLocked && (
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>{ICONS.lock}</span>
-                )}
-                {isActive && !isSubItem && !isLocked && (
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--primary-color)' }} />
-                )}
+                {isLocked && <span style={{ fontSize: '0.8rem' }}>{ICONS.lock}</span>}
             </div>
         );
     };
@@ -311,33 +316,46 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
         const isOpen = openCategories[categoryKey];
 
         return (
-            <div style={{ marginBottom: '0.5rem' }}>
+            <div style={{ marginBottom: '2px' }}>
                 <div
                     onClick={() => toggleCategory(categoryKey)}
                     style={{
-                        ...styles.navItem,
+                        display: 'flex',
+                        alignItems: 'center',
                         justifyContent: 'space-between',
-                        backgroundColor: 'transparent',
-                        color: isActive ? 'var(--primary-color)' : 'var(--text-color)',
-                        fontWeight: 600,
-                        cursor: 'pointer',
                         padding: '0.75rem 1rem',
-                        borderRadius: '12px',
-                        opacity: isOpen ? 1 : 0.8
+                        margin: '0 0.5rem',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        color: isActive ? 'var(--primary-color)' : 'var(--text-color)',
+                        backgroundColor: 'transparent', // Categories don't get bg, only children or NavItems
+                        fontWeight: 600,
+                        fontSize: '0.95rem',
+                        transition: 'all 0.2s ease'
                     }}
                     className="nav-item-hover"
                     role="button"
                     aria-expanded={isOpen}
                 >
-                    <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
-                        {icon && <span style={{color: isActive ? 'var(--primary-color)' : 'var(--text-light)', fontSize: '1.2rem', minWidth: '24px', display: 'flex', justifyContent: 'center'}}>{icon}</span>}
+                    <div style={{display: 'flex', alignItems: 'center', gap: '0.8rem'}}>
+                        <span style={{
+                            fontSize: '1.2rem', 
+                            width: '20px', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            color: isActive ? 'var(--primary-color)' : 'var(--text-light)'
+                        }}>
+                            {icon}
+                        </span>
                         {name}
                     </div>
                     <span style={{ 
                         fontSize: '0.8rem', 
                         transition: 'transform 0.3s ease', 
                         transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                        color: 'var(--text-light)'
+                        color: 'var(--text-light)',
+                        opacity: 0.7
                     }}>
                         {ICONS.chevronDown}
                     </span>
@@ -345,9 +363,8 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                 <div style={{
                     maxHeight: isOpen ? '500px' : '0',
                     overflow: 'hidden',
-                    transition: 'max-height 0.3s ease-in-out',
+                    transition: 'max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                     opacity: isOpen ? 1 : 0,
-                    transform: isOpen ? 'translateY(0)' : 'translateY(-10px)',
                 }}>
                     {children}
                 </div>
@@ -358,17 +375,17 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
     const pagesWithoutFab = ['client-form', 'afiliado-form', 'aliado-form', 'consultation-form', 'log-form', 'profile-form', 'settings', 'calculators', 'agenda', 'queue', 'client-detail', 'afiliado-detail', 'chat', 'finanzas', 'clinic-settings', 'affiliates', 'user-guide'];
     const isFabHidden = pagesWithoutFab.includes(view.page);
 
-    // Sidebar Footer - User Profile Widget
+    // User Profile Widget
     const UserProfileWidget = () => (
         <div style={{
             padding: '1rem',
-            marginTop: 'auto', // Pushes to bottom
+            marginTop: 'auto', 
             borderTop: '1px solid var(--border-color)',
             display: 'flex',
             alignItems: 'center',
             gap: '0.75rem',
             cursor: 'pointer',
-            borderRadius: '12px',
+            backgroundColor: 'var(--surface-color)', // Slightly distinct bg
             transition: 'background-color 0.2s',
         }}
         className="nav-item-hover"
@@ -377,7 +394,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
             <img 
                 src={profile?.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${session.user.email}`} 
                 alt="Profile" 
-                style={{width: '40px', height: '40px', borderRadius: '50%', border: '2px solid var(--surface-color)', objectFit: 'cover', flexShrink: 0}}
+                style={{width: '40px', height: '40px', borderRadius: '10px', border: '1px solid var(--border-color)', objectFit: 'cover', flexShrink: 0}}
             />
             <div style={{flex: 1, minWidth: 0}}>
                 <p style={{margin: 0, fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-color)'}}>
@@ -394,11 +411,12 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                     border: 'none',
                     color: 'var(--text-light)',
                     padding: '0.5rem',
-                    borderRadius: '50%',
+                    borderRadius: '8px',
                     cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}
                 title="Cerrar Sesión"
-                className="icon-button"
+                className="nav-item-hover"
             >
                 {ICONS.logout}
             </button>
@@ -406,8 +424,8 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
     );
 
     return (
-        <div style={{ ...styles.dashboardLayout, flexDirection: 'column' }}>
-             {isQuickConsultModalOpen && (
+        <div style={styles.dashboardLayout}>
+            {isQuickConsultModalOpen && (
                  <QuickConsultationModal
                     isOpen={isQuickConsultModalOpen}
                     onClose={() => setQuickConsultModalOpen(false)}
@@ -423,7 +441,6 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                 />
             )}
             
-            {/* --- MOBILE HEADER --- */}
             {isMobile && (
                 <header style={{
                     height: '64px',
@@ -442,15 +459,12 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                         <button onClick={() => setIsMobileMenuOpen(true)} style={{...styles.hamburger, padding: '0.5rem', marginRight: '-0.5rem'}}>
                             {ICONS.menu}
                         </button>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <div style={{
-                                width: '32px', height: '32px', borderRadius: '8px', 
-                                background: 'linear-gradient(135deg, var(--primary-color), var(--primary-dark))',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                color: 'white', fontSize: '1rem', fontWeight: 800,
-                            }}>
-                                {clinic?.name ? clinic.name.charAt(0).toUpperCase() : 'Z'}
-                            </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <img 
+                                src={clinic?.logo_url || `https://api.dicebear.com/8.x/initials/svg?seed=${clinic?.name}&radius=50`} 
+                                alt="Logo" 
+                                style={{width: '32px', height: '32px', borderRadius: '8px', objectFit: 'cover'}}
+                            />
                              <h2 style={{ color: 'var(--text-color)', fontSize: '1rem', fontWeight: 700, margin: 0 }}>
                                 {clinic?.name || 'Zegna'}
                             </h2>
@@ -464,7 +478,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                 </header>
             )}
 
-            {/* --- DESKTOP SIDEBAR --- */}
+            {/* --- SIDEBAR --- */}
             <aside style={{
                 ...styles.sidebar,
                 ...(isMobile ? {
@@ -478,68 +492,73 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                 })
             }}>
                  {/* Sidebar Header */}
-                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0 0.5rem 1.5rem 0.5rem', marginBottom: '1rem' }}>
+                 <div style={{ padding: '0.5rem 1rem 1.5rem 1rem', marginBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
                      {isMobile && (
-                         <button onClick={() => setIsMobileMenuOpen(false)} style={{...styles.iconButton, marginRight: '0.5rem'}}>{ICONS.back}</button>
+                         <button onClick={() => setIsMobileMenuOpen(false)} style={{...styles.iconButton, marginBottom: '1rem'}}>{ICONS.back}</button>
                      )}
-                    <div style={{
-                        width: '40px', height: '40px', borderRadius: '12px', 
-                        background: 'linear-gradient(135deg, var(--primary-color), var(--primary-dark))',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: 'white', fontSize: '1.2rem', fontWeight: 800,
-                        boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
-                    }}>
-                            {clinic?.name ? clinic.name.charAt(0).toUpperCase() : 'Z'}
-                    </div>
-                    <div style={{ overflow: 'hidden' }}>
-                        <h2 style={{ color: 'var(--text-color)', fontSize: '1rem', fontWeight: 700, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {clinic?.name || 'Zegna Nutrición'}
-                        </h2>
-                         <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-light)' }}>Panel de Control</p>
+                     <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+                        <div style={{
+                            width: '40px', height: '40px', borderRadius: '10px', 
+                            background: 'linear-gradient(135deg, var(--primary-color), var(--primary-dark))',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: 'white', fontSize: '1.2rem', fontWeight: 800,
+                            boxShadow: '0 4px 10px rgba(0,0,0,0.15)'
+                        }}>
+                                {clinic?.name ? clinic.name.charAt(0).toUpperCase() : 'Z'}
+                        </div>
+                        <div style={{ overflow: 'hidden' }}>
+                            <h2 style={{ color: 'var(--text-color)', fontSize: '1rem', fontWeight: 700, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {clinic?.name || 'Zegna Nutrición'}
+                            </h2>
+                            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-light)' }}>Panel de Control</p>
+                        </div>
                     </div>
                 </div>
 
                 {/* Navigation Content */}
-                <nav style={{flex: 1, overflowY: 'auto', paddingRight: '0.5rem'}} className="hide-scrollbar">
+                <nav style={{flex: 1, overflowY: 'auto', paddingBottom: '1rem'}} className="hide-scrollbar">
                     <NavItem name="Dashboard" pageName="home" icon={ICONS.home} />
                     
-                    <CollapsibleCategory name="Gestión Clínica" icon={ICONS.users} categoryKey="gestion-clinica" pageNames={['clients', 'afiliados', 'agenda', 'queue']}>
-                        <NavItem name="Pacientes" pageName="clients" isSubItem />
+                    <SectionLabel label="Clínica" />
+                    <NavItem name="Agenda" pageName="agenda" icon={ICONS.calendar} />
+                    <NavItem name="Pacientes" pageName="clients" icon={ICONS.user} />
+                    <CollapsibleCategory name="Gestión Diaria" icon={ICONS.list} categoryKey="gestion-clinica" pageNames={['afiliados', 'queue']}>
                         <NavItem name="Afiliados" pageName="afiliados" isSubItem />
-                        <NavItem name="Agenda" pageName="agenda" isSubItem />
                         <NavItem name="Sala de Espera" pageName="queue" isSubItem />
                     </CollapsibleCategory>
                     
-                     <CollapsibleCategory name="Administración" icon={ICONS.dollar} categoryKey="administracion" pageNames={['finanzas', 'chat']}>
-                        <NavItem name="Finanzas" pageName="finanzas" isSubItem />
-                        <NavItem name="Conversaciones" pageName="chat" isSubItem />
-                    </CollapsibleCategory>
+                    <SectionLabel label="Administración" />
+                    <NavItem name="Finanzas" pageName="finanzas" icon={ICONS.dollar} />
+                    <NavItem name="Conversaciones" pageName="chat" icon={ICONS.phone} />
 
-                    <CollapsibleCategory name="Red & Comunidad" icon={ICONS.network} categoryKey="red" pageNames={['aliados', 'clinic-network', 'affiliates']}>
+                    <SectionLabel label="Recursos" />
+                     <CollapsibleCategory name="Herramientas" icon={ICONS.book} categoryKey="recursos" pageNames={['knowledge-base', 'calculators', 'user-guide']}>
+                        <NavItem name="Biblioteca" pageName="knowledge-base" isSubItem />
+                        <NavItem name="Calculadoras" pageName="calculators" isSubItem />
+                        <NavItem name="Guía de Uso" pageName="user-guide" isSubItem />
+                    </CollapsibleCategory>
+                    
+                    <CollapsibleCategory name="Crecimiento" icon={ICONS.sparkles} categoryKey="red" pageNames={['aliados', 'clinic-network', 'affiliates']}>
                         <NavItem name="Colaboradores" pageName="aliados" isSubItem />
                         <NavItem name="Red de Clínicas" pageName="clinic-network" isSubItem />
                         <NavItem name="Programa Afiliados" pageName="affiliates" isSubItem />
                     </CollapsibleCategory>
-                    
-                     <CollapsibleCategory name="Recursos" icon={ICONS.book} categoryKey="recursos" pageNames={['knowledge-base', 'calculators', 'user-guide']}>
-                        <NavItem name="Biblioteca" pageName="knowledge-base" isSubItem />
-                        <NavItem name="Herramientas" pageName="calculators" isSubItem />
-                        <NavItem name="Guía de Uso" pageName="user-guide" isSubItem />
-                    </CollapsibleCategory>
 
                     {role === 'admin' && (
-                        <CollapsibleCategory name="Configuración" icon={ICONS.settings} categoryKey="mi-clinica" pageNames={['clinic-settings', 'services', 'service-plans', 'displays', 'billing']}>
-                            <NavItem name="Datos de la Clínica" pageName="clinic-settings" isSubItem />
-                            <NavItem name="Servicios" pageName="services" isSubItem />
-                            <NavItem name="Planes de Servicio" pageName="service-plans" isSubItem />
-                            <NavItem name="Pantallas" pageName="displays" isSubItem />
-                            <NavItem name="Suscripción" pageName="billing" isSubItem />
-                        </CollapsibleCategory>
+                        <>
+                            <SectionLabel label="Configuración" />
+                            <CollapsibleCategory name="Mi Clínica" icon={ICONS.settings} categoryKey="mi-clinica" pageNames={['clinic-settings', 'fiscal-settings', 'services', 'service-plans', 'displays', 'billing']}>
+                                <NavItem name="Datos Generales" pageName="clinic-settings" isSubItem />
+                                <NavItem name="Facturación" pageName="fiscal-settings" isSubItem />
+                                <NavItem name="Servicios" pageName="services" isSubItem />
+                                <NavItem name="Planes" pageName="service-plans" isSubItem />
+                                <NavItem name="Pantallas" pageName="displays" isSubItem />
+                                <NavItem name="Suscripción" pageName="billing" isSubItem />
+                            </CollapsibleCategory>
+                        </>
                     )}
-
                 </nav>
                  
-                 {/* User Profile Widget at Bottom */}
                  <UserProfileWidget />
             </aside>
 
@@ -555,7 +574,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                 margin: '0 auto',
                 width: '100%',
                 overflowX: 'hidden',
-                marginLeft: isMobile ? 0 : '260px', // Adjusted for sidebar width
+                marginLeft: isMobile ? 0 : '260px',
                 transition: 'margin-left 0.3s ease'
             }}>
                 {renderContent()}
