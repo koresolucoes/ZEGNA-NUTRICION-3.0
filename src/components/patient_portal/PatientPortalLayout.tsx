@@ -42,10 +42,24 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
     const { setTheme } = useThemeManager();
 
     const isPatientAiEnabled = useMemo(() => {
-        const clinicHasAiFeature = subscription?.plans?.features ? (subscription.plans.features as any).ai_assistant === true : false;
+        // 1. The clinic must have the AI feature in their subscription (SaaS level)
+        const clinicHasAiFeature = subscription?.plans?.features 
+            ? (subscription.plans.features as any).ai_assistant === true 
+            : false;
+
+        // 2. The specific agent for the portal must be active in clinic settings
         const isAgentActiveInSettings = agentConfig?.is_patient_portal_agent_active === true;
+
+        // 3. The patient's specific plan must allow AI
+        // Logic: If patient has a plan, check its features. If no plan, default to FALSE (unless we want to allow free usage)
         const currentPlan = servicePlans.find(p => p.id === person?.current_plan_id);
-        const patientPlanHasAi = currentPlan?.features ? (currentPlan.features as any).patient_portal_ai_enabled === true : false;
+        const patientPlanHasAi = currentPlan?.features 
+            ? (currentPlan.features as any).patient_portal_ai_enabled === true 
+            : false; // Default to false if no plan or explicit setting
+
+        // Special Case: If the clinic has AI but the patient has NO plan, should they have AI? 
+        // Usually no, to incentivize plans. So the strict check is correct.
+        
         return clinicHasAiFeature && isAgentActiveInSettings && patientPlanHasAi;
     }, [subscription, agentConfig, servicePlans, person]);
     

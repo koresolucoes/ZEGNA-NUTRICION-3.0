@@ -87,6 +87,10 @@ export default async function handler(req: any, res: any) {
             // Find the last user message and attach the file
             const lastUserMsg = finalContents[finalContents.length - 1];
             if (lastUserMsg && lastUserMsg.role === 'user') {
+                // Ensure parts is an array
+                if (!Array.isArray(lastUserMsg.parts)) {
+                    lastUserMsg.parts = [{ text: lastUserMsg.parts }];
+                }
                 lastUserMsg.parts.unshift({ 
                     fileData: { fileUri: uploadResult.file.uri, mimeType: uploadResult.file.mimeType } 
                 });
@@ -109,10 +113,21 @@ export default async function handler(req: any, res: any) {
       config: config,
     });
     
-    res.status(200).json({ text: response.text });
+    // Extract relevant data to send back to client
+    // We need the text AND potential function calls
+    const candidate = response.candidates?.[0];
+    const functionCalls = candidate?.content?.parts?.filter((p: any) => p.functionCall).map((p: any) => p.functionCall);
+    
+    res.status(200).json({ 
+        text: response.text,
+        functionCalls: functionCalls || [],
+        // Send back the raw content part to easily append to history in client
+        candidateContent: candidate?.content
+    });
 
   } catch (error: any) {
     console.error('Error calling AI API:', error);
     res.status(500).json({ error: `An error occurred while communicating with the AI service: ${error.message}` });
   }
 }
+    

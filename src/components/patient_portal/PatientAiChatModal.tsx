@@ -5,7 +5,7 @@ import { supabase } from '../../supabase';
 import { styles } from '../../constants';
 import { ICONS } from '../../pages/AuthPage';
 import { Person, AiAgent } from '../../types';
-import { GoogleGenAI, FunctionDeclaration, Type, Content } from "@google/genai";
+import { Type } from "@google/genai";
 
 const modalRoot = document.getElementById('modal-root');
 
@@ -17,7 +17,8 @@ interface PatientAiChatModalProps {
 
 const PatientAiChatModal: FC<PatientAiChatModalProps> = ({ isOpen, onClose, person }) => {
     const [agentConfig, setAgentConfig] = useState<AiAgent | null>(null);
-    const [messages, setMessages] = useState<Content[]>([]);
+    // We store raw history objects compatible with Gemini API
+    const [messages, setMessages] = useState<any[]>([]);
     const [userInput, setUserInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -48,22 +49,44 @@ const PatientAiChatModal: FC<PatientAiChatModalProps> = ({ isOpen, onClose, pers
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
+    // Helper to call our server-side API
+    const callGeminiApi = async (currentHistory: any[], systemInstruction: string, tools: any[]) => {
+        const response = await fetch('/api/gemini', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                clinic_id: person.clinic_id,
+                contents: currentHistory,
+                config: {
+                    systemInstruction: systemInstruction,
+                    tools: tools.length > 0 ? [{ functionDeclarations: tools }] : undefined
+                }
+            })
+        });
+
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.error || 'Error calling AI service');
+        }
+
+        return await response.json();
+    };
+
     const handleSendMessage = async (e: FormEvent) => {
         e.preventDefault();
         if (!userInput.trim() || loading || !agentConfig) return;
 
-        const userMessage: Content = { role: 'user', parts: [{ text: userInput }] };
-        setMessages(prev => [...prev, userMessage]);
+        const userMessage = { role: 'user', parts: [{ text: userInput }] };
+        const newMessages = [...messages, userMessage];
+        
+        setMessages(newMessages);
         setUserInput('');
         setLoading(true);
         setError(null);
         
         try {
-            // Using the latest Gemini 2.5 Flash model via GoogleGenAI SDK
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-            const modelName = 'gemini-2.5-flash';
-
-            const functionDeclarations: FunctionDeclaration[] = [];
+            // Define Tools
+            const functionDeclarations: any[] = [];
             const agentTools = agentConfig.tools as { [key: string]: { enabled: boolean } } | null;
 
             if (agentTools?.get_my_data_for_ai?.enabled) {
@@ -108,35 +131,22 @@ const PatientAiChatModal: FC<PatientAiChatModalProps> = ({ isOpen, onClose, pers
                 });
             }
 
-
-            // --- Function Calling Loop ---
-            let currentMessages = [...messages, userMessage];
             const systemInstruction = `${agentConfig.patient_system_prompt || 'Eres un asistente nutricional amigable.'}\n\nIMPORTANTE: Estás conversando directamente con el paciente ${person.full_name}. No necesitas pedirle su nombre o número de folio. Utiliza la herramienta 'get_my_data_for_ai' para obtener su información personal del plan.`;
 
-            while (true) {
-                const response = await ai.models.generateContent({
-                    model: modelName,
-                    contents: currentMessages,
-                    config: {
-                        systemInstruction: systemInstruction,
-                        tools: functionDeclarations.length > 0 ? [{ functionDeclarations }] : undefined
-                    }
-                });
+            // --- Turn 1: User sends message, Model responds (maybe with tools) ---
+            let apiResult = await callGeminiApi(newMessages, systemInstruction, functionDeclarations);
+            
+            // Add model response to history
+            if (apiResult.candidateContent) {
+                newMessages.push(apiResult.candidateContent);
+                setMessages([...newMessages]);
+            }
 
-                const candidate = response.candidates[0];
-                currentMessages.push(candidate.content);
-                setMessages([...currentMessages]);
-
-                const functionCalls = candidate.content.parts
-                    .filter(part => part.functionCall)
-                    .map(part => part.functionCall);
-
-                if (functionCalls.length === 0) {
-                    break; // No more functions to call, loop ends
-                }
-                
+            // Handle Function Calls
+            if (apiResult.functionCalls && apiResult.functionCalls.length > 0) {
                 const functionResponses: any[] = [];
-                for (const funcCall of functionCalls) {
+                
+                for (const funcCall of apiResult.functionCalls) {
                     let functionResult;
                     try {
                         if (funcCall.name === 'get_my_data_for_ai') {
@@ -158,14 +168,34 @@ const PatientAiChatModal: FC<PatientAiChatModalProps> = ({ isOpen, onClose, pers
                     } catch (rpcError: any) {
                         functionResult = { error: `Error al ejecutar la función: ${rpcError.message}` };
                     }
-                    functionResponses.push({ name: funcCall.name, response: functionResult });
+                    
+                    // Important: Match ID if provided by Gemini, though SDK usually handles it.
+                    // We construct the response part manually for the next call.
+                    functionResponses.push({ 
+                        functionResponse: {
+                            name: funcCall.name,
+                            response: functionResult 
+                        }
+                    });
                 }
                 
-                currentMessages.push({ role: 'tool', parts: functionResponses.map(fr => ({ functionResponse: { name: fr.name, response: fr.response } })) });
-                setMessages([...currentMessages]);
+                // Add tool outputs to history
+                const toolMessage = { role: 'tool', parts: functionResponses };
+                newMessages.push(toolMessage);
+                setMessages([...newMessages]);
+
+                // --- Turn 2: Send tool outputs back to Model ---
+                apiResult = await callGeminiApi(newMessages, systemInstruction, functionDeclarations);
+                
+                if (apiResult.candidateContent) {
+                    newMessages.push(apiResult.candidateContent);
+                    setMessages([...newMessages]);
+                }
             }
+
         } catch (err: any) {
-            setError(err.message);
+            console.error(err);
+            setError(err.message || "Error de conexión.");
             setMessages(prev => [...prev, { role: 'model', parts: [{ text: "Lo siento, ocurrió un error al procesar tu solicitud." }] }]);
         } finally {
             setLoading(false);
@@ -183,8 +213,9 @@ const PatientAiChatModal: FC<PatientAiChatModalProps> = ({ isOpen, onClose, pers
                 </div>
                 <div style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
                     {messages.map((msg, index) => {
-                        const textPart = msg.parts.find(p => p.text);
-                        if (!textPart) return null; // Don't render tool calls/responses
+                        // Filter out tool calls/responses from visual chat
+                        const textPart = msg.parts?.find((p: any) => p.text);
+                        if (!textPart) return null; 
                         
                         return(
                             <div key={index} style={{ marginBottom: '1rem', display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
@@ -206,10 +237,10 @@ const PatientAiChatModal: FC<PatientAiChatModalProps> = ({ isOpen, onClose, pers
                         value={userInput} 
                         onChange={e => setUserInput(e.target.value)} 
                         placeholder={!agentConfig?.is_patient_portal_agent_active ? "El agente está desactivado" : "Haz una pregunta sobre tu plan..."}
-                        style={{flex: 1, margin: 0}}
+                        style={{flex: 1, margin: 0, ...styles.input}}
                         disabled={loading || !agentConfig?.is_patient_portal_agent_active}
                     />
-                    <button type="submit" disabled={loading || !userInput.trim() || !agentConfig?.is_patient_portal_agent_active}>
+                    <button type="submit" disabled={loading || !userInput.trim() || !agentConfig?.is_patient_portal_agent_active} style={{...styles.iconButton, backgroundColor: 'var(--primary-color)', color: 'white', width: '40px', height: '40px'}}>
                         {ICONS.send}
                     </button>
                 </form>
