@@ -89,8 +89,10 @@ export default async function handler(req: any, res: any) {
             return res.status(200).json({ message: 'Agente inactivo, cola limpiada.' });
         }
 
-        // --- Inicio de la Lógica de IA ---
+        // --- Inicio de la Lógica de IA (Gemini 2.5 Flash) ---
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+        const modelName = 'gemini-2.5-flash';
+        
         const { data: history, error: historyError } = await supabaseAdmin.from('whatsapp_conversations').select('sender, message_content').eq('contact_id', contact.id).order('sent_at', { ascending: false }).limit(10);
         if (historyError) throw historyError;
         const formattedHistory = formatHistoryForGemini(history.reverse());
@@ -112,7 +114,7 @@ export default async function handler(req: any, res: any) {
         let currentMessages = [...formattedHistory, { role: 'user' as const, parts: [{ text: combinedMessage }] }];
         
         while (true) {
-            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: currentMessages, config: { systemInstruction, tools: functionDeclarations.length > 0 ? [{ functionDeclarations }] : undefined } });
+            const response = await ai.models.generateContent({ model: modelName, contents: currentMessages, config: { systemInstruction, tools: functionDeclarations.length > 0 ? [{ functionDeclarations }] : undefined } });
             
             const candidate = response.candidates[0];
             currentMessages.push(candidate.content);

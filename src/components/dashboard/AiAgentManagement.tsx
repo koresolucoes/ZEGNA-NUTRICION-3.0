@@ -78,7 +78,7 @@ const AiAgentManagement: FC = () => {
                     get_available_slots: { enabled: false },
                     book_appointment: { enabled: false },
                 };
-                setAgent({ ...agentData, model_provider: agentData.model_provider || 'gemini', tools: { ...defaultTools, ...existingTools } });
+                setAgent({ ...agentData, model_provider: 'gemini', tools: { ...defaultTools, ...existingTools } });
             }
             setLoading(prev => ({...prev, initial: false}));
         };
@@ -97,6 +97,9 @@ const AiAgentManagement: FC = () => {
             const payload = {
                 clinic_id: clinic.id,
                 ...agent,
+                model_provider: 'gemini', // Force Gemini
+                // Ensure system_prompt is a string as it is required in the DB schema
+                system_prompt: agent.system_prompt || '',
                 tools: agent.tools as any
             };
             const { error } = await supabase.from('ai_agents').upsert(payload, { onConflict: 'clinic_id' });
@@ -244,24 +247,23 @@ const AiAgentManagement: FC = () => {
                             <h3 style={{margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-color)'}}>Cerebro del Agente</h3>
                         </div>
                         
-                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem'}}>
+                        <div style={{display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '1.5rem'}}>
+                            <div style={{padding: '0.75rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid var(--primary-color)', borderRadius: '8px', color: 'var(--primary-dark)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                                <span>✨</span>
+                                <strong>Motor de IA:</strong> Google Gemini
+                            </div>
+
                             <div>
-                                <label style={labelStyle}>Proveedor IA</label>
+                                <label style={labelStyle}>Versión del Modelo</label>
                                 <div className="select-wrapper">
-                                    <select name="model_provider" value={agent.model_provider} onChange={e => setAgent({...agent, model_provider: e.target.value})} style={inputStyle}>
-                                        <option value="gemini">Google Gemini</option>
-                                        <option value="openai">OpenAI</option>
-                                        <option value="openrouter">OpenRouter</option>
+                                    <select name="model_name" value={agent.model_name || 'gemini-2.5-flash'} onChange={e => setAgent({...agent, model_name: e.target.value})} style={inputStyle}>
+                                        <option value="gemini-2.5-flash">Gemini 2.5 Flash (Rápido y Eficiente)</option>
+                                        <option value="gemini-3-pro-preview">Gemini 3.0 Pro (Razonamiento Complejo)</option>
                                     </select>
                                 </div>
-                            </div>
-                            <div>
-                                <label style={labelStyle}>Modelo</label>
-                                <input name="model_name" value={agent.model_name} onChange={e => setAgent({...agent, model_name: e.target.value})} style={inputStyle} placeholder="gemini-2.5-flash" />
-                            </div>
-                            <div style={{gridColumn: 'span 2'}}>
-                                <label style={labelStyle}>API Key (Opcional)</label>
-                                <input type="password" name="provider_api_key" value={agent.provider_api_key || ''} onChange={e => setAgent({...agent, provider_api_key: e.target.value})} style={inputStyle} placeholder="Dejar vacío para usar default del sistema" />
+                                <p style={{fontSize: '0.8rem', color: 'var(--text-light)', marginTop: '0.5rem'}}>
+                                    Se recomienda <strong>Flash</strong> para respuestas rápidas en chat y <strong>Pro</strong> si necesitas análisis muy detallados.
+                                </p>
                             </div>
                         </div>
 

@@ -1,4 +1,5 @@
-import React, { FC, useState, useEffect, FormEvent } from 'react';
+
+import React, { FC, useState, useEffect, FormEvent, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../supabase';
 import { styles } from '../../constants';
@@ -37,12 +38,40 @@ const ReferPersonModal: FC<ReferPersonModalProps> = ({ isOpen, onClose, onSucces
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    
+    // Search State
+    const [searchTerm, setSearchTerm] = useState('');
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const searchContainerRef = useRef<HTMLDivElement>(null);
+
+    const filteredPartners = useMemo(() => {
+        if (!searchTerm) return activePartners;
+        const term = searchTerm.toLowerCase();
+        return activePartners.filter(p => 
+            p.allies.full_name.toLowerCase().includes(term) ||
+            p.allies.specialty.toLowerCase().includes(term)
+        );
+    }, [activePartners, searchTerm]);
 
     useEffect(() => {
-        if (activePartners.length > 0 && !receivingAllyId) {
-            setReceivingAllyId(activePartners[0].ally_id);
-        }
-    }, [activePartners, receivingAllyId]);
+        // Initial selection if needed, or just leave blank to force user search
+    }, []);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+                setIsDropdownOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const handleSelectAlly = (partnership: PopulatedPartnership) => {
+        setReceivingAllyId(partnership.ally_id);
+        setSearchTerm(partnership.allies.full_name);
+        setIsDropdownOpen(false);
+    };
 
     if (!isOpen || !modalRoot) return null;
 
@@ -133,13 +162,61 @@ const ReferPersonModal: FC<ReferPersonModalProps> = ({ isOpen, onClose, onSucces
                     {error && <p style={styles.error}>{error}</p>}
                     {success && <p style={{...styles.error, backgroundColor: 'var(--primary-light)', color: 'var(--primary-dark)', borderColor: 'var(--primary-color)'}}>{success}</p>}
 
-                    <label>Enviar a Colaborador*</label>
-                    <select value={receivingAllyId} onChange={e => setReceivingAllyId(e.target.value)} required>
-                        {activePartners.map(p => <option key={p.ally_id} value={p.ally_id}>{p.allies.full_name} ({p.allies.specialty})</option>)}
-                    </select>
+                    <div style={{marginBottom: '1.5rem'}}>
+                        <label style={styles.label}>Enviar a Colaborador*</label>
+                        <div ref={searchContainerRef} style={{position: 'relative'}}>
+                            <input
+                                type="text"
+                                placeholder="Buscar colaborador por nombre o especialidad..."
+                                value={searchTerm}
+                                onChange={(e) => {
+                                    setSearchTerm(e.target.value);
+                                    setIsDropdownOpen(true);
+                                    if (receivingAllyId) setReceivingAllyId(''); // Clear selection on input change if already selected
+                                }}
+                                onFocus={() => setIsDropdownOpen(true)}
+                                style={{...styles.input, marginBottom: 0}}
+                                required={!receivingAllyId}
+                            />
+                            <div style={{position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-light)', fontSize: '0.8rem'}}>▼</div>
+                            
+                            {isDropdownOpen && (
+                                <div style={{
+                                    position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
+                                    backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)',
+                                    borderRadius: '8px', marginTop: '4px', maxHeight: '200px', overflowY: 'auto',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                                }}>
+                                    {filteredPartners.length > 0 ? (
+                                        filteredPartners.map(p => (
+                                            <div 
+                                                key={p.ally_id} 
+                                                onClick={() => handleSelectAlly(p)}
+                                                className="nav-item-hover"
+                                                style={{padding: '0.75rem 1rem', cursor: 'pointer', borderBottom: '1px solid var(--border-color)'}}
+                                            >
+                                                <div style={{fontWeight: 600, color: 'var(--text-color)', fontSize: '0.95rem'}}>{p.allies.full_name}</div>
+                                                <div style={{fontSize: '0.85rem', color: 'var(--text-light)'}}>{p.allies.specialty}</div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div style={{padding: '1rem', color: 'var(--text-light)', textAlign: 'center', fontSize: '0.9rem'}}>No se encontraron colaboradores.</div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
                     
-                    <label>Motivo del Referido / Notas</label>
-                    <textarea rows={4} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Ej: Solicito valoración por posible desgarre muscular en hombro derecho..."></textarea>
+                    <div style={{marginBottom: '1.5rem'}}>
+                        <label style={styles.label}>Motivo del Referido / Notas</label>
+                        <textarea 
+                            rows={4} 
+                            value={notes} 
+                            onChange={e => setNotes(e.target.value)} 
+                            placeholder="Ej: Solicito valoración por posible desgarre muscular en hombro derecho..."
+                            style={{...styles.input, resize: 'vertical', fontFamily: 'inherit', marginBottom: 0}}
+                        ></textarea>
+                    </div>
                     
                      {!person.user_id && (
                         <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
@@ -160,7 +237,7 @@ const ReferPersonModal: FC<ReferPersonModalProps> = ({ isOpen, onClose, onSucces
                     <button type="button" onClick={onClose} className="button-secondary" disabled={loading}>Cancelar</button>
                     <button 
                         type="submit" 
-                        disabled={loading || !!success || (!person.user_id && !manualConsent)}
+                        disabled={loading || !!success || (!person.user_id && !manualConsent) || !receivingAllyId}
                     >
                         {loading ? 'Enviando...' : (!person.user_id ? 'Enviar Referido' : 'Enviar Solicitud de Consentimiento')}
                     </button>

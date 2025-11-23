@@ -1,5 +1,4 @@
 
-
 import React, { FC, useState, useEffect, useRef, FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../supabase';
@@ -60,7 +59,9 @@ const PatientAiChatModal: FC<PatientAiChatModalProps> = ({ isOpen, onClose, pers
         setError(null);
         
         try {
+            // Using the latest Gemini 2.5 Flash model via GoogleGenAI SDK
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+            const modelName = 'gemini-2.5-flash';
 
             const functionDeclarations: FunctionDeclaration[] = [];
             const agentTools = agentConfig.tools as { [key: string]: { enabled: boolean } } | null;
@@ -114,7 +115,7 @@ const PatientAiChatModal: FC<PatientAiChatModalProps> = ({ isOpen, onClose, pers
 
             while (true) {
                 const response = await ai.models.generateContent({
-                    model: 'gemini-2.5-flash',
+                    model: modelName,
                     contents: currentMessages,
                     config: {
                         systemInstruction: systemInstruction,
@@ -139,7 +140,6 @@ const PatientAiChatModal: FC<PatientAiChatModalProps> = ({ isOpen, onClose, pers
                     let functionResult;
                     try {
                         if (funcCall.name === 'get_my_data_for_ai') {
-                            // FIX: Added the required p_person_id parameter to the RPC call.
                             const { data, error: rpcError } = await supabase.rpc('get_my_data_for_ai', { p_person_id: person.id, day_offset: funcCall.args.day_offset || 0 });
                             if (rpcError) throw rpcError;
                             functionResult = { result: data };

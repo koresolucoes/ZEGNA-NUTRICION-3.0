@@ -1,8 +1,4 @@
 
-
-
-
-
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI, FunctionDeclaration, Type, Content } from "@google/genai";
 
@@ -101,10 +97,10 @@ export default async function handler(req: any, res: any) {
         .from('persons')
         .select('id, full_name, subscription_end_date')
         .eq('clinic_id', clinicId)
-        .eq('normalized_phone_number', normalizedUserPhone) // Use the new normalized column for robust matching
+        .eq('normalized_phone_number', normalizedUserPhone)
         .single();
 
-    if (personError && personError.code !== 'PGRST116') { // We only throw if it's not a "no rows found" error
+    if (personError && personError.code !== 'PGRST116') {
         throw personError;
     }
 
@@ -113,7 +109,7 @@ export default async function handler(req: any, res: any) {
         .from('whatsapp_contacts')
         .upsert({
             clinic_id: clinicId,
-            phone_number: userPhoneNumber, // Store the original number from the provider
+            phone_number: userPhoneNumber,
             last_message_at: new Date().toISOString(),
             person_id: personData?.id || null,
             person_name: personData?.full_name || null,
@@ -133,13 +129,9 @@ export default async function handler(req: any, res: any) {
     });
 
     // 4. Check if AI agent should respond
-    // FIX: Changed supabase to supabaseAdmin
     const { data: agent, error: agentError } = await supabaseAdmin.from('ai_agents').select('*').eq('clinic_id', clinicId).single();
     
-    // Check if the associated person (if any) has an active plan
     const isPlanActive = personData?.subscription_end_date ? new Date(personData.subscription_end_date) >= new Date() : false;
-
-    // AI is active if: clinic agent is on, contact AI is on, AND (it's a new contact OR the patient's plan is active)
     const shouldAiRespond = agent?.is_active && contact.ai_is_active && (!personData || isPlanActive);
     
     if (agentError || !agent || !shouldAiRespond) {
@@ -152,7 +144,6 @@ export default async function handler(req: any, res: any) {
     }
     
     // 5. Fetch history using contact_id for efficiency
-    // FIX: Changed supabase to supabaseAdmin
     const { data: history, error: historyError } = await supabaseAdmin.from('whatsapp_conversations').select('sender, message_content').eq('contact_id', contact.id).order('sent_at', { ascending: false }).limit(10);
     if (historyError) throw historyError;
     const formattedHistory = formatHistoryForGemini(history.reverse());
@@ -164,13 +155,13 @@ export default async function handler(req: any, res: any) {
     if (personData && agentTools?.get_my_data_for_ai?.enabled) {
         functionDeclarations.push({
             name: 'get_my_data_for_ai',
-            description: "Obtém um resumo dos MEUS dados como paciente para um dia específico. Use-o para responder a qualquer pergunta sobre meu plano de alimentação, rotina de exercícios, status do meu plano de serviço, progresso recente ou meus últimos resultados de laboratório.",
+            description: "Obtiene un resumen de MIS datos como paciente para un día específico (plan comidas, ejercicio, estado plan, etc.).",
             parameters: {
                 type: Type.OBJECT,
                 properties: {
                     day_offset: {
                         type: Type.INTEGER,
-                        description: 'O deslocamento de dias a partir de hoje. 0 é para hoje, 1 para amanhã, -1 para ontem. O padrão é 0 (hoje).'
+                        description: 'El desplazamiento de días desde hoy. 0 es hoy, 1 mañana, -1 ayer.'
                     }
                 },
                 required: []
@@ -185,10 +176,7 @@ export default async function handler(req: any, res: any) {
             parameters: {
                 type: Type.OBJECT,
                 properties: {
-                    target_date: {
-                        type: Type.STRING,
-                        description: 'La fecha para la cual se quieren consultar los horarios, en formato AAAA-MM-DD.',
-                    },
+                    target_date: { type: Type.STRING, description: 'La fecha en formato AAAA-MM-DD.' },
                 },
                 required: ['target_date'],
             },
@@ -196,30 +184,28 @@ export default async function handler(req: any, res: any) {
     }
     if (agentTools?.book_appointment?.enabled) {
         if (personData) {
-            // Known user tool
             functionDeclarations.push({
                 name: 'book_appointment',
-                description: 'Agenda una nueva cita para mí (el paciente actual) en un horario específico.',
+                description: 'Agenda una nueva cita para mí (el paciente actual).',
                 parameters: {
                     type: Type.OBJECT,
                     properties: {
-                        start_time: { type: Type.STRING, description: 'La fecha y hora de inicio de la cita en formato ISO 8601 (ej. "2024-10-28T10:00:00-06:00").' },
-                        notes: { type: Type.STRING, description: 'Notas adicionales o el motivo de la cita (opcional).' }
+                        start_time: { type: Type.STRING, description: 'La fecha y hora de inicio en formato ISO 8601.' },
+                        notes: { type: Type.STRING, description: 'Notas adicionales.' }
                     },
                     required: ['start_time'],
                 },
             });
         } else {
-            // Unknown user tool
             functionDeclarations.push({
                 name: 'book_appointment',
-                description: 'Agenda una nueva cita para un paciente en un horario específico. Requer o nome ou folio do paciente.',
+                description: 'Agenda una nueva cita para un paciente. Requiere nombre/folio.',
                 parameters: {
                     type: Type.OBJECT,
                     properties: {
                         patient_query: { type: Type.STRING, description: 'El nombre completo o folio del paciente.' },
-                        start_time: { type: Type.STRING, description: 'La fecha y hora de inicio de la cita en formato ISO 8601.' },
-                        notes: { type: Type.STRING, description: 'Notas adicionales (opcional).' }
+                        start_time: { type: Type.STRING, description: 'La fecha y hora de inicio en formato ISO 8601.' },
+                        notes: { type: Type.STRING, description: 'Notas adicionales.' }
                     },
                     required: ['patient_query', 'start_time'],
                 },
@@ -249,16 +235,17 @@ Tu función principal es ayudarle con su plan de salud.
 - Para cualquier pregunta sobre su plan de comidas, rutina de ejercicio, estado del plan de servicio o progreso, DEBES usar la herramienta 'get_my_data_for_ai'.
 - Para agendar una cita, DEBES usar la herramienta 'book_appointment'.
 - Si la pregunta es un saludo o conversación casual (ej. 'Hola'), responde de forma natural y pregunta en qué puedes ayudar.
-- Está estrictamente prohibido proporcionar información sobre CUALQUIER otro paciente.
-- Si la pregunta es sobre un tema no relacionado (ej. política, deportes), rehúsa educadamente diciendo que tu enfoque es ayudar con su plan de salud.`;
+- Está estrictamente prohibido proporcionar información sobre CUALQUIER otro paciente.`;
     } else {
         systemInstruction += `\n\nEstás conversando con un usuario no registrado. Puedes proporcionar información general sobre la clínica, pero no puedes acceder o proporcionar datos de ningún paciente.`;
     }
     
-    // 8. First call to Gemini API
+    // 8. First call to Gemini API (Using updated 2.5 Flash model)
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const modelName = 'gemini-2.5-flash';
+
     const firstResponse = await ai.models.generateContent({ 
-        model: 'gemini-2.5-flash', 
+        model: modelName, 
         contents: [...formattedHistory, { role: 'user', parts: [{ text: messageBody }] }], 
         config: { 
             systemInstruction: systemInstruction,
@@ -266,9 +253,9 @@ Tu función principal es ayudarle con su plan de salud.
         } 
     });
     
-    let agentReplyText = firstResponse.text; // Default reply if no tool is called
+    let agentReplyText = firstResponse.text;
 
-    // 9. Handle function calls if any
+    // 9. Handle function calls
     if (firstResponse.functionCalls && firstResponse.functionCalls.length > 0) {
         const functionResponses = [];
 
@@ -293,20 +280,15 @@ Tu función principal es ayudarle con su plan de salud.
                         p_start_time: funcCall.args.start_time,
                         p_notes: funcCall.args.notes || null
                     };
-
                     if (personData) {
-                        // If we know the person, pass their ID directly.
                         rpcParams.p_person_id = personData.id;
                     } else if (funcCall.args.patient_query) {
-                        // If we don't know the person, use the query from the AI.
                         rpcParams.p_patient_query = funcCall.args.patient_query;
                     } else {
-                        // If we don't know the person and the AI didn't provide a query, it's an error.
-                        functionResult = { error: 'No se especificó un paciente para agendar la cita y no se pudo identificar al usuario actual.' };
+                        functionResult = { error: 'No se especificó un paciente para agendar la cita.' };
                         functionResponses.push({ name: funcCall.name, response: functionResult });
                         continue;
                     }
-
                     const { data, error } = await supabaseAdmin.rpc('book_appointment', rpcParams);
                     if (error) throw error;
                     functionResult = { result: data };
@@ -317,41 +299,31 @@ Tu función principal es ayudarle con su plan de salud.
                 console.error(`[Webhook] Error executing RPC ${funcCall.name}:`, rpcError);
                 functionResult = { error: `Error al ejecutar la función: ${rpcError.message}` };
             }
-
-            functionResponses.push({
-                id: funcCall.id,
-                name: funcCall.name,
-                response: functionResult
-            });
+            functionResponses.push({ id: funcCall.id, name: funcCall.name, response: functionResult });
         }
         
-        // 10. Second call to Gemini with the function results
+        // 10. Second call to Gemini with function results
         const historyForSecondCall: Content[] = [
             ...formattedHistory,
             { role: 'user', parts: [{ text: messageBody }] },
-            // This is the model's turn, asking to call the functions.
             firstResponse.candidates[0].content,
-            // This is the tool's turn, providing the function results.
             {
                 role: 'tool',
                 parts: functionResponses.map(fr => ({
-                    functionResponse: {
-                        name: fr.name,
-                        response: fr.response
-                    }
+                    functionResponse: { name: fr.name, response: fr.response }
                 }))
             }
         ];
 
         const secondResponse = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: modelName,
             contents: historyForSecondCall,
             config: { systemInstruction: systemInstruction }
         });
         agentReplyText = secondResponse.text;
     }
 
-    // 11. Log and send the final response
+    // 11. Log and send final response
     await supabaseAdmin.from('whatsapp_conversations').insert({ clinic_id: clinicId, contact_id: contact.id, contact_phone_number: userPhoneNumber, message_content: agentReplyText, sender: 'agent' });
     
     const { data: fullConnection } = await supabaseAdmin.from('whatsapp_connections').select('provider, credentials, phone_number').eq('clinic_id', clinicId).single();
