@@ -12,9 +12,10 @@ const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) 
 
 interface MealImageAnalyzerProps {
     todaysDietLog: DietLog | null;
+    clinicId: string;
 }
 
-const MealImageAnalyzer: FC<MealImageAnalyzerProps> = ({ todaysDietLog }) => {
+const MealImageAnalyzer: FC<MealImageAnalyzerProps> = ({ todaysDietLog, clinicId }) => {
     const [file, setFile] = useState<File | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
     const [result, setResult] = useState<string | null>(null);
@@ -44,6 +45,10 @@ const MealImageAnalyzer: FC<MealImageAnalyzerProps> = ({ todaysDietLog }) => {
     const handleAnalyze = async () => {
         if (!file) {
             setError('Por favor, selecciona una imagen para analizar.');
+            return;
+        }
+        if (!clinicId) {
+            setError('Error de configuración: No se encontró el ID de la clínica.');
             return;
         }
         setLoading(true);
@@ -93,6 +98,7 @@ const MealImageAnalyzer: FC<MealImageAnalyzerProps> = ({ todaysDietLog }) => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    clinic_id: clinicId,
                     contents: { parts: [imagePart, textPart] }
                 })
             });

@@ -1,4 +1,3 @@
-
 import React, { FC, useMemo, useState, useEffect } from 'react';
 // FIX: In Supabase v2, User is exported via `import type`.
 import type { User } from '@supabase/supabase-js';
@@ -316,7 +315,10 @@ const PatientHomePage: FC<{
                     {/* Meal Analysis Card - Visible mostly on mobile or if space allows */}
                     <Card title="Análisis de Platillo con IA" icon={ICONS.sparkles}>
                         {isAiEnabled ? (
-                            <MealImageAnalyzer todaysDietLog={todaysDietLog || null} />
+                            <MealImageAnalyzer 
+                                todaysDietLog={todaysDietLog || null} 
+                                clinicId={person.clinic_id}
+                            />
                         ) : (
                              <div style={{textAlign: 'center', padding: '1rem', color: 'var(--text-light)', fontSize: '0.9rem'}}>
                                  Función no disponible en tu plan.
