@@ -69,7 +69,7 @@ export default async function handler(req: any, res: any) {
             config: { mimeType: mimeType }
         });
         
-        console.log(`[Gemini API] File uploaded to Google: ${uploadResult.file.name} (${uploadResult.file.uri})`);
+        console.log(`[Gemini API] File uploaded to Google: ${uploadResult.name} (${uploadResult.uri})`);
 
         // 3. Attach File URI to the content generation request
         // If 'contents' is a string, wrap it. If it's an array, append to the user part.
@@ -78,7 +78,7 @@ export default async function handler(req: any, res: any) {
                 {
                     role: 'user',
                     parts: [
-                        { fileData: { fileUri: uploadResult.file.uri, mimeType: uploadResult.file.mimeType } },
+                        { fileData: { fileUri: uploadResult.uri, mimeType: uploadResult.mimeType } },
                         { text: finalContents }
                     ]
                 }
@@ -92,13 +92,13 @@ export default async function handler(req: any, res: any) {
                     lastUserMsg.parts = [{ text: lastUserMsg.parts }];
                 }
                 lastUserMsg.parts.unshift({ 
-                    fileData: { fileUri: uploadResult.file.uri, mimeType: uploadResult.file.mimeType } 
+                    fileData: { fileUri: uploadResult.uri, mimeType: uploadResult.mimeType } 
                 });
             } else {
                  finalContents.push({
                     role: 'user',
                     parts: [
-                        { fileData: { fileUri: uploadResult.file.uri, mimeType: uploadResult.file.mimeType } },
+                        { fileData: { fileUri: uploadResult.uri, mimeType: uploadResult.mimeType } },
                         { text: "Analiza este documento." }
                     ]
                 });
@@ -130,4 +130,3 @@ export default async function handler(req: any, res: any) {
     res.status(500).json({ error: `An error occurred while communicating with the AI service: ${error.message}` });
   }
 }
-    
