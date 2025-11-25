@@ -93,7 +93,14 @@ export default async function handler(req: any, res: any) {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
         const modelName = 'gemini-2.5-flash';
         
-        const { data: history, error: historyError } = await supabaseAdmin.from('whatsapp_conversations').select('sender, message_content').eq('contact_id', contact.id).order('sent_at', { ascending: false }).limit(10);
+        // INCREASED HISTORY LIMIT FOR MEMORY
+        const { data: history, error: historyError } = await supabaseAdmin
+            .from('whatsapp_conversations')
+            .select('sender, message_content')
+            .eq('contact_id', contact.id)
+            .order('sent_at', { ascending: false })
+            .limit(30);
+
         if (historyError) throw historyError;
         const formattedHistory = formatHistoryForGemini(history.reverse());
         
@@ -105,6 +112,13 @@ export default async function handler(req: any, res: any) {
         if (personData && agentTools?.book_appointment?.enabled) { functionDeclarations.push({ name: 'book_appointment', description: 'Agenda una nueva cita para el paciente actual en un horario específico.', parameters: { type: Type.OBJECT, properties: { start_time: { type: Type.STRING, description: 'Fecha y hora en formato ISO 8601.' }, notes: { type: Type.STRING, description: 'Notas adicionales.' } }, required: ['start_time'] }, }); }
         
         let systemInstruction = (agent.system_prompt || 'Eres una secretaria virtual.');
+        
+        // Add Memory Instructions
+        systemInstruction += `\n\nMEMORIA Y CONTEXTO:
+        - Tienes acceso al historial reciente de la conversación. ÚSALO.
+        - Si el usuario hace referencia a algo dicho anteriormente (ej. "hazlo", "sí", "gracias"), revisa el historial para entender el contexto.
+        - Mantén una conversación fluida y natural.`;
+
         if (personData) {
             systemInstruction += `\n\nIMPORTANTE: Estás conversando con un paciente registrado: ${personData.full_name}. Para consultar CUALQUIER información sobre este paciente (su plan de comidas, su progreso, si su plan está activo, etc.), DEBES usar la herramienta 'get_my_data_for_ai'. Para agendarle una cita, usa la herramienta 'book_appointment'.`;
         } else {

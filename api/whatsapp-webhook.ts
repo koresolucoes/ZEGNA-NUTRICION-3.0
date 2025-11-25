@@ -273,8 +273,14 @@ export default async function handler(req: any, res: any) {
       return res.status(200).send('Agent inactive for this conversation.');
     }
     
-    // 5. Fetch history using contact_id for efficiency
-    const { data: history, error: historyError } = await supabaseAdmin.from('whatsapp_conversations').select('sender, message_content').eq('contact_id', contact.id).order('sent_at', { ascending: false }).limit(10);
+    // 5. Fetch history using contact_id for efficiency - INCREASED LIMIT FOR BETTER MEMORY
+    const { data: history, error: historyError } = await supabaseAdmin
+        .from('whatsapp_conversations')
+        .select('sender, message_content')
+        .eq('contact_id', contact.id)
+        .order('sent_at', { ascending: false })
+        .limit(50); // Aumentado a 50 mensajes para mejor memoria
+
     if (historyError) throw historyError;
     const formattedHistory = formatHistoryForGemini(history.reverse());
     
@@ -359,8 +365,13 @@ export default async function handler(req: any, res: any) {
     }
 
     let systemInstruction = agent.system_prompt + (knowledgeBaseContext ? `\n\n${knowledgeBaseContext}` : '');
-    // Add multimodal instruction
-    systemInstruction += `\n\nNOTA: Tienes capacidades multimodales. Si el usuario envía una imagen o audio, analízalo y responde acorde al contexto clínico o administrativo.`;
+    
+    // Añadir instrucciones explícitas de memoria y multimodalidad
+    systemInstruction += `\n\nINSTRUCCIONES DE MEMORIA Y CONTEXTO:
+    - Tienes acceso al historial de la conversación. ÚSALO.
+    - Si el usuario dice "sí", "hazlo", "gracias" o hace referencias a mensajes anteriores, revisa el historial para entender el contexto.
+    - Mantén el hilo de la conversación de forma natural y fluida.
+    - Tienes capacidades multimodales. Si el usuario envía una imagen o audio, analízalo y responde acorde al contexto clínico o administrativo.`;
 
     if (personData) {
         systemInstruction += `\n\nIMPORTANTE: Estás conversando con un paciente registrado: ${personData.full_name}.
