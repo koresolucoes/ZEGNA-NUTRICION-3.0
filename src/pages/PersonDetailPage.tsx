@@ -1,5 +1,4 @@
 
-// ... (imports remain the same)
 import React, { FC, useState, useEffect, useCallback, useMemo, FormEvent } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
@@ -443,9 +442,13 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
                             {activeSubTab === 'current_plans' && <PlansTab allDietLogs={allDietLogs} allExerciseLogs={allExerciseLogs} onGenerateMeal={() => setMealPlanModalOpen(true)} onGenerateExercise={() => setExercisePlanModalOpen(true)} onAddManualDiet={() => setIsCreatingManualLog('diet')} onAddManualExercise={() => setIsCreatingManualLog('exercise')} onEditDietLog={setEditingDietLog} onViewDietLog={setViewingDietLog} onEditExerciseLog={setEditingExerciseLog} onViewExerciseLog={setViewingExerciseLog} openModal={openModal} hasAiFeature={hasAiFeature} />}
                             {activeSubTab === 'calculated_plans' && <CalculatedPlansTab planHistory={planHistory} navigate={navigate} openModal={openModal} />}
                             {activeSubTab === 'log_files' && (
-                                <div>
-                                    <LogTab logs={logs} memberMap={memberMap} onAdd={() => navigate('log-form', { personId: person.id, personType })} onEdit={(id) => navigate('log-form', { personId: person.id, personType, logId: id })} onView={setViewingLog} openModal={openModal} />
-                                    <div style={{marginTop: '2rem'}}><FilesTab files={files} memberMap={memberMap} onAdd={() => setFileUploadModalOpen(true)} onDelete={(file) => openModal('deleteFile', file.id, `¿Eliminar el archivo "${file.file_name}"?`, file.file_path)} /></div>
+                                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '2rem', alignItems: 'start' }}>
+                                    <div style={{minWidth: 0}}>
+                                        <LogTab logs={logs} memberMap={memberMap} onAdd={() => navigate('log-form', { personId: person.id, personType })} onEdit={(id) => navigate('log-form', { personId: person.id, personType, logId: id })} onView={setViewingLog} openModal={openModal} />
+                                    </div>
+                                    <div style={{minWidth: 0}}>
+                                        <FilesTab files={files} memberMap={memberMap} onAdd={() => setFileUploadModalOpen(true)} onDelete={(file) => openModal('deleteFile', file.id, `¿Eliminar el archivo "${file.file_name}"?`, file.file_path)} />
+                                    </div>
                                 </div>
                             )}
                             {activeSubTab === 'daily_tracking' && <DailyTrackingTab checkins={dailyCheckins} />}

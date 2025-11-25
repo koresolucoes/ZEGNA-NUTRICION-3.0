@@ -50,7 +50,17 @@ export const LogTab: FC<LogTabProps> = ({ logs, memberMap, onAdd, onEdit, onView
             </div>
 
             {filteredLogs.length > 0 ? (
-                 <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
+                 <div style={{
+                     display: 'flex', 
+                     flexDirection: 'column', 
+                     gap: '1rem',
+                     maxHeight: '600px',
+                     overflowY: 'auto',
+                     paddingRight: '0.5rem',
+                     // Custom scrollbar styling for cleaner look
+                     scrollbarWidth: 'thin',
+                     scrollbarColor: 'var(--text-light) transparent'
+                 }}>
                     {filteredLogs.map(log => {
                         const creator = log.created_by_user_id ? memberMap.get(log.created_by_user_id) : null;
                         return (
