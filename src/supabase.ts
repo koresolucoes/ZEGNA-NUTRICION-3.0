@@ -34,22 +34,33 @@ export const supabase = supabaseClient as ReturnType<typeof createClient<Databas
 
 /*
 -- =================================================================
--- V22.0 SCRIPT DE MIGRACIÓN (Datos Fiscales para Servicios y Planes)
--- Ejecuta este script para permitir la configuración SAT por servicio.
+-- V23.0 SCRIPT DE MIGRACIÓN (Chat Multimedia)
+-- Ejecuta este script para habilitar imágenes y audios en el chat.
 -- =================================================================
 BEGIN;
 
--- 1. Agregar columnas SAT a la tabla de servicios
-ALTER TABLE public.services 
-ADD COLUMN IF NOT EXISTS sat_product_code text DEFAULT '85101702',
-ADD COLUMN IF NOT EXISTS sat_unit_code text DEFAULT 'E48',
-ADD COLUMN IF NOT EXISTS sat_tax_object_code text DEFAULT '02';
+-- 1. Actualizar la tabla de conversaciones
+ALTER TABLE public.whatsapp_conversations
+ADD COLUMN IF NOT EXISTS message_type text DEFAULT 'text', -- 'text', 'image', 'audio'
+ADD COLUMN IF NOT EXISTS media_url text,
+ADD COLUMN IF NOT EXISTS mime_type text;
 
--- 2. Agregar columnas SAT a la tabla de planes
-ALTER TABLE public.patient_service_plans 
-ADD COLUMN IF NOT EXISTS sat_product_code text DEFAULT '85101702',
-ADD COLUMN IF NOT EXISTS sat_unit_code text DEFAULT 'E48',
-ADD COLUMN IF NOT EXISTS sat_tax_object_code text DEFAULT '02';
+-- 2. Crear el Bucket de Almacenamiento 'chat-media'
+-- Nota: Si el bucket ya existe, esta parte puede dar error o ser ignorada.
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('chat-media', 'chat-media', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- 3. Configurar Políticas de Seguridad (RLS) para el Bucket
+-- Permitir acceso público de lectura (para que las imágenes carguen en el chat)
+CREATE POLICY "Acceso público a media de chat"
+ON storage.objects FOR SELECT
+USING ( bucket_id = 'chat-media' );
+
+-- Permitir subida a usuarios autenticados (y al service role del backend)
+CREATE POLICY "Subida de media de chat autenticada"
+ON storage.objects FOR INSERT
+WITH CHECK ( bucket_id = 'chat-media' );
 
 COMMIT;
 -- =================================================================

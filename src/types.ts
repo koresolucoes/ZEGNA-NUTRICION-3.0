@@ -1,5 +1,5 @@
 
-import { Database } from './database.types';
+import { Database, Json } from './database.types';
 
 // Core Types
 export type OperatingScheduleItem = {
@@ -73,11 +73,13 @@ export type Medication = Database['public']['Tables']['medications']['Row'];
 export type LifestyleHabits = Database['public']['Tables']['lifestyle_habits']['Row'];
 export type DailyCheckin = Database['public']['Tables']['daily_checkins']['Row'];
 export type File = Database['public']['Tables']['files']['Row'];
+export type PatientFile = File; // Alias for consistency with component imports
 export type CareTeam = Database['public']['Tables']['care_team']['Row'];
 export type InternalNote = Database['public']['Tables']['internal_notes']['Row'];
 // Add GamificationLog type
 export type GamificationLog = Database['public']['Tables']['gamification_log']['Row'];
 export type BetaFeedback = Database['public']['Tables']['beta_feedback']['Row'];
+export type Service = Database['public']['Tables']['services']['Row'];
 
 
 // Agenda & Queue Types
@@ -125,96 +127,27 @@ export type ReferralConsentRequest = Database['public']['Tables']['referral_cons
 
 // --- AI Agent & WhatsApp Types ---
 export type AiAgent = Database['public']['Tables']['ai_agents']['Row'] & {
-    use_knowledge_base?: boolean;
-    tools?: {
-        get_patient_details?: { enabled: boolean };
-        get_my_data_for_ai?: { enabled: boolean };
-        get_available_slots?: { enabled: boolean };
-        book_appointment?: { enabled: boolean };
-    } | null;
-    patient_system_prompt?: string | null;
-    is_patient_portal_agent_active?: boolean;
-    provider_api_key?: string | null;
+    tools?: Json | null; // Override Json type for easier access if needed
 };
 export type WhatsappConnection = Database['public']['Tables']['whatsapp_connections']['Row'];
-export type WhatsappContact = Database['public']['Tables']['whatsapp_contacts']['Row'] & {
-    person_id?: string | null;
-    person_name?: string | null;
-};
-export type WhatsappMessage = Database['public']['Tables']['whatsapp_conversations']['Row'];
-
-
-// --- Calculator & Plan History Types ---
-export interface DietPlanHistoryItem {
-    id: string;
-    clinic_id: string;
-    person_id: string | null;
-    person_name: string | null;
-    plan_date: string;
-    goals: any; // Json
-    totals: any; // Json
-    portions: any; // Json
-    created_at: string;
-}
-
-// --- Clinical References Types ---
-export type ClinicalReferenceContentItem = {
-    label: string;
-    value: string;
-    key?: string; // Maps to a field in lab_results or consultations
-    check?: 'high' | 'low'; // 'high' means value is bad if >= threshold
-    threshold?: number | number[];
+export type WhatsappContact = Database['public']['Tables']['whatsapp_contacts']['Row'];
+export type WhatsappMessage = Database['public']['Tables']['whatsapp_conversations']['Row'] & {
+    message_type?: 'text' | 'image' | 'audio';
+    media_url?: string | null;
+    mime_type?: string | null;
 };
 
-export type ClinicalReference = Omit<Database['public']['Tables']['clinical_references']['Row'], 'content'> & {
-    content: ClinicalReferenceContentItem[] | null;
+// Re-export common database types that might be useful
+export type ConsultationWithLabs = Consultation & {
+    lab_results?: LabResult[];
 };
 
-// --- Invoicing & Financial Types ---
-export type FiscalCredentials = Database['public']['Tables']['fiscal_credentials']['Row'];
-export type Service = Database['public']['Tables']['services']['Row'] & {
-    // New SAT Fields
-    sat_product_code?: string | null;
-    sat_unit_code?: string | null;
-    sat_tax_object_code?: string | null;
-};
-export type Payment = Database['public']['Tables']['payments']['Row'];
-export type Invoice = Database['public']['Tables']['invoices']['Row'];
-
-// --- Zegna Affiliate Program Types (System A) ---
-export type AffiliateProgram = Database['public']['Tables']['affiliate_programs']['Row'];
-export type AffiliateLink = Database['public']['Tables']['affiliate_links']['Row'];
-export type AffiliateEvent = Database['public']['Tables']['affiliate_events']['Row'];
-export type PopulatedAffiliateLink = AffiliateLink & {
-  affiliate_programs: AffiliateProgram | null;
-};
-
-
-// Decorated/Combined Types for UI convenience
-export type ChurnFeedback = Database['public']['Tables']['churn_feedback']['Row'] & { persons: { full_name: string } | null };
-export type ConsultationWithLabs = Consultation & { lab_results: LabResult[] };
-
-export type LogWithPerson = Log & { persons: { full_name: string, person_type: string } | null };
-
-export type CareTeamMemberProfile = CareTeam & {
-    team_members_with_profiles: TeamMember | null;
-};
-export type InternalNoteWithAuthor = InternalNote & {
-    team_members_with_profiles: Pick<TeamMember, 'full_name' | 'avatar_url'> | null;
-};
-export type AppointmentWithPerson = Appointment & { 
-    persons: Pick<Person, 'full_name' | 'avatar_url' | 'person_type'> | null;
-    check_in_time?: string | null;
-    consulting_room?: string | null;
-};
-
-export type PopulatedPartnership = ClinicAllyPartnership & {
-    allies: Ally;
-};
-
-export type PopulatedAllyPartnership = AllyAllyPartnership & {
-    requester: Ally;
-    responder: Ally;
+export type AppointmentWithPerson = Appointment & {
+    persons?: {
+        full_name: string;
+        avatar_url?: string | null;
+        person_type?: string; // 'client' | 'member'
+    } | null;
 };
 
 export type PopulatedClinicPartnership = ClinicClinicPartnership & {
@@ -222,83 +155,114 @@ export type PopulatedClinicPartnership = ClinicClinicPartnership & {
     responder: Clinic;
 };
 
+export type PopulatedAllyPartnership = AllyAllyPartnership & {
+    requester: Ally;
+    responder: Ally;
+};
+
+export type PopulatedPartnership = ClinicAllyPartnership & {
+    allies: Ally;
+    clinics?: Clinic;
+};
+
 export type PopulatedReferral = Referral & {
-    sending_clinic?: Pick<Clinic, 'name' | 'id'> | null;
-    receiving_clinic?: Pick<Clinic, 'name' | 'id'> | null;
-    sending_ally?: Pick<Ally, 'full_name' | 'specialty'> | null;
-    receiving_ally?: Pick<Ally, 'full_name' | 'specialty'> | null;
     persons?: Person | null;
+    sending_clinic?: { name: string } | null;
+    sending_ally?: { full_name: string; specialty: string } | null;
+    receiving_clinic?: { name: string } | null;
+    receiving_ally?: { full_name: string; specialty: string } | null;
 };
 
-// FIX: Add PopulatedReferralConsentRequest type
 export type PopulatedReferralConsentRequest = ReferralConsentRequest & {
-    receiving_ally?: Pick<Ally, 'full_name' | 'specialty'> | null;
-    receiving_clinic?: Pick<Clinic, 'name'> | null;
-    persons?: Pick<Person, 'full_name'> | null;
-    clinics?: Pick<Clinic, 'name'> | null;
+    clinics?: { name: string } | null; // Sending clinic
+    receiving_ally?: { full_name: string; specialty: string } | null;
+    receiving_clinic?: { name: string } | null;
+}
+
+export type CareTeamMemberProfile = CareTeam & {
+    team_members_with_profiles: TeamMember | null;
 };
 
-export type PopulatedPayment = Payment & {
-    persons: Pick<Person, 'full_name' | 'rfc' | 'fiscal_address' | 'fiscal_regime'> | null;
-    services: Pick<Service, 'name'> | null;
-    recorded_by_name: string | null;
-    invoices: Invoice[]; // A reverse join will return an array
+export type InternalNoteWithAuthor = InternalNote & {
+    team_members_with_profiles: TeamMember | null;
+};
+
+export type DietPlanHistoryItem = Database['public']['Tables']['diet_plan_history']['Row'] & {
+    goals: any;
+    totals: any;
+    portions: any;
+};
+
+export type AffiliateProgram = Database['public']['Tables']['affiliate_programs']['Row'];
+export type AffiliateLink = Database['public']['Tables']['affiliate_links']['Row'];
+export type AffiliateEvent = Database['public']['Tables']['affiliate_events']['Row'];
+
+export type PopulatedAffiliateLink = AffiliateLink & {
+    affiliate_programs?: AffiliateProgram | null;
 };
 
 export type PopulatedAffiliateEvent = AffiliateEvent & {
-  clinics: {
-    name: string | null;
-  } | null;
+    clinics?: { name: string } | null; // Referred clinic name
+};
+
+export type FiscalCredentials = Database['public']['Tables']['fiscal_credentials']['Row'];
+export type Invoice = Database['public']['Tables']['invoices']['Row'];
+export type Payment = Database['public']['Tables']['payments']['Row'];
+
+export type PopulatedPayment = Payment & {
+    persons?: { full_name: string; rfc?: string | null; fiscal_address?: string | null; fiscal_regime?: string | null } | null;
+    services?: { name: string } | null;
+    invoices?: Invoice[]; // Array due to left join, usually 0 or 1
+    recorded_by_name?: string;
+}
+
+// Feedback types
+export type ChurnFeedback = Database['public']['Tables']['churn_feedback']['Row'] & {
+    persons?: { full_name: string; clinic_id: string } | null;
+};
+
+// Clinical Reference Types
+export type ClinicalReferenceContentItem = {
+    label: string;
+    value: string;
+    key?: string;
+    check?: 'high' | 'low';
+    threshold?: number | number[];
+};
+
+export type ClinicalReference = Database['public']['Tables']['clinical_references']['Row'] & {
+    content: ClinicalReferenceContentItem[] | Json;
+};
+
+// Patient Groups & Subscriptions Types
+export type SharedSubscription = Database['public']['Tables']['shared_subscriptions']['Row'] & {
+    patient_service_plans?: PatientServicePlan | null;
 };
 
 export type PopulatedPatientGroup = Database['public']['Tables']['patient_groups']['Row'] & {
-    persons: Pick<Person, 'id' | 'full_name'>[];
-    shared_subscriptions: (SharedSubscription & {
-        patient_service_plans: PatientServicePlan | null;
-    })[] | null;
+    persons: { id: string; full_name: string }[];
+    shared_subscriptions?: SharedSubscription[];
 };
-export type SharedSubscription = Database['public']['Tables']['shared_subscriptions']['Row'];
 
-
-// FIX: Add aliases for deprecated types to maintain compatibility during refactor
-export type Client = Person;
-export type Afiliado = Person;
-export type PatientLog = Log;
-export type AfiliadoLog = Log;
-export type PatientLogWithClient = LogWithPerson;
-export type PatientAllergy = Allergy;
-export type PatientMedicalHistory = MedicalHistory;
-export type PatientMedication = Medication;
-export type PatientLifestyleHabits = LifestyleHabits;
-export type PatientDailyCheckin = DailyCheckin;
-export type PatientFile = File;
-export type PatientCareTeamMemberProfile = CareTeamMemberProfile;
-export type InternalPatientNoteWithAuthor = InternalNoteWithAuthor;
-export type PatientCareTeam = CareTeam;
-export type InternalPatientNote = InternalNote;
-export type AfiliadoConsultationWithLabs = ConsultationWithLabs;
-export type AfiliadoLabResult = LabResult;
-
-
-// --- Plan Template Builder Types ---
-export interface Exercise {
-    nombre: string;
-    series: string;
-    repeticiones: string;
-    descanso: string;
-}
-
-export interface DietDayTemplate {
+// Plan Templates Types
+export type DietDayTemplate = {
     dia: string;
     desayuno: string;
     colacion_1: string;
     comida: string;
     colacion_2: string;
     cena: string;
-}
+};
 
-export interface ExerciseDayTemplate {
+export type Exercise = {
+    nombre: string;
+    series: string;
+    repeticiones: string;
+    descanso: string;
+};
+
+export type ExerciseDayTemplate = {
     dia: string;
     enfoque: string;
     ejercicios: Exercise[];
-}
+};

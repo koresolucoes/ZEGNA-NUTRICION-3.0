@@ -34,6 +34,17 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
     return btoa(binary);
 };
 
+// Helper to convert base64 to Uint8Array (replaces Buffer.from for compatibility)
+const base64ToUint8Array = (base64: string) => {
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+};
+
 // Helper to download media and convert to base64
 const downloadMedia = async (url: string, headers: any = {}): Promise<{ data: string; mimeType: string }> => {
     const response = await fetch(url, { headers });
@@ -92,10 +103,10 @@ export default async function handler(req: any, res: any) {
         if (message.type === 'text') {
             messageBody = message.text.body;
         } else if (message.type === 'image') {
-            messageBody = message.image.caption || "Analiza esta imagen.";
+            messageBody = message.image.caption || "Imagen enviada";
             pendingMedia = { id: message.image.id, type: 'image', mimeType: message.image.mime_type };
         } else if (message.type === 'audio') {
-            messageBody = "[Audio] Por favor escucha y procesa este audio.";
+            messageBody = "Audio enviado";
             pendingMedia = { id: message.audio.id, type: 'audio', mimeType: message.audio.mime_type };
         } else {
             // Unsupported type for now, just acknowledge
@@ -112,10 +123,10 @@ export default async function handler(req: any, res: any) {
             const mediaUrl = req.body.MediaUrl0;
             const mediaType = req.body.MediaContentType0;
             if (mediaType.startsWith('image/')) {
-                messageBody = messageBody || "Analiza esta imagen.";
+                messageBody = messageBody || "Imagen enviada";
                 pendingMedia = { url: mediaUrl, type: 'image', mimeType: mediaType };
             } else if (mediaType.startsWith('audio/')) {
-                messageBody = messageBody || "Procesa este audio.";
+                messageBody = messageBody || "Audio enviado";
                 pendingMedia = { url: mediaUrl, type: 'audio', mimeType: mediaType };
             }
         }
@@ -170,33 +181,11 @@ export default async function handler(req: any, res: any) {
 
     if (contactError) throw contactError;
 
-    // 3. Log user's message
-    // NOTE: We save a text representation for media in DB to keep history clean.
-    await supabaseAdmin.from('whatsapp_conversations').insert({ 
-        clinic_id: clinicId, 
-        contact_id: contact.id, 
-        contact_phone_number: userPhoneNumber, 
-        message_content: messageBody, 
-        sender: 'user' 
-    });
-
-    // 4. Check if AI agent should respond
-    const { data: agent, error: agentError } = await supabaseAdmin.from('ai_agents').select('*').eq('clinic_id', clinicId).single();
-    
-    const isPlanActive = personData?.subscription_end_date ? new Date(personData.subscription_end_date) >= new Date() : false;
-    const shouldAiRespond = agent?.is_active && contact.ai_is_active && (!personData || isPlanActive);
-    
-    if (agentError || !agent || !shouldAiRespond) {
-      if (!shouldAiRespond && personData && !isPlanActive) {
-          console.log(`[Webhook] AI disabled for contact ${userPhoneNumber} because their plan is inactive.`);
-      } else {
-          console.log(`[Webhook] Agent for clinic ${clinicId} or contact ${userPhoneNumber} is inactive. Ignoring message.`);
-      }
-      return res.status(200).send('Agent inactive for this conversation.');
-    }
-
-    // --- PROCESS MEDIA IF PRESENT ---
+    // --- PROCESS MEDIA (Download & Upload to Supabase) ---
+    let storedMediaUrl = null;
+    let messageType = 'text';
     let inlineDataPart = null;
+
     if (pendingMedia) {
         try {
             let mediaData: { data: string, mimeType: string } | null = null;
@@ -215,25 +204,73 @@ export default async function handler(req: any, res: any) {
                     }
                 }
             } else if (connection.provider === 'twilio' && pendingMedia.url) {
-                // Twilio media URLs might require Basic Auth if configured, but often public in webhook context
-                // Using standard fetch for now. If 401, we could add Authorization header.
                 const creds = connection.credentials as any;
                 const authHeader = 'Basic ' + btoa(`${creds.accountSid}:${creds.authToken}`);
                 mediaData = await downloadMedia(pendingMedia.url, { Authorization: authHeader });
             }
 
             if (mediaData) {
+                // Prepare for Gemini
                 inlineDataPart = {
                     inlineData: {
                         mimeType: mediaData.mimeType,
                         data: mediaData.data
                     }
                 };
+
+                // Upload to Supabase Storage for persistent chat history
+                const fileExt = mediaData.mimeType.split('/')[1] || 'bin';
+                const fileName = `${clinicId}/${contact.id}/${Date.now()}.${fileExt}`;
+                const fileData = base64ToUint8Array(mediaData.data);
+                
+                const { error: uploadError } = await supabaseAdmin.storage
+                    .from('chat-media')
+                    .upload(fileName, fileData, { 
+                        contentType: mediaData.mimeType,
+                        upsert: true
+                    });
+
+                if (!uploadError) {
+                    const { data: publicUrlData } = supabaseAdmin.storage
+                        .from('chat-media')
+                        .getPublicUrl(fileName);
+                    
+                    storedMediaUrl = publicUrlData.publicUrl;
+                    messageType = pendingMedia.type;
+                } else {
+                    console.error('[Webhook] Failed to upload media to Supabase:', uploadError);
+                }
             }
         } catch (e) {
-            console.error('[Webhook] Failed to download media:', e);
-            // Continue without media, model will just see text
+            console.error('[Webhook] Failed to process media:', e);
         }
+    }
+
+    // 3. Log user's message (with media URL if available)
+    await supabaseAdmin.from('whatsapp_conversations').insert({ 
+        clinic_id: clinicId, 
+        contact_id: contact.id, 
+        contact_phone_number: userPhoneNumber, 
+        message_content: messageBody, 
+        sender: 'user',
+        message_type: messageType,
+        media_url: storedMediaUrl,
+        mime_type: pendingMedia?.mimeType
+    });
+
+    // 4. Check if AI agent should respond
+    const { data: agent, error: agentError } = await supabaseAdmin.from('ai_agents').select('*').eq('clinic_id', clinicId).single();
+    
+    const isPlanActive = personData?.subscription_end_date ? new Date(personData.subscription_end_date) >= new Date() : false;
+    const shouldAiRespond = agent?.is_active && contact.ai_is_active && (!personData || isPlanActive);
+    
+    if (agentError || !agent || !shouldAiRespond) {
+      if (!shouldAiRespond && personData && !isPlanActive) {
+          console.log(`[Webhook] AI disabled for contact ${userPhoneNumber} because their plan is inactive.`);
+      } else {
+          console.log(`[Webhook] Agent for clinic ${clinicId} or contact ${userPhoneNumber} is inactive. Ignoring message.`);
+      }
+      return res.status(200).send('Agent inactive for this conversation.');
     }
     
     // 5. Fetch history using contact_id for efficiency

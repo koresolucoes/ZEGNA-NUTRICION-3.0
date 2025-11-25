@@ -177,6 +177,7 @@ const ChatPage: FC<{ isMobile: boolean }> = ({ isMobile }) => {
             message_content: newMessage,
             sender: 'agent',
             sent_at: new Date().toISOString(),
+            message_type: 'text'
         };
 
         setMessages(prev => [...prev, messagePayload]);
@@ -391,7 +392,7 @@ const ChatPage: FC<{ isMobile: boolean }> = ({ isMobile }) => {
                             )}
 
                             {/* Messages Area */}
-                            <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                            <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                 {loading.messages ? (
                                     <div style={{display: 'flex', justifyContent: 'center', padding: '2rem'}}><SkeletonLoader type="list" count={3} /></div>
                                 ) : (
@@ -420,6 +421,18 @@ const ChatPage: FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                                         position: 'relative',
                                                         minWidth: '80px'
                                                     }}>
+                                                        {msg.message_type === 'image' && msg.media_url && (
+                                                            <div style={{marginBottom: '0.5rem'}}>
+                                                                <img src={msg.media_url} alt="Imagen enviada" style={{maxWidth: '100%', borderRadius: '8px', maxHeight: '300px', objectFit: 'contain'}} />
+                                                            </div>
+                                                        )}
+                                                        
+                                                        {msg.message_type === 'audio' && msg.media_url && (
+                                                            <div style={{marginBottom: '0.5rem'}}>
+                                                                <audio controls src={msg.media_url} style={{maxWidth: '100%', height: '32px'}} />
+                                                            </div>
+                                                        )}
+
                                                         <p style={{margin: 0, fontSize: '0.95rem', whiteSpace: 'pre-wrap', lineHeight: 1.4, paddingBottom: '12px'}}>
                                                             <Highlight text={msg.message_content} highlight={messageSearchTerm} />
                                                         </p>
