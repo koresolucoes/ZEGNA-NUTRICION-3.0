@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useMemo, useCallback } from 'react';
 import { supabase } from '../../supabase';
 import { styles } from '../../constants';
@@ -39,7 +40,7 @@ const ClinicalReferences: FC<ClinicalReferencesProps> = ({ references, selectedP
         return references.filter(ref =>
             ref.title.toLowerCase().includes(lowercasedFilter) ||
             ref.category.toLowerCase().includes(lowercasedFilter) ||
-            (Array.isArray(ref.content) && ref.content.some(item => item.label.toLowerCase().includes(lowercasedFilter)))
+            (Array.isArray(ref.content) && ref.content.some((item: any) => item.label && typeof item.label === 'string' && item.label.toLowerCase().includes(lowercasedFilter)))
         );
     }, [references, searchTerm]);
 
@@ -119,7 +120,7 @@ const ClinicalReferences: FC<ClinicalReferencesProps> = ({ references, selectedP
             {filteredReferences.length > 0 ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
                     {filteredReferences.map(ref => {
-                         const contentArray = Array.isArray(ref.content) ? ref.content : [];
+                         const contentArray = (Array.isArray(ref.content) ? ref.content : []) as ClinicalReferenceContentItem[];
                          
                          let toolKey: string | null | undefined = ref.linked_tool;
                          if (!toolKey) {
@@ -197,7 +198,7 @@ const ClinicalReferences: FC<ClinicalReferencesProps> = ({ references, selectedP
                     color: 'white',
                     display: 'flex', 
                     alignItems: 'center', 
-                    justifyContent: 'center',
+                    justifyContent: 'center', 
                     fontSize: '1.5rem',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
                     zIndex: 1040,

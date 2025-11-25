@@ -1,3 +1,4 @@
+
 import React, { FC, useMemo, useState, useEffect } from 'react';
 // FIX: In Supabase v2, User is exported via `import type`.
 import type { User } from '@supabase/supabase-js';
@@ -136,53 +137,12 @@ const PatientHomePage: FC<{
         }
         return currentStreak;
     }, [checkins, todayStr]);
-
-    const getStreakMessage = (streak: number) => {
-      if (streak > 30) {
-        return { icon: '🔥', text: `¡Racha de FUEGO! Estás ganando 50 puntos por cada registro.`, color: 'var(--error-color)' };
-      }
-      if (streak > 21) {
-        return { icon: '🚀', text: `¡Increíble! Tu racha ahora te da 30 puntos por registro.`, color: 'var(--accent-color)' };
-      }
-      if (streak > 14) {
-        return { icon: '🏆', text: `¡Excelente! Tu racha te da 20 puntos por registro.`, color: 'var(--primary-color)' };
-      }
-      if (streak > 7) {
-        return { icon: '👍', text: `¡Sigue así! Tu racha ahora te da 10 puntos por registro.`, color: 'var(--primary-color)' };
-      }
-      if (streak > 1) {
-        return { icon: '🔥', text: `¡Tienes una racha de ${streak} días! Sigue así para ganar puntos extra.` };
-      }
-      return null;
-    };
     
-    const streakMessage = getStreakMessage(streak);
-
-    const { usedConsultations, maxConsultations } = useMemo(() => {
-        const plan = servicePlans.find(p => p.id === person.current_plan_id);
-        if (plan && person.subscription_start_date && person.subscription_end_date) {
-            const startDate = person.subscription_start_date; // 'YYYY-MM-DD'
-            const endDate = person.subscription_end_date;   // 'YYYY-MM-DD'
-
-             const used = appointments.filter(a => {
-                const isConsumingStatus = ['scheduled', 'completed', 'in-consultation', 'called', 'checked-in'].includes(a.status);
-                if (!isConsumingStatus) return false;
-
-                const apptDate = a.start_time.substring(0, 10); // Extract 'YYYY-MM-DD' from timestamp
-                return apptDate >= startDate && apptDate <= endDate;
-            }).length;
-
-            return { usedConsultations: used, maxConsultations: plan.max_consultations };
-        }
-        return { usedConsultations: 0, maxConsultations: null };
-    }, [person, servicePlans, appointments]);
-    
-    // Gamification progress bar logic
-    const { progressPercent, pointsToNextLevel } = useMemo(() => {
+    const { progressPercent, pointsToNextLevel, currentRankPoints } = useMemo(() => {
         const points = person.gamification_points || 0;
         const ranks = { 'Novato': 0, 'Bronce': 100, 'Plata': 300, 'Oro': 600, 'Platino': 1000 };
         const currentRank = person.gamification_rank || 'Novato';
-        const currentRankPoints = ranks[currentRank as keyof typeof ranks];
+        const currentRankStart = ranks[currentRank as keyof typeof ranks];
         
         let nextRankPoints;
         if (points < 100) nextRankPoints = 100;
@@ -192,172 +152,247 @@ const PatientHomePage: FC<{
         else nextRankPoints = Infinity;
 
         if (nextRankPoints === Infinity) {
-            return { progressPercent: 100, pointsToNextLevel: 0 };
+            return { progressPercent: 100, pointsToNextLevel: 0, currentRankPoints: points };
         }
 
-        const pointsInCurrentRank = points - currentRankPoints;
-        const pointsForNextRank = nextRankPoints - currentRankPoints;
+        const pointsInCurrentRank = points - currentRankStart;
+        const pointsForNextRank = nextRankPoints - currentRankStart;
         const progress = pointsForNextRank > 0 ? (pointsInCurrentRank / pointsForNextRank) * 100 : 100;
 
         return {
             progressPercent: Math.min(progress, 100),
-            pointsToNextLevel: Math.max(0, nextRankPoints - points)
+            pointsToNextLevel: Math.max(0, nextRankPoints - points),
+            currentRankPoints: points
         };
     }, [person.gamification_points, person.gamification_rank]);
+
+    const currentPlan = servicePlans.find(p => p.id === person.current_plan_id);
+
+    // -- Custom Components --
+    const Card: FC<{ children: React.ReactNode, className?: string, title?: string, icon?: React.ReactNode, subHeader?: React.ReactNode }> = ({ children, className, title, icon, subHeader }) => (
+        <div className={`fade-in ${className || ''}`} style={{
+            backgroundColor: 'var(--surface-color)',
+            borderRadius: '16px',
+            border: '1px solid var(--border-color)',
+            boxShadow: 'var(--shadow)',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%'
+        }}>
+             {title && (
+                 <div style={{padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--surface-color)'}}>
+                    <h2 style={{margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+                        {icon && <span style={{color: 'var(--primary-color)', fontSize: '1.3rem'}}>{icon}</span>}
+                        {title}
+                    </h2>
+                    {subHeader}
+                </div>
+             )}
+            <div style={{padding: '1.5rem', flex: 1}}>
+                {children}
+            </div>
+        </div>
+    );
+    
+    const PlanItem: FC<{ label: string, content: string, color?: string }> = ({ label, content, color }) => (
+         <div style={{marginBottom: '1rem'}}>
+            <span style={{color: color || 'var(--primary-color)', fontWeight: 600, display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem'}}>{label}</span>
+            <span style={{color: 'var(--text-color)', lineHeight: 1.5, display: 'block'}}>{content || 'N/A'}</span>
+        </div>
+    );
 
     return (
         <div className="fade-in">
              {editingCheckin && <DailyCheckinFormModal isOpen={!!editingCheckin} onClose={() => setEditingCheckin(null)} onSave={() => { setEditingCheckin(null); onDataRefresh(); }} checkinToEdit={editingCheckin} />}
-            {deletingCheckin && <ConfirmationModal isOpen={!!deletingCheckin} onClose={() => setDeletingCheckin(null)} onConfirm={handleConfirmDelete} title="Confirmar Eliminación" message={<p>¿Estás seguro de que quieres eliminar tu registro del día {new Date((deletingCheckin.checkin_date as string).replace(/-/g, '/')).toLocaleDateString('es-MX', {dateStyle: 'long'})}?</p>} confirmText="Sí, eliminar" />}
+            {deletingCheckin && <ConfirmationModal isOpen={!!deletingCheckin} onClose={() => setDeletingCheckin(null)} onConfirm={handleConfirmDelete} title="Confirmar Eliminación" message={<p>¿Eliminar tu registro del día?</p>} confirmText="Sí, eliminar" />}
             {viewingConsent && <ConsentRequestModal isOpen={!!viewingConsent} request={viewingConsent} onClose={() => setViewingConsent(null)} onDecision={onDataRefresh} />}
             
-            {pendingConsents.length > 0 && (
-                 <div className="widget-card" style={{marginBottom: '1.5rem', border: `2px solid var(--accent-color)`}}>
-                    <div className="widget-header">
-                        <h2 className="widget-title" style={{color: 'var(--accent-color)'}}>{ICONS.send} Solicitudes Pendientes</h2>
-                    </div>
-                    <div className="widget-body">
-                        {pendingConsents.map(req => (
-                            <div key={req.id}>
-                                <p>Tu clínica te solicita permiso para referirte con otro profesional. Por favor, revisa los detalles.</p>
-                                <button onClick={() => setViewingConsent(req)}>Revisar Solicitud</button>
-                            </div>
-                        ))}
-                    </div>
-                 </div>
-            )}
+            <div style={{marginBottom: '2rem', paddingLeft: '0.5rem'}}>
+                 <p style={{color: 'var(--text-light)', margin: 0, fontSize: '0.95rem'}}>Bienvenido de nuevo,</p>
+                 <h1 style={{margin: '0.25rem 0 0 0', fontSize: '2rem', fontWeight: 800, color: 'var(--text-color)'}}>{person.full_name.split(' ')[0]}</h1>
+                 <h2 style={{margin: '0.25rem 0 0 0', fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-light)'}}>Tu Panel de Control</h2>
+            </div>
 
-            <p style={{color: 'var(--text-light)', marginTop: '-0.5rem', marginBottom: '2rem'}}>Aquí puedes dar seguimiento a tu progreso y consultar tus planes.</p>
-            
-            <div className="patient-portal-grid">
-                {/* Main Content Column */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    <div className="widget-card">
-                        <div className="widget-header">
-                            <h2 className="widget-title">Tu Plan de Hoy</h2>
-                            <span style={{fontSize: '0.9rem', color: 'var(--text-light)', display: 'flex', alignItems: 'center', gap: '0.25rem'}}>
-                                {ICONS.calendar}
-                                {new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric' })}
-                            </span>
-                        </div>
-                        <div className="widget-body">
-                            {completionError && <p style={{...styles.error, marginTop: '-1rem', marginBottom: '1rem'}}>{completionError}</p>}
-                            <h3 style={{fontSize: '1rem', color: 'var(--primary-color)', marginBottom: '0.5rem'}}>Plan Alimenticio</h3>
-                            {dietLogToShow ? (
-                                <div style={{border: '1px solid var(--border-color)', padding: '1rem', borderRadius: '8px'}}>
-                                    <p style={{margin: '0 0 0.5rem 0'}}><strong>Desayuno:</strong> {dietLogToShow.desayuno || 'N/A'}</p>
-                                    <p style={{margin: '0 0 0.5rem 0'}}><strong>Comida:</strong> {dietLogToShow.comida || 'N/A'}</p>
-                                    <p style={{margin: '0'}}><strong>Cena:</strong> {dietLogToShow.cena || 'N/A'}</p>
-                                    {dietLogToShow.log_date === todayStr && !dietLogToShow.completed && (
-                                         <button onClick={() => handleMarkComplete(dietLogToShow)} disabled={updatingCompletion === dietLogToShow.id} style={{ width: '100%', marginTop: '1rem', backgroundColor: 'var(--accent-color)'}}>
-                                            {updatingCompletion === dietLogToShow.id ? '...' : '✅ Completado'}
-                                        </button>
-                                    )}
-                                </div>
-                            ) : <p>No hay plan asignado.</p>}
-                            
-                            <h3 style={{fontSize: '1rem', color: 'var(--primary-color)', margin: '1.5rem 0 0.5rem 0'}}>Rutina de Ejercicio</h3>
-                            {exerciseLogToShow ? (
-                                <div style={{border: '1px solid var(--border-color)', padding: '1rem', borderRadius: '8px'}}>
-                                    <p style={{margin: 0}}><strong>Enfoque:</strong> {exerciseLogToShow.enfoque || 'General'}</p>
-                                    {exerciseLogToShow.log_date === todayStr && !exerciseLogToShow.completed && (
-                                         <button onClick={() => handleMarkComplete(exerciseLogToShow)} disabled={updatingCompletion === exerciseLogToShow.id} style={{ width: '100%', marginTop: '1rem', backgroundColor: 'var(--accent-color)'}}>
-                                            {updatingCompletion === exerciseLogToShow.id ? '...' : '✅ Completado'}
-                                        </button>
-                                    )}
-                                </div>
-                            ) : <p>No hay rutina asignada.</p>}
-                        </div>
-                    </div>
-                    <div className="widget-card">
-                        <div className="widget-header"><h2 className="widget-title">{ICONS.sparkles} Análisis de Platillos con IA</h2></div>
-                        <div className="widget-body">
-                            {isAiEnabled ? (
-                                <MealImageAnalyzer todaysDietLog={todaysDietLog || null} />
-                            ) : (
-                                <div style={{textAlign: 'center', padding: '1rem'}}>
-                                    <p style={{color: 'var(--text-light)'}}>Esta función no está disponible en tu plan actual.</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
+            {/* Dashboard Grid Layout - Mobile First */}
+            <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', 
+                gap: '1.5rem', 
+                alignItems: 'start' 
+            }}>
                 
-                {/* Right Sidebar Column */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    <div className="widget-card">
-                         <div className="widget-header"><h2 className="widget-title">Tu Progreso</h2></div>
-                         <div className="widget-body">
-                             <div style={{textAlign: 'center', padding: '1rem 0'}}>
-                                <p style={{fontSize: '3rem', margin: '0'}}>{person.gamification_rank === 'Oro' ? '🥇' : person.gamification_rank === 'Plata' ? '🥈' : '🥉'}</p>
-                                <h3 style={{margin: 0, color: 'var(--text-light)', fontSize: '1.5rem', fontWeight: 600}}>{person.gamification_rank || 'Novato'}</h3>
-                                <p style={{margin: '0.25rem 0 1rem 0', fontWeight: 700, fontSize: '2.5rem'}}>{person.gamification_points || 0} <span style={{fontSize: '1rem', color: 'var(--text-light)'}}>puntos</span></p>
-                                
-                                <div className="progress-bar-bg">
-                                    <div className="progress-bar-fill" style={{width: `${progressPercent}%`}}></div>
-                                </div>
-                                <p style={{margin: '0.5rem 0 0 0', fontSize: '0.9rem', color: 'var(--text-light)'}}>
-                                     {pointsToNextLevel > 0 ? `Te faltan ${pointsToNextLevel} puntos para el siguiente nivel.` : '¡Has alcanzado el máximo nivel!'}
-                                </p>
-                                {streakMessage && (
-                                    <p style={{ margin: '1rem 0 0 0', fontSize: '0.9rem', fontWeight: 500, color: streakMessage.color || 'var(--text-color)' }}>
-                                        {streakMessage.icon} {streakMessage.text}
-                                    </p>
-                                )}
-                             </div>
-                         </div>
-                    </div>
-                     <div className="widget-card">
-                        <div className="widget-header"><h2 className="widget-title">Mi Registro Diario</h2></div>
-                        <div className="widget-body">
-                            {todaysCheckin ? (
+                {/* 1. Gamification Header - Full Width */}
+                <div style={{ gridColumn: '1 / -1' }}>
+                     <Card className="mb-6">
+                        <div style={{padding: '2rem', background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', position: 'relative', overflow: 'hidden', color: 'white', borderRadius: '12px'}}>
+                             {/* Background decoration */}
+                             <div style={{position: 'absolute', top: '-20%', right: '-10%', fontSize: '12rem', opacity: 0.05, transform: 'rotate(15deg)'}}>🏆</div>
+
+                            <div style={{display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', marginBottom: '2rem', gap: '1rem', position: 'relative', zIndex: 1}}>
                                 <div>
-                                    <p style={{ marginTop: 0, color: 'var(--text-light)', fontStyle: 'italic' }}>¡Gracias por registrar tu día!</p>
-                                    <p style={{margin: '0.5rem 0'}}><strong>Ánimo:</strong> {'⭐'.repeat(todaysCheckin.mood_rating || 0)}</p>
-                                    <p style={{margin: '0.5rem 0'}}><strong>Energía:</strong> {'⚡'.repeat(todaysCheckin.energy_level_rating || 0)}</p>
-                                    <div style={{display: 'flex', gap: '1rem', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem'}}>
-                                        <button className="button-secondary" onClick={() => setEditingCheckin(todaysCheckin)} style={{flex: 1}}>Editar</button>
-                                        <button className="button-danger" onClick={() => setDeletingCheckin(todaysCheckin)} style={{flex: 1}}>Eliminar</button>
+                                    <p style={{margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1.5px', opacity: 0.8, fontWeight: 700}}>NIVEL ACTUAL</p>
+                                    <h2 style={{margin: '0.5rem 0 0 0', fontSize: '3.5rem', fontWeight: 800, lineHeight: 1, color: '#38BDF8'}}>{person.gamification_rank || 'Novato'}</h2>
+                                </div>
+                                <div style={{textAlign: isMobile ? 'left' : 'right'}}>
+                                    <p style={{margin: 0, fontSize: '0.8rem', opacity: 0.8, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px'}}>PUNTOS TOTALES</p>
+                                    <p style={{margin: '0.25rem 0 0 0', fontSize: '2.5rem', fontWeight: 700}}>{currentRankPoints}</p>
+                                </div>
+                            </div>
+                            
+                            <div style={{position: 'relative', zIndex: 1}}>
+                                <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', opacity: 0.9, marginBottom: '0.75rem', fontWeight: 600}}>
+                                     <span>Progreso de Nivel</span>
+                                     <span>{Math.round(progressPercent)}%</span>
+                                </div>
+                                <div style={{height: '12px', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '6px', overflow: 'hidden', marginBottom: '1.5rem'}}>
+                                    <div style={{height: '100%', width: `${progressPercent}%`, backgroundColor: '#38BDF8', borderRadius: '6px', transition: 'width 1s ease', boxShadow: '0 0 15px rgba(56, 189, 248, 0.6)'}}></div>
+                                </div>
+                                
+                                <div style={{display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '1rem', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', fontSize: '0.9rem', backgroundColor: 'rgba(255,255,255,0.08)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)'}}>
+                                     <span style={{display: 'flex', alignItems: 'center', gap: '0.75rem', fontWeight: 600}}>
+                                         <span style={{fontSize: '1.2rem'}}>🔥</span> 
+                                         {streak} días de racha
+                                     </span>
+                                     <span style={{opacity: 0.9}}>{pointsToNextLevel > 0 ? `Faltan ${pointsToNextLevel} pts para subir` : '¡Has alcanzado el máximo nivel!'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+
+                {/* 2. Daily Plan (Diet/Exercise) - Spans 2 columns on desktop */}
+                <div style={{ gridColumn: isMobile ? '1' : 'span 2', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <Card title="Tu Plan de Hoy" icon={ICONS.calendar} subHeader={<span style={{fontSize: '0.9rem', color: 'var(--text-light)', fontWeight: 600, textTransform: 'capitalize'}}>{new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric' })}</span>}>
+                         {completionError && <p style={{...styles.error, marginTop: '-0.5rem', marginBottom: '1rem', fontSize: '0.85rem'}}>{completionError}</p>}
+                         
+                         <div style={{marginBottom: '2rem'}}>
+                            <h4 style={{margin: '0 0 1rem 0', fontSize: '0.9rem', textTransform: 'uppercase', color: 'var(--text-light)', fontWeight: 800, letterSpacing: '1px', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem'}}>ALIMENTACIÓN</h4>
+                            {dietLogToShow ? (
+                                <div style={{backgroundColor: 'var(--background-color)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)'}}>
+                                    <PlanItem label="Desayuno" content={dietLogToShow.desayuno || ''} />
+                                    <PlanItem label="Comida" content={dietLogToShow.comida || ''} />
+                                    <PlanItem label="Cena" content={dietLogToShow.cena || ''} />
+                                    
+                                    {dietLogToShow.log_date === todayStr && !dietLogToShow.completed && (
+                                         <button 
+                                            onClick={() => handleMarkComplete(dietLogToShow)} 
+                                            disabled={!!updatingCompletion}
+                                            className="button-primary"
+                                            style={{width: '100%', marginTop: '1rem', padding: '0.8rem', fontSize: '1rem', fontWeight: 700}}
+                                        >
+                                            {updatingCompletion === dietLogToShow.id ? 'Guardando...' : 'Marcar Completado'}
+                                        </button>
+                                    )}
+                                    {dietLogToShow.completed && (
+                                        <div style={{marginTop: '1rem', padding: '0.75rem', backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10B981', borderRadius: '8px', fontWeight: 700, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'}}>
+                                            <span>✅</span> ¡Plan de hoy completado!
+                                        </div>
+                                    )}
+                                </div>
+                            ) : <p style={{color: 'var(--text-light)', fontStyle: 'italic', fontSize: '1rem'}}>No hay plan asignado para hoy.</p>}
+                        </div>
+
+                        <div>
+                            <h4 style={{margin: '0 0 1rem 0', fontSize: '0.9rem', textTransform: 'uppercase', color: 'var(--text-light)', fontWeight: 800, letterSpacing: '1px', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem'}}>EJERCICIO</h4>
+                            {exerciseLogToShow ? (
+                                 <div style={{backgroundColor: 'var(--background-color)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)'}}>
+                                     <p style={{margin: 0, fontSize: '1rem', fontWeight: 500}}>{exerciseLogToShow.enfoque || 'Rutina General'}</p>
+                                      {exerciseLogToShow.log_date === todayStr && !exerciseLogToShow.completed && (
+                                         <button onClick={() => handleMarkComplete(exerciseLogToShow)} disabled={updatingCompletion === exerciseLogToShow.id} className="button-primary" style={{ width: '100%', marginTop: '1rem', padding: '0.8rem', fontSize: '1rem', fontWeight: 700 }}>
+                                            {updatingCompletion === exerciseLogToShow.id ? '...' : 'Marcar Completado'}
+                                        </button>
+                                    )}
+                                     {exerciseLogToShow.completed && (
+                                        <div style={{marginTop: '1rem', padding: '0.75rem', backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10B981', borderRadius: '8px', fontWeight: 700, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'}}>
+                                            <span>✅</span> ¡Rutina completada!
+                                        </div>
+                                    )}
+                                 </div>
+                            ) : <p style={{color: 'var(--text-light)', fontStyle: 'italic', fontSize: '1rem'}}>Día de descanso.</p>}
+                        </div>
+                    </Card>
+
+                    {/* Meal Analysis Card - Visible mostly on mobile or if space allows */}
+                    <Card title="Análisis de Platillo con IA" icon={ICONS.sparkles}>
+                        {isAiEnabled ? (
+                            <MealImageAnalyzer 
+                                todaysDietLog={todaysDietLog || null} 
+                                clinicId={person.clinic_id}
+                            />
+                        ) : (
+                             <div style={{textAlign: 'center', padding: '1rem', color: 'var(--text-light)', fontSize: '0.9rem'}}>
+                                 Función no disponible en tu plan.
+                             </div>
+                        )}
+                    </Card>
+                </div>
+
+                {/* 3. Right Column: Daily Check-in & Info */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <Card title="Registro Diario" icon={ICONS.edit}>
+                        {todaysCheckin ? (
+                            <div style={{textAlign: 'center', display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', padding: '1rem 0'}}>
+                                <div style={{fontSize: '4rem', marginBottom: '1rem'}}>✅</div>
+                                <h3 style={{margin: '0 0 0.5rem 0', fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-color)'}}>¡Día Registrado!</h3>
+                                <p style={{margin: '0 0 2rem 0', color: 'var(--text-light)', fontSize: '1rem'}}>Gracias por tu constancia.</p>
+                                
+                                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem', backgroundColor: 'var(--surface-hover-color)', padding: '1.5rem', borderRadius: '12px'}}>
+                                    <div>
+                                        <span style={{display: 'block', fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem', letterSpacing: '1px'}}>ÁNIMO</span>
+                                        <span style={{fontSize: '1.5rem', color: '#2DD4BF'}}>{'⭐'.repeat(todaysCheckin.mood_rating || 0)}</span>
+                                    </div>
+                                    <div>
+                                        <span style={{display: 'block', fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem', letterSpacing: '1px'}}>ENERGÍA</span>
+                                        <span style={{fontSize: '1.5rem', color: '#F59E0B'}}>{'⚡'.repeat(todaysCheckin.energy_level_rating || 0)}</span>
                                     </div>
                                 </div>
-                            ) : (
+                                <button onClick={() => setEditingCheckin(todaysCheckin)} className="button-secondary" style={{width: '100%', padding: '0.8rem', fontSize: '1rem'}}>Editar Registro</button>
+                            </div>
+                        ) : (
+                            <div style={{padding: '0.5rem 0'}}>
                                 <DailyCheckinForm personId={person.id} onCheckinSaved={onDataRefresh} />
-                            )}
-                        </div>
-                    </div>
-                    <div className="widget-card">
-                        <div className="widget-header"><h2 className="widget-title">Estado de tu Plan</h2></div>
-                        <div className="widget-body" style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
-                             <div>
-                                <h4 style={{fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 500, margin: '0 0 0.25rem 0'}}>Plan Actual</h4>
-                                <p style={{margin: 0, fontWeight: 600}}>{servicePlans.find(p => p.id === person.current_plan_id)?.name || 'Sin plan'}</p>
                             </div>
-                            <div>
-                                <h4 style={{fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 500, margin: '0 0 0.25rem 0'}}>Vence el</h4>
-                                <p style={{margin: 0, fontWeight: 600}}>{person.subscription_end_date ? new Date(person.subscription_end_date.replace(/-/g, '/')).toLocaleDateString('es-MX', {dateStyle: 'long'}) : 'N/A'}</p>
-                            </div>
-                            <div>
-                                <h4 style={{fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 500, margin: '0 0 0.25rem 0'}}>Consultas Usadas</h4>
-                                <p style={{margin: 0, fontWeight: 600}}>{usedConsultations} de {maxConsultations !== null ? maxConsultations : '∞'}</p>
-                            </div>
-                        </div>
-                    </div>
-                     <div className="widget-card">
-                         <div className="widget-header"><h2 className="widget-title">Próxima Cita</h2></div>
-                         <div className="widget-body">
+                        )}
+                    </Card>
+                    
+                     <Card title="Próxima Cita" icon={ICONS.clock}>
+                        <div style={{padding: '1rem', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%'}}>
                             {upcomingAppointment ? (
                                 <div>
-                                    <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color)' }}>{upcomingAppointment.title}</h3>
-                                    <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-light)' }}>
-                                        {new Date(upcomingAppointment.start_time).toLocaleString('es-MX', { dateStyle: 'full', timeStyle: 'short' })}
+                                    <p style={{margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: 600, color: 'var(--primary-color)', textTransform: 'capitalize'}}>
+                                        {new Date(upcomingAppointment.start_time).toLocaleDateString('es-MX', {weekday: 'long', day: 'numeric', month: 'long'})}
                                     </p>
+                                    <div style={{fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-color)', lineHeight: 1, marginBottom: '1rem'}}>
+                                        {new Date(upcomingAppointment.start_time).toLocaleTimeString('es-MX', {hour: '2-digit', minute:'2-digit'})}
+                                    </div>
+                                    <p style={{margin: 0, fontSize: '1rem', color: 'var(--text-light)'}}>{upcomingAppointment.title}</p>
                                 </div>
                             ) : (
-                                <p>No hay citas próximas.</p>
+                                <div>
+                                    <p style={{color: 'var(--text-light)', margin: 0, fontSize: '1rem'}}>No tienes citas programadas.</p>
+                                </div>
                             )}
-                         </div>
-                     </div>
+                        </div>
+                    </Card>
+
+                     <Card title="Tu Membresía" icon={ICONS.briefcase}>
+                        <div style={{padding: '0.5rem'}}>
+                             <p style={{margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px'}}>Plan Actual</p>
+                             <p style={{margin: '0 0 1.5rem 0', fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-color)'}}>{currentPlan?.name || 'Sin Plan Activo'}</p>
+                             
+                             {person.subscription_end_date && (
+                                 <div style={{display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-color)', paddingTop: '1rem', alignItems: 'center'}}>
+                                     <span style={{fontSize: '0.9rem', color: 'var(--text-light)'}}>Vence el</span>
+                                     <span style={{fontSize: '1rem', fontWeight: 600, color: 'var(--text-color)'}}>
+                                         {new Date(person.subscription_end_date.replace(/-/g, '/')).toLocaleDateString('es-MX')}
+                                     </span>
+                                 </div>
+                             )}
+                        </div>
+                    </Card>
                 </div>
+
             </div>
         </div>
     );

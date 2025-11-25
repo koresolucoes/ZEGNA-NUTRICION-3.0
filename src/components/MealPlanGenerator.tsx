@@ -21,13 +21,13 @@ const modalRoot = document.getElementById('modal-root');
 const mealThinkingMessages = [
     "Analizando objetivo del paciente...",
     "Calculando requerimientos calóricos...",
+    "Determinando porciones y gramajes exactos...",
     "Distribuyendo macronutrientes...",
-    "Seleccionando grupos de alimentos...",
-    "Creando menú para la primera semana...",
-    "Diseñando platillos para la segunda semana (si aplica)...",
-    "Balanceando la dieta para todo el periodo...",
+    "Seleccionando grupos de alimentos con medidas caseras...",
+    "Creando menú detallado para la semana...",
+    "Balanceando la dieta...",
     "Añadiendo variedad y sabor...",
-    "Finalizando plan y revisando consistencia...",
+    "Finalizando plan con especificaciones precisas...",
 ];
 
 
@@ -67,34 +67,47 @@ const MealPlanGenerator: FC<MealPlanGeneratorProps> = ({ person, lastConsultatio
                 .map(title => `"${title}"`) // Add quotes
                 .join(', ');
 
-            let promptContext = `Actúa como un nutriólogo profesional. Genera un plan alimenticio detallado para ${numDays} días para un paciente.`;
-            promptContext += `\n- Objetivo principal del paciente: ${healthGoal}.`;
+            let promptContext = `Actúa como un nutriólogo clínico experto. Tu tarea es generar un plan alimenticio ALTAMENTE DETALLADO Y CUANTIFICADO para ${numDays} días.`;
+            
+            promptContext += `\n\n**PERFIL DEL PACIENTE:**`;
+            promptContext += `\n- Objetivo principal: ${healthGoal}.`;
             if(lastConsultation) {
-                 promptContext += `\n- Últimos datos de consulta: Peso ${lastConsultation.weight_kg} kg, Altura ${lastConsultation.height_cm} cm, IMC ${lastConsultation.imc}.`;
+                 promptContext += `\n- Datos biométricos: Peso ${lastConsultation.weight_kg} kg, Altura ${lastConsultation.height_cm} cm, IMC ${lastConsultation.imc}.`;
             }
             if (customInstructions) {
-                promptContext += `\n- Instrucciones adicionales: ${customInstructions}.`;
+                promptContext += `\n- Instrucciones personalizadas: ${customInstructions}.`;
             }
             if (recipeExamples) {
-                promptContext += `\n- Para enriquecer el plan, puedes incluir platillos como los siguientes: ${recipeExamples}. Sé creativo y usa la gastronomía local como inspiración.`
+                promptContext += `\n- Inspiración (opcional): Puedes incluir platillos similares a: ${recipeExamples}.`
             }
-            promptContext += `\nEl plan debe ser balanceado, saludable y adecuado para los objetivos. Incluye desayuno, comida, cena y dos colaciones para cada día.`;
+
+            promptContext += `\n\n**REGLAS CRÍTICAS DE FORMATO Y PRECISIÓN (OBLIGATORIO):**
+            1. **CANTIDADES EXACTAS:** No uses términos vagos como "una porción", "un poco" o "al gusto". Debes especificar la cantidad de CADA ingrediente.
+            2. **MEDIDAS:** Usa medidas caseras (tazas, cucharadas, piezas, rebanadas) o peso (gramos).
+            3. **DETALLE:** Indica el método de preparación brevemente.
+            4. **ESTRUCTURA:** [Cantidad] [Unidad] de [Alimento] [Preparación].
+            
+            **Ejemplo CORRECTO:**
+            "120g de pechuga de pollo asada + 1/2 taza de arroz integral al vapor + 1 taza de brócoli cocido con 1 cucharadita de aceite de oliva."
+            
+            **Ejemplo INCORRECTO:**
+            "Pollo con arroz y verduras."`;
 
             const schema = {
                 type: Type.OBJECT,
                 properties: {
                     plan_semanal: {
                         type: Type.ARRAY,
-                        description: `Array de ${numDays} días.`,
+                        description: `Array de ${numDays} días con menús detallados y cuantificados.`,
                         items: {
                             type: Type.OBJECT,
                             properties: {
-                                dia: { type: Type.STRING, description: "Día del plan (e.g., Día 1)" },
-                                desayuno: { type: Type.STRING, description: "Descripción del desayuno." },
-                                colacion_1: { type: Type.STRING, description: "Descripción de la colación de media mañana." },
-                                comida: { type: Type.STRING, description: "Descripción de la comida." },
-                                colacion_2: { type: Type.STRING, description: "Descripción de la colación de media tarde." },
-                                cena: { type: Type.STRING, description: "Descripción de la cena." },
+                                dia: { type: Type.STRING, description: "Día del plan (e.g., Día 1, Lunes)" },
+                                desayuno: { type: Type.STRING, description: "Menú del desayuno con cantidades exactas (ej. 2 huevos, 1 pan tostado)." },
+                                colacion_1: { type: Type.STRING, description: "Colación matutina con cantidades exactas (ej. 1 manzana, 10 almendras)." },
+                                comida: { type: Type.STRING, description: "Menú de la comida con cantidades exactas y gramajes." },
+                                colacion_2: { type: Type.STRING, description: "Colación vespertina con cantidades exactas." },
+                                cena: { type: Type.STRING, description: "Menú de la cena con cantidades exactas." },
                             },
                             required: ["dia", "desayuno", "comida", "cena"]
                         }
@@ -172,7 +185,7 @@ const MealPlanGenerator: FC<MealPlanGeneratorProps> = ({ person, lastConsultatio
             // 1. Create a summary log entry for activity feed
             const summaryLogPayload = {
                 log_type: 'Plan Alimenticio (IA)',
-                description: `Se generó un plan alimenticio de ${numDays} días. Objetivo: ${healthGoal}.`,
+                description: `Se generó un plan alimenticio detallado de ${numDays} días. Objetivo: ${healthGoal}.`,
                 // FIX: Use person_id for the unified schema
                 person_id: person.id,
                 log_time: new Date().toISOString(),
@@ -213,7 +226,7 @@ const MealPlanGenerator: FC<MealPlanGeneratorProps> = ({ person, lastConsultatio
                     body: JSON.stringify({
                         userId: person.user_id,
                         title: '¡Nuevo Plan Alimenticio!',
-                        body: `Tu nutriólogo ha creado un nuevo plan de alimentación para ti. ¡Revísalo en el portal!`
+                        body: `Tu nutriólogo ha creado un nuevo plan de alimentación detallado para ti. ¡Revísalo en el portal!`
                     })
                 }).catch(err => console.error("Failed to send notification:", err));
             }
@@ -230,13 +243,13 @@ const MealPlanGenerator: FC<MealPlanGeneratorProps> = ({ person, lastConsultatio
         <div style={styles.modalOverlay}>
             <div style={{...styles.modalContent, maxWidth: '800px'}} className="fade-in">
                 <div style={styles.modalHeader}>
-                    <h2 style={styles.modalTitle}>Generador de Plan Alimenticio con IA</h2>
+                    <h2 style={styles.modalTitle}>Generador de Plan Detallado con IA</h2>
                     <button onClick={onClose} style={{...styles.iconButton, border: 'none'}}>{ICONS.close}</button>
                 </div>
                 <div style={styles.modalBody}>
                     {!generatedPlan && !loading && (
                         <>
-                            <p style={{marginTop: 0, color: 'var(--text-light)'}}>Se generará un plan para <strong>{person.full_name}</strong>.</p>
+                            <p style={{marginTop: 0, color: 'var(--text-light)'}}>Se generará un plan con <strong>medidas exactas y porciones</strong> para <strong>{person.full_name}</strong>.</p>
 
                             <div style={{display: 'flex', gap: '1rem'}}>
                                 <div style={{flex: 1}}>
@@ -257,7 +270,7 @@ const MealPlanGenerator: FC<MealPlanGeneratorProps> = ({ person, lastConsultatio
                                         name="health_goal"
                                         value={healthGoal}
                                         onChange={(e) => setHealthGoal(e.target.value)}
-                                        placeholder="Ej: Pérdida de peso, control de glucosa..."
+                                        placeholder="Ej: Déficit calórico, aumento de masa muscular..."
                                         required
                                     />
                                 </div>
@@ -269,7 +282,7 @@ const MealPlanGenerator: FC<MealPlanGeneratorProps> = ({ person, lastConsultatio
                                 value={customInstructions}
                                 onChange={(e) => setCustomInstructions(e.target.value)}
                                 rows={3}
-                                placeholder="Ej: Evitar lácteos, preferencia por comidas altas en proteína, presupuesto limitado..."
+                                placeholder="Ej: Incluir medidas en tazas, evitar lácteos, usar ingredientes económicos..."
                             />
                         </>
                     )}

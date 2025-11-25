@@ -79,7 +79,11 @@ export type InternalNote = Database['public']['Tables']['internal_notes']['Row']
 // Add GamificationLog type
 export type GamificationLog = Database['public']['Tables']['gamification_log']['Row'];
 export type BetaFeedback = Database['public']['Tables']['beta_feedback']['Row'];
-export type Service = Database['public']['Tables']['services']['Row'];
+export type Service = Database['public']['Tables']['services']['Row'] & {
+    sat_product_code?: string | null;
+    sat_unit_code?: string | null;
+    sat_tax_object_code?: string | null;
+};
 
 
 // Agenda & Queue Types
