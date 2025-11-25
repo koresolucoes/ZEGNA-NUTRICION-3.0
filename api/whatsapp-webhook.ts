@@ -23,14 +23,25 @@ const formatHistoryForGemini = (history: any[]): Content[] => {
     }));
 };
 
+// Helper to convert ArrayBuffer to base64
+const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+};
+
 // Helper to download media and convert to base64
 const downloadMedia = async (url: string, headers: any = {}): Promise<{ data: string; mimeType: string }> => {
     const response = await fetch(url, { headers });
     if (!response.ok) throw new Error(`Failed to download media: ${response.statusText}`);
     const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const data = arrayBufferToBase64(arrayBuffer);
     const mimeType = response.headers.get('content-type') || 'application/octet-stream';
-    return { data: buffer.toString('base64'), mimeType };
+    return { data, mimeType };
 };
 
 // Vercel Serverless Function handler
@@ -207,7 +218,7 @@ export default async function handler(req: any, res: any) {
                 // Twilio media URLs might require Basic Auth if configured, but often public in webhook context
                 // Using standard fetch for now. If 401, we could add Authorization header.
                 const creds = connection.credentials as any;
-                const authHeader = 'Basic ' + Buffer.from(`${creds.accountSid}:${creds.authToken}`).toString('base64');
+                const authHeader = 'Basic ' + btoa(`${creds.accountSid}:${creds.authToken}`);
                 mediaData = await downloadMedia(pendingMedia.url, { Authorization: authHeader });
             }
 
