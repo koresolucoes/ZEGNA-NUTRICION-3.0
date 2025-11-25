@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
@@ -106,13 +107,13 @@ const HomePage: FC<HomePageProps> = ({ user, isMobile, navigate, openQuickConsul
         const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
         if (diffDays === 0) return { text: 'Vence hoy', color: '#F59E0B' };
         if (diffDays === 1) return { text: 'Vence mañana', color: '#F59E0B' };
-        if (diffDays > 1) return { text: `Vence en ${diffDays} dias`, color: 'var(--text-light)' };
+        if (diffDays > 1) return { text: `Vence en ${diffDays} días`, color: 'var(--text-light)' };
         return { text: `Vencido`, color: 'var(--error-color)' };
     };
 
     const renderExpiringPlans = () => (
         <div style={styles.infoCard}>
-            <div style={styles.infoCardHeader}><h3 style={{...styles.detailCardTitle}}>Planos Expirando</h3></div>
+            <div style={styles.infoCardHeader}><h3 style={{...styles.detailCardTitle}}>Planes por Vencer</h3></div>
             <div style={styles.infoCardBody}>
                 {loading ? <SkeletonLoader type="list" count={3} /> : (
                     <ul style={styles.activityList}>
@@ -127,7 +128,7 @@ const HomePage: FC<HomePageProps> = ({ user, isMobile, navigate, openQuickConsul
                                     <button onClick={() => navigateToEdit(plan.type, plan.id)} className="button-secondary" style={{padding: '6px 12px', fontSize: '0.8rem'}}>Renovar</button>
                                 </li>
                             )
-                        }) : <p style={{color: 'var(--text-light)', fontSize: '0.9rem'}}>Nenhum plano vencendo em 15 dias.</p>}
+                        }) : <p style={{color: 'var(--text-light)', fontSize: '0.9rem'}}>Ningún plan vence en los próximos 15 días.</p>}
                     </ul>
                 )}
             </div>
@@ -136,7 +137,7 @@ const HomePage: FC<HomePageProps> = ({ user, isMobile, navigate, openQuickConsul
     
     const renderRecentActivity = () => (
          <div style={styles.infoCard}>
-            <div style={styles.infoCardHeader}><h3 style={{...styles.detailCardTitle}}>Atividade Recente</h3></div>
+            <div style={styles.infoCardHeader}><h3 style={{...styles.detailCardTitle}}>Actividad Reciente</h3></div>
             <div style={styles.infoCardBody}>
                  {loading ? <SkeletonLoader type="list" count={5} /> : (
                     <ul style={styles.activityList}>
@@ -144,12 +145,12 @@ const HomePage: FC<HomePageProps> = ({ user, isMobile, navigate, openQuickConsul
                             <li key={log.id} style={{...styles.activityItem, alignItems: 'flex-start', flexDirection: 'column', gap: '0.5rem'}}>
                                 <div style={{width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                                     <p style={{margin: 0, fontWeight: 600, fontSize: '0.9rem'}}>{log.log_type}</p>
-                                    <span style={{fontSize: '0.75rem', color: 'var(--text-light)', textAlign: 'right' as const, flexShrink: 0}}>{new Date(log.created_at).toLocaleDateString('pt-BR', {day: '2-digit', month: 'short'})}</span>
+                                    <span style={{fontSize: '0.75rem', color: 'var(--text-light)', textAlign: 'right' as const, flexShrink: 0}}>{new Date(log.created_at).toLocaleDateString('es-MX', {day: '2-digit', month: 'short'})}</span>
                                 </div>
                                  <p style={{margin: 0, fontSize: '0.85rem', color: 'var(--text-light)', width: '100%', lineHeight: 1.4}}>{log.description}</p>
                                 <p style={{margin: 0, fontSize: '0.8rem', color: 'var(--primary-color)'}}>{log.person_name || 'N/A'}</p>
                             </li>
-                        )) : <p>Sem atividade recente.</p>}
+                        )) : <p>Sin actividad reciente.</p>}
                     </ul>
                 )}
             </div>
@@ -160,8 +161,8 @@ const HomePage: FC<HomePageProps> = ({ user, isMobile, navigate, openQuickConsul
         <div className="fade-in">
             <div style={{...styles.pageHeader, borderBottom: 'none', paddingBottom: 0, marginBottom: '2rem'}}>
                 <div>
-                    <h1 style={{fontSize: '1.8rem', marginBottom: '0.5rem'}}>Olá, {displayName} 👋</h1>
-                    <p style={{ margin: 0, color: 'var(--text-light)' }}>Aqui está o que está acontecendo na sua clínica hoje.</p>
+                    <h1 style={{fontSize: '1.8rem', marginBottom: '0.5rem'}}>Hola, {displayName} 👋</h1>
+                    <p style={{ margin: 0, color: 'var(--text-light)' }}>Aquí tienes un resumen de tu clínica hoy.</p>
                 </div>
             </div>
 
@@ -171,7 +172,7 @@ const HomePage: FC<HomePageProps> = ({ user, isMobile, navigate, openQuickConsul
                         <div style={styles.summaryCard}>
                             <div style={styles.summaryCardIcon}>{ICONS.users}</div>
                             <p style={styles.summaryCardValue}>{stats.activeClients}</p>
-                            <p style={styles.summaryCardLabel}>Pacientes Ativos</p>
+                            <p style={styles.summaryCardLabel}>Pacientes Activos</p>
                         </div>
                         <div style={styles.summaryCard}>
                             <div style={styles.summaryCardIcon}>{ICONS.briefcase}</div>
@@ -181,20 +182,20 @@ const HomePage: FC<HomePageProps> = ({ user, isMobile, navigate, openQuickConsul
                         <div style={styles.summaryCard}>
                             <div style={{...styles.summaryCardIcon, backgroundColor: 'rgba(248, 113, 113, 0.1)', color: 'var(--error-color)'}}>{ICONS.clock}</div>
                             <p style={{...styles.summaryCardValue, color: 'var(--error-color)'}}>{stats.expiredClients}</p>
-                            <p style={styles.summaryCardLabel}>Planos Vencidos</p>
+                            <p style={styles.summaryCardLabel}>Planes Vencidos</p>
                         </div>
                     </>
                 )}
             </div>
 
-            <h2 style={{fontSize: '1.3rem', marginBottom: '1.5rem', marginTop: '1rem'}}>Visão Geral</h2>
+            <h2 style={{fontSize: '1.3rem', marginBottom: '1.5rem', marginTop: '1rem'}}>Visión General</h2>
             
             {isMobile ? (
                 <div>
                     <div className="summary-tabs" style={{display: 'flex', gap: '0.5rem', marginBottom: '1rem', overflowX: 'auto', paddingBottom: '0.5rem'}}>
                         <button className={`tab-button ${activeSummaryTab === 'appointments' ? 'active' : ''}`} onClick={() => setActiveSummaryTab('appointments')}>Agenda</button>
-                        <button className={`tab-button ${activeSummaryTab === 'expiring' ? 'active' : ''}`} onClick={() => setActiveSummaryTab('expiring')}>Vencimentos</button>
-                        <button className={`tab-button ${activeSummaryTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveSummaryTab('activity')}>Atividade</button>
+                        <button className={`tab-button ${activeSummaryTab === 'expiring' ? 'active' : ''}`} onClick={() => setActiveSummaryTab('expiring')}>Vencimientos</button>
+                        <button className={`tab-button ${activeSummaryTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveSummaryTab('activity')}>Actividad</button>
                     </div>
                     <div className="fade-in">
                         {activeSummaryTab === 'appointments' && <UpcomingAppointmentsWidget appointments={upcomingAppointments} loading={loading} navigateToDetail={navigateToDetail} />}
