@@ -23,6 +23,16 @@ const formatHistoryForGemini = (history: any[]): Content[] => {
     }));
 };
 
+// Helper to download media and convert to base64
+const downloadMedia = async (url: string, headers: any = {}): Promise<{ data: string; mimeType: string }> => {
+    const response = await fetch(url, { headers });
+    if (!response.ok) throw new Error(`Failed to download media: ${response.statusText}`);
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const mimeType = response.headers.get('content-type') || 'application/octet-stream';
+    return { data: buffer.toString('base64'), mimeType };
+};
+
 // Vercel Serverless Function handler
 export default async function handler(req: any, res: any) {
   // --- Meta Webhook Verification (GET request) ---
@@ -57,27 +67,57 @@ export default async function handler(req: any, res: any) {
 
   try {
     let clinicPhoneNumber: string, userPhoneNumber: string, messageBody: string;
+    // Placeholder to store temporary media info before we have the credentials to download it
+    let pendingMedia: { id?: string; url?: string; type: 'image' | 'audio'; mimeType?: string } | null = null;
 
     if (req.body.object === 'whatsapp_business_account') {
+        // META Parsing
         const message = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-        if (!message || message.type !== 'text') return res.status(200).send('OK');
+        if (!message) return res.status(200).send('OK');
+        
         clinicPhoneNumber = req.body.entry[0].changes[0].value.metadata.display_phone_number;
         userPhoneNumber = message.from;
-        messageBody = message.text?.body;
+
+        if (message.type === 'text') {
+            messageBody = message.text.body;
+        } else if (message.type === 'image') {
+            messageBody = message.image.caption || "Analiza esta imagen.";
+            pendingMedia = { id: message.image.id, type: 'image', mimeType: message.image.mime_type };
+        } else if (message.type === 'audio') {
+            messageBody = "[Audio] Por favor escucha y procesa este audio.";
+            pendingMedia = { id: message.audio.id, type: 'audio', mimeType: message.audio.mime_type };
+        } else {
+            // Unsupported type for now, just acknowledge
+             return res.status(200).send('OK - Unsupported type');
+        }
+
     } else {
+        // TWILIO Parsing
         clinicPhoneNumber = req.body.To?.replace('whatsapp:', '');
         userPhoneNumber = req.body.From?.replace('whatsapp:', '');
         messageBody = req.body.Body;
+        
+        if (req.body.NumMedia && parseInt(req.body.NumMedia) > 0) {
+            const mediaUrl = req.body.MediaUrl0;
+            const mediaType = req.body.MediaContentType0;
+            if (mediaType.startsWith('image/')) {
+                messageBody = messageBody || "Analiza esta imagen.";
+                pendingMedia = { url: mediaUrl, type: 'image', mimeType: mediaType };
+            } else if (mediaType.startsWith('audio/')) {
+                messageBody = messageBody || "Procesa este audio.";
+                pendingMedia = { url: mediaUrl, type: 'audio', mimeType: mediaType };
+            }
+        }
     }
 
-    if (!clinicPhoneNumber || !userPhoneNumber || !messageBody) {
-        return res.status(400).json({ error: 'Invalid webhook format or empty message body.' });
+    if (!clinicPhoneNumber || !userPhoneNumber) {
+        return res.status(400).json({ error: 'Invalid webhook format.' });
     }
 
     const normalizedClinicPhone = normalizePhoneNumber(clinicPhoneNumber);
     const { data: connection, error: connError } = await supabaseAdmin
         .from('whatsapp_connections')
-        .select('clinic_id')
+        .select('clinic_id, credentials, provider')
         .eq('phone_number', normalizedClinicPhone)
         .single();
 
@@ -120,6 +160,7 @@ export default async function handler(req: any, res: any) {
     if (contactError) throw contactError;
 
     // 3. Log user's message
+    // NOTE: We save a text representation for media in DB to keep history clean.
     await supabaseAdmin.from('whatsapp_conversations').insert({ 
         clinic_id: clinicId, 
         contact_id: contact.id, 
@@ -141,6 +182,47 @@ export default async function handler(req: any, res: any) {
           console.log(`[Webhook] Agent for clinic ${clinicId} or contact ${userPhoneNumber} is inactive. Ignoring message.`);
       }
       return res.status(200).send('Agent inactive for this conversation.');
+    }
+
+    // --- PROCESS MEDIA IF PRESENT ---
+    let inlineDataPart = null;
+    if (pendingMedia) {
+        try {
+            let mediaData: { data: string, mimeType: string } | null = null;
+
+            if (connection.provider === 'meta' && pendingMedia.id) {
+                const creds = connection.credentials as any;
+                // 1. Get Media URL
+                const urlRes = await fetch(`https://graph.facebook.com/v19.0/${pendingMedia.id}`, {
+                    headers: { Authorization: `Bearer ${creds.accessToken}` }
+                });
+                if (urlRes.ok) {
+                    const urlJson = await urlRes.json();
+                    // 2. Download Binary
+                    if (urlJson.url) {
+                        mediaData = await downloadMedia(urlJson.url, { Authorization: `Bearer ${creds.accessToken}` });
+                    }
+                }
+            } else if (connection.provider === 'twilio' && pendingMedia.url) {
+                // Twilio media URLs might require Basic Auth if configured, but often public in webhook context
+                // Using standard fetch for now. If 401, we could add Authorization header.
+                const creds = connection.credentials as any;
+                const authHeader = 'Basic ' + Buffer.from(`${creds.accountSid}:${creds.authToken}`).toString('base64');
+                mediaData = await downloadMedia(pendingMedia.url, { Authorization: authHeader });
+            }
+
+            if (mediaData) {
+                inlineDataPart = {
+                    inlineData: {
+                        mimeType: mediaData.mimeType,
+                        data: mediaData.data
+                    }
+                };
+            }
+        } catch (e) {
+            console.error('[Webhook] Failed to download media:', e);
+            // Continue without media, model will just see text
+        }
     }
     
     // 5. Fetch history using contact_id for efficiency
@@ -229,6 +311,9 @@ export default async function handler(req: any, res: any) {
     }
 
     let systemInstruction = agent.system_prompt + (knowledgeBaseContext ? `\n\n${knowledgeBaseContext}` : '');
+    // Add multimodal instruction
+    systemInstruction += `\n\nNOTA: Tienes capacidades multimodales. Si el usuario envía una imagen o audio, analízalo y responde acorde al contexto clínico o administrativo.`;
+
     if (personData) {
         systemInstruction += `\n\nIMPORTANTE: Estás conversando con un paciente registrado: ${personData.full_name}.
 Tu función principal es ayudarle con su plan de salud.
@@ -244,9 +329,13 @@ Tu función principal es ayudarle con su plan de salud.
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const modelName = 'gemini-2.5-flash';
 
+    // Construct user message with optional media
+    const userParts: any[] = [{ text: messageBody }];
+    if (inlineDataPart) userParts.push(inlineDataPart);
+
     const firstResponse = await ai.models.generateContent({ 
         model: modelName, 
-        contents: [...formattedHistory, { role: 'user', parts: [{ text: messageBody }] }], 
+        contents: [...formattedHistory, { role: 'user', parts: userParts }], 
         config: { 
             systemInstruction: systemInstruction,
             tools: functionDeclarations.length > 0 ? [{ functionDeclarations }] : undefined
@@ -305,7 +394,7 @@ Tu función principal es ayudarle con su plan de salud.
         // 10. Second call to Gemini with function results
         const historyForSecondCall: Content[] = [
             ...formattedHistory,
-            { role: 'user', parts: [{ text: messageBody }] },
+            { role: 'user', parts: userParts }, // Pass the original parts including image if present
             firstResponse.candidates[0].content,
             {
                 role: 'tool',
