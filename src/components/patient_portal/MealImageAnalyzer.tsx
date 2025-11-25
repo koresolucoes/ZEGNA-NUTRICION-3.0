@@ -1,14 +1,44 @@
+
 import React, { FC, useState, useRef } from 'react';
 import { DietLog } from '../../types';
 import { styles } from '../../constants';
 import { ICONS } from '../../pages/AuthPage';
 
-const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve((reader.result as string).split(',')[1]);
-    reader.onerror = error => reject(error);
-});
+// Helper function to resize and compress image before sending
+const resizeAndCompressImage = (file: File, maxWidth: number = 1024, quality: number = 0.7): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+                let width = img.width;
+                let height = img.height;
+
+                // Calculate new dimensions
+                if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(img, 0, 0, width, height);
+                
+                // Compress to JPEG
+                const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                
+                // Return only the Base64 data (remove "data:image/jpeg;base64," prefix)
+                resolve(dataUrl.split(',')[1]);
+            };
+            img.onerror = (err) => reject(err);
+        };
+        reader.onerror = (err) => reject(err);
+    });
+};
 
 interface MealImageAnalyzerProps {
     todaysDietLog: DietLog | null;
@@ -56,10 +86,12 @@ const MealImageAnalyzer: FC<MealImageAnalyzerProps> = ({ todaysDietLog, clinicId
         setError(null);
 
         try {
-            const base64Data = await toBase64(file);
+            // Compress image before sending to avoid Payload Too Large errors
+            const base64Data = await resizeAndCompressImage(file);
+            
             const imagePart = {
                 inlineData: {
-                    mimeType: file.type,
+                    mimeType: 'image/jpeg', // Always sending JPEG after compression
                     data: base64Data,
                 },
             };
@@ -104,13 +136,23 @@ const MealImageAnalyzer: FC<MealImageAnalyzerProps> = ({ todaysDietLog, clinicId
             });
 
             if (!apiResponse.ok) {
-                const errorData = await apiResponse.json();
-                throw new Error(errorData.error || `Error del servidor: ${apiResponse.statusText}`);
+                // Handle non-JSON errors (like 413 Request Entity Too Large from server/proxy)
+                const contentType = apiResponse.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    const errorData = await apiResponse.json();
+                    throw new Error(errorData.error || `Error del servidor: ${apiResponse.statusText}`);
+                } else {
+                    const textError = await apiResponse.text();
+                    if (apiResponse.status === 413) {
+                        throw new Error("La imagen es demasiado grande incluso después de comprimir. Intenta con otra foto.");
+                    }
+                    throw new Error(`Error del servidor (${apiResponse.status}): ${textError.slice(0, 100)}...`);
+                }
             }
 
             const data = await apiResponse.json();
             
-            if(data.text.startsWith('ERROR:')) {
+            if(data.text && data.text.startsWith('ERROR:')) {
                 setError(data.text.replace('ERROR: ', ''));
                 setResult(null);
             } else {
@@ -118,6 +160,7 @@ const MealImageAnalyzer: FC<MealImageAnalyzerProps> = ({ todaysDietLog, clinicId
             }
 
         } catch (err: any) {
+            console.error("Error de análisis:", err);
             setError(`Error al analizar la imagen: ${err.message}`);
         } finally {
             setLoading(false);
@@ -149,7 +192,7 @@ const MealImageAnalyzer: FC<MealImageAnalyzerProps> = ({ todaysDietLog, clinicId
                 Para un mejor análisis, asegúrate de que la foto sea clara y bien iluminada. Evita imágenes inapropiadas.
             </p>
             <button onClick={handleAnalyze} disabled={!file || loading} style={{ width: '100%' }}>
-                {loading ? 'Analizando...' : 'Analizar mi platillo'}
+                {loading ? 'Comprimiendo y Analizando...' : 'Analizar mi platillo'}
             </button>
             
             {error && <p style={{...styles.error, marginTop: '1rem'}}>{error}</p>}
