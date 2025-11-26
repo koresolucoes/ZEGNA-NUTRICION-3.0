@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI, FunctionDeclaration, Type, Content } from "@google/genai";
 
@@ -279,7 +278,7 @@ export default async function handler(req: any, res: any) {
         .select('sender, message_content')
         .eq('contact_id', contact.id)
         .order('sent_at', { ascending: false })
-        .limit(50); // Aumentado a 50 mensajes para mejor memoria
+        .limit(50); 
 
     if (historyError) throw historyError;
     const formattedHistory = formatHistoryForGemini(history.reverse());
@@ -291,7 +290,7 @@ export default async function handler(req: any, res: any) {
     if (personData && agentTools?.get_my_data_for_ai?.enabled) {
         functionDeclarations.push({
             name: 'get_my_data_for_ai',
-            description: "Obtiene un resumen de MIS datos como paciente para un día específico (plan comidas, ejercicio, estado plan, etc.).",
+            description: "Obtiene un resumen del plan y actividades del paciente para un día específico (comidas, ejercicio, estado plan). Útil para 'qué me toca hoy' o 'qué comí ayer'.",
             parameters: {
                 type: Type.OBJECT,
                 properties: {
@@ -300,6 +299,18 @@ export default async function handler(req: any, res: any) {
                         description: 'El desplazamiento de días desde hoy. 0 es hoy, 1 mañana, -1 ayer.'
                     }
                 },
+                required: []
+            }
+        });
+    }
+    
+    if (personData && agentTools?.get_patient_progress?.enabled) {
+        functionDeclarations.push({
+            name: 'get_patient_progress',
+            description: "Obtiene un análisis histórico del progreso del paciente (peso, IMC, laboratorios, racha). ÚSALO cuando el paciente pregunte 'cómo voy', 'he bajado de peso', 'mi progreso' o comparaciones en el tiempo.",
+            parameters: {
+                type: Type.OBJECT,
+                properties: {},
                 required: []
             }
         });
@@ -418,7 +429,8 @@ export default async function handler(req: any, res: any) {
         4. Si el paciente pregunta "¿Cuándo es mi cita?" o "¿Tengo cita?", consulta la lista de "PRÓXIMAS CITAS PROGRAMADAS" provista arriba.
 
         Tu función principal es ayudarle con su plan de salud.
-        - Para cualquier pregunta sobre su plan de comidas ESPECÍFICO DEL DÍA, rutina de ejercicio, estado del plan de servicio o progreso, DEBES usar la herramienta 'get_my_data_for_ai'.
+        - Para cualquier pregunta sobre su plan de comidas ESPECÍFICO DEL DÍA, rutina de ejercicio, estado del plan de servicio, DEBES usar la herramienta 'get_my_data_for_ai'.
+        - Para preguntas sobre PROGRESO, peso, historia o cambios a lo largo del tiempo, DEBES usar la herramienta 'get_patient_progress'.
         - Para agendar una NUEVA cita, DEBES usar la herramienta 'book_appointment'.
         - Si la pregunta es un saludo o conversación casual (ej. 'Hola'), responde de forma natural y pregunta en qué puedes ayudar.
         - Está estrictamente prohibido proporcionar información sobre CUALQUIER otro paciente.`;
@@ -457,6 +469,14 @@ export default async function handler(req: any, res: any) {
                         functionResult = { error: 'No se puede usar esta herramienta porque no se ha identificado al paciente.' };
                     } else {
                         const { data, error } = await supabaseAdmin.rpc('get_my_data_for_ai', { p_person_id: personData.id, day_offset: funcCall.args.day_offset || 0 });
+                        if (error) throw error;
+                        functionResult = { result: data };
+                    }
+                } else if (funcCall.name === 'get_patient_progress') {
+                    if (!personData) {
+                        functionResult = { error: 'No se puede usar esta herramienta porque no se ha identificado al paciente.' };
+                    } else {
+                        const { data, error } = await supabaseAdmin.rpc('get_patient_progress', { p_person_id: personData.id });
                         if (error) throw error;
                         functionResult = { result: data };
                     }

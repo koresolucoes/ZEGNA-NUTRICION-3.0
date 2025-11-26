@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 // This assumes you have generated types via `supabase gen types typescript > src/database.types.ts`
 import { Database as DB } from './database.types';
@@ -33,6 +32,81 @@ export const supabase = supabaseClient as ReturnType<typeof createClient<Databas
 
 
 /*
+-- =================================================================
+-- V25.0 SCRIPT DE MIGRACIÓN (Análisis de Progreso para IA)
+-- Crea una función para obtener historial clínico y comparar progreso.
+-- =================================================================
+BEGIN;
+
+CREATE OR REPLACE FUNCTION public.get_patient_progress(p_person_id uuid)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    history_records json;
+    gamification_record RECORD;
+    adherence_stats json;
+    result json;
+BEGIN
+    -- 1. Get Consultation History (Weight, BMI, Labs) - Last 10 records ordered chronologically
+    SELECT json_agg(row_to_json(t))
+    INTO history_records
+    FROM (
+        SELECT 
+            c.consultation_date,
+            c.weight_kg,
+            c.imc,
+            c.ta,
+            l.glucose_mg_dl,
+            l.cholesterol_mg_dl,
+            l.triglycerides_mg_dl,
+            l.hba1c
+        FROM public.consultations c
+        LEFT JOIN public.lab_results l ON l.consultation_id = c.id
+        WHERE c.person_id = p_person_id
+        ORDER BY c.consultation_date ASC
+        LIMIT 10
+    ) t;
+
+    -- 2. Get Gamification Stats
+    SELECT gamification_points, gamification_rank INTO gamification_record
+    FROM public.persons WHERE id = p_person_id;
+
+    -- 3. Calculate Adherence (Last 30 days)
+    SELECT json_build_object(
+        'diet_logs_total', COUNT(d.id),
+        'diet_logs_completed', COUNT(d.id) FILTER (WHERE d.completed = true),
+        'exercise_logs_total', COUNT(e.id),
+        'exercise_logs_completed', COUNT(e.id) FILTER (WHERE e.completed = true)
+    ) INTO adherence_stats
+    FROM public.persons p
+    LEFT JOIN public.diet_logs d ON d.person_id = p.id AND d.log_date >= (CURRENT_DATE - INTERVAL '30 days')
+    LEFT JOIN public.exercise_logs e ON e.person_id = p.id AND e.log_date >= (CURRENT_DATE - INTERVAL '30 days')
+    WHERE p.id = p_person_id
+    GROUP BY p.id;
+
+    -- 4. Construct Result
+    result := json_build_object(
+        'history', COALESCE(history_records, '[]'::json),
+        'gamification', json_build_object(
+            'points', gamification_record.gamification_points,
+            'rank', gamification_record.gamification_rank
+        ),
+        'last_30_days_adherence', adherence_stats
+    );
+
+    RETURN result;
+END;
+$$;
+
+COMMIT;
+-- =================================================================
+-- Fin del Script de Migración V25.0
+-- =================================================================
+
+
 -- =================================================================
 -- V24.0 SCRIPT DE MIGRACIÓN (Contexto Clínico Completo + Citas)
 -- Actualiza la función 'get_my_data_for_ai' para incluir:
@@ -148,81 +222,5 @@ $$;
 COMMIT;
 -- =================================================================
 -- Fin del Script de Migración V24.0
--- =================================================================
-
-
--- =================================================================
--- V23.0 SCRIPT DE MIGRACIÓN (Chat Multimedia)
--- Ejecuta este script para habilitar imágenes y audios en el chat.
--- =================================================================
-BEGIN;
-
--- 1. Actualizar la tabla de conversaciones
-ALTER TABLE public.whatsapp_conversations
-ADD COLUMN IF NOT EXISTS message_type text DEFAULT 'text', -- 'text', 'image', 'audio'
-ADD COLUMN IF NOT EXISTS media_url text,
-ADD COLUMN IF NOT EXISTS mime_type text;
-
--- 2. Crear el Bucket de Almacenamiento 'chat-media'
--- Nota: Si el bucket ya existe, esta parte puede dar error o ser ignorada.
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('chat-media', 'chat-media', true)
-ON CONFLICT (id) DO NOTHING;
-
--- 3. Configurar Políticas de Seguridad (RLS) para el Bucket
--- Permitir acceso público de lectura (para que las imágenes carguen en el chat)
-CREATE POLICY "Acceso público a media de chat"
-ON storage.objects FOR SELECT
-USING ( bucket_id = 'chat-media' );
-
--- Permitir subida a usuarios autenticados (y al service role del backend)
-CREATE POLICY "Subida de media de chat autenticada"
-ON storage.objects FOR INSERT
-WITH CHECK ( bucket_id = 'chat-media' );
-
-COMMIT;
--- =================================================================
--- Fin del Script de Migración
--- =================================================================
-
-
--- =================================================================
--- SCRIPT PARA CAPTURA DE FEEDBACK BETA (Temporal)
--- POR FAVOR, EJECUTA ESTE SCRIPT EN TU EDITOR SQL DE SUPABASE.
--- =================================================================
-BEGIN;
-
--- 1. Crear la tabla 'beta_feedback'
-CREATE TABLE IF NOT EXISTS public.beta_feedback (
-    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-    user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE SET NULL,
-    clinic_id uuid REFERENCES public.clinics(id) ON DELETE SET NULL,
-    feedback_type text NOT NULL,
-    message text NOT NULL,
-    contact_allowed boolean DEFAULT false NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-COMMENT ON TABLE public.beta_feedback IS 'Tabla temporal para recolectar feedback de usuarios beta.';
-
--- 2. Habilitar RLS
-ALTER TABLE public.beta_feedback ENABLE ROW LEVEL SECURITY;
-
--- 3. Crear Políticas de RLS
--- Los usuarios autenticados pueden insertar su propio feedback.
-DROP POLICY IF EXISTS "Los usuarios pueden enviar su propio feedback" ON public.beta_feedback;
-CREATE POLICY "Los usuarios pueden enviar su propio feedback"
-ON public.beta_feedback FOR INSERT
-WITH CHECK (auth.uid() = user_id);
-
--- Los usuarios pueden ver su propio feedback (opcional, pero buena práctica).
-DROP POLICY IF EXISTS "Los usuarios pueden ver su propio feedback" ON public.beta_feedback;
-CREATE POLICY "Los usuarios pueden ver su propio feedback"
-ON public.beta_feedback FOR SELECT
-USING (auth.uid() = user_id);
-
-
-COMMIT;
--- =================================================================
--- Fin del Script de Feedback
 -- =================================================================
 */

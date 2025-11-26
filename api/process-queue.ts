@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI, FunctionDeclaration, Type, Content } from "@google/genai";
 
@@ -107,7 +106,16 @@ export default async function handler(req: any, res: any) {
         const agentTools = agent.tools as { [key: string]: { enabled: boolean } } | null;
         const functionDeclarations: FunctionDeclaration[] = [];
         
-        if (personData && agentTools?.get_my_data_for_ai?.enabled) { functionDeclarations.push({ name: 'get_my_data_for_ai', description: 'Obtiene un resumen de MIS DATOS como paciente para un día específico (plan de comidas, ejercicio, estado del plan, progreso).', parameters: { type: Type.OBJECT, properties: { day_offset: { type: Type.INTEGER, description: 'Desfase de días desde hoy. 0=hoy, 1=mañana, -1=ayer. Default 0.' } }, required: [] } }); }
+        if (personData && agentTools?.get_my_data_for_ai?.enabled) { functionDeclarations.push({ name: 'get_my_data_for_ai', description: 'Obtiene un resumen de MIS DATOS como paciente para un día específico (plan de comidas, ejercicio, estado del plan).', parameters: { type: Type.OBJECT, properties: { day_offset: { type: Type.INTEGER, description: 'Desfase de días desde hoy. 0=hoy, 1=mañana, -1=ayer. Default 0.' } }, required: [] } }); }
+        
+        if (personData && agentTools?.get_patient_progress?.enabled) {
+            functionDeclarations.push({
+                name: 'get_patient_progress',
+                description: "Obtiene un análisis histórico del progreso del paciente (peso, IMC, laboratorios, racha). ÚSALO para preguntas como '¿cómo voy?' o '¿he bajado de peso?'.",
+                parameters: { type: Type.OBJECT, properties: {}, required: [] }
+            });
+        }
+
         if (agentTools?.get_available_slots?.enabled) { functionDeclarations.push({ name: 'get_available_slots', description: 'Consulta los horarios de citas disponibles para una fecha específica.', parameters: { type: Type.OBJECT, properties: { target_date: { type: Type.STRING, description: 'Fecha en formato YYYY-MM-DD.' } }, required: ['target_date'] }, }); }
         if (personData && agentTools?.book_appointment?.enabled) { functionDeclarations.push({ name: 'book_appointment', description: 'Agenda una nueva cita para el paciente actual en un horario específico.', parameters: { type: Type.OBJECT, properties: { start_time: { type: Type.STRING, description: 'Fecha y hora en formato ISO 8601.' }, notes: { type: Type.STRING, description: 'Notas adicionales.' } }, required: ['start_time'] }, }); }
         
@@ -120,7 +128,10 @@ export default async function handler(req: any, res: any) {
         - Mantén una conversación fluida y natural.`;
 
         if (personData) {
-            systemInstruction += `\n\nIMPORTANTE: Estás conversando con un paciente registrado: ${personData.full_name}. Para consultar CUALQUIER información sobre este paciente (su plan de comidas, su progreso, si su plan está activo, etc.), DEBES usar la herramienta 'get_my_data_for_ai'. Para agendarle una cita, usa la herramienta 'book_appointment'.`;
+            systemInstruction += `\n\nIMPORTANTE: Estás conversando con un paciente registrado: ${personData.full_name}. 
+            - Para consultar su plan del día o estado de suscripción, usa 'get_my_data_for_ai'.
+            - Para consultas sobre su progreso, peso histórico o cambios, usa 'get_patient_progress'.
+            - Para agendar cita, usa 'book_appointment'.`;
         } else {
             systemInstruction += ` Estás conversando con un usuario desconocido.`;
         }
@@ -142,6 +153,7 @@ export default async function handler(req: any, res: any) {
                 try {
                     if (!personData) { functionResult = { error: 'No puedo usar herramientas porque no estás registrado.'}; }
                     else if (funcCall.name === 'get_my_data_for_ai') { const { data, error } = await supabaseAdmin.rpc('get_my_data_for_ai', { p_person_id: personData.id, day_offset: funcCall.args.day_offset || 0 }); if (error) throw error; functionResult = { result: data }; }
+                    else if (funcCall.name === 'get_patient_progress') { const { data, error } = await supabaseAdmin.rpc('get_patient_progress', { p_person_id: personData.id }); if (error) throw error; functionResult = { result: data }; }
                     else if (funcCall.name === 'get_available_slots') { const { data, error } = await supabaseAdmin.rpc('get_available_slots', { p_clinic_id: clinicId, p_target_date: funcCall.args.target_date }); if (error) throw error; functionResult = { result: data || [] }; }
                     else if (funcCall.name === 'book_appointment') { const { data, error } = await supabaseAdmin.rpc('book_appointment', { p_clinic_id: clinicId, p_person_id: personData.id, p_start_time: funcCall.args.start_time, p_notes: funcCall.args.notes || null }); if (error) throw error; functionResult = { result: data }; }
                     else { functionResult = { error: `Función desconocida: ${funcCall.name}` }; }

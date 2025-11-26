@@ -25,6 +25,7 @@ const AiAgentManagement: FC = () => {
             get_my_data_for_ai: { enabled: false },
             get_available_slots: { enabled: false },
             book_appointment: { enabled: false },
+            get_patient_progress: { enabled: false }, // New tool
         },
     });
 
@@ -77,6 +78,7 @@ const AiAgentManagement: FC = () => {
                     get_my_data_for_ai: { enabled: false },
                     get_available_slots: { enabled: false },
                     book_appointment: { enabled: false },
+                    get_patient_progress: { enabled: false },
                 };
                 setAgent({ ...agentData, model_provider: 'gemini', tools: { ...defaultTools, ...existingTools } });
             }
@@ -335,6 +337,10 @@ const AiAgentManagement: FC = () => {
                                 <label style={{display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', padding: '0.5rem', borderRadius: '8px', transition: 'background 0.2s'}} className="nav-item-hover">
                                     <input type="checkbox" name="get_my_data_for_ai" checked={(agent.tools as any)?.get_my_data_for_ai?.enabled} onChange={handleToolToggle} style={{width: '18px', height: '18px', accentColor: 'var(--primary-color)'}} /> 
                                     <span style={{fontSize: '0.95rem'}}>Datos Personales (Portal)</span>
+                                </label>
+                                 <label style={{display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', padding: '0.5rem', borderRadius: '8px', transition: 'background 0.2s'}} className="nav-item-hover">
+                                    <input type="checkbox" name="get_patient_progress" checked={(agent.tools as any)?.get_patient_progress?.enabled} onChange={handleToolToggle} style={{width: '18px', height: '18px', accentColor: 'var(--primary-color)'}} /> 
+                                    <span style={{fontSize: '0.95rem'}}>Analizar Progreso del Paciente</span>
                                 </label>
                             </div>
                         </div>
