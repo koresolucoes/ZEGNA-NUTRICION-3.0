@@ -34,6 +34,124 @@ export const supabase = supabaseClient as ReturnType<typeof createClient<Databas
 
 /*
 -- =================================================================
+-- V24.0 SCRIPT DE MIGRACIÓN (Contexto Clínico Completo + Citas)
+-- Actualiza la función 'get_my_data_for_ai' para incluir:
+-- 1. Alergias, historial médico y hábitos.
+-- 2. Lista de próximas citas programadas.
+-- =================================================================
+BEGIN;
+
+CREATE OR REPLACE FUNCTION public.get_my_data_for_ai(p_person_id uuid, day_offset integer DEFAULT 0)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    target_date DATE;
+    diet_record RECORD;
+    exercise_record RECORD;
+    person_record RECORD;
+    allergies_record json;
+    history_record json;
+    habits_record RECORD;
+    appointments_record json;
+    plan_status TEXT;
+    result json;
+BEGIN
+    target_date := (now() + (day_offset || ' days')::interval)::date;
+
+    -- 1. Get Basic Person Info
+    SELECT full_name, health_goal, subscription_end_date INTO person_record
+    FROM public.persons WHERE id = p_person_id;
+    
+    -- 2. Get Allergies (Aggregated)
+    SELECT json_agg(json_build_object('substance', substance, 'severity', severity)) 
+    INTO allergies_record
+    FROM public.allergies_intolerances WHERE person_id = p_person_id;
+
+    -- 3. Get Medical History (Aggregated)
+    SELECT json_agg(json_build_object('condition', condition))
+    INTO history_record
+    FROM public.medical_history WHERE person_id = p_person_id;
+    
+    -- 4. Get Lifestyle Habits
+    SELECT * INTO habits_record FROM public.lifestyle_habits WHERE person_id = p_person_id;
+
+    -- 5. Get Upcoming Appointments (Next 3 scheduled)
+    SELECT json_agg(json_build_object('date', start_time, 'title', title))
+    INTO appointments_record
+    FROM (
+        SELECT start_time, title 
+        FROM public.appointments 
+        WHERE person_id = p_person_id 
+          AND status = 'scheduled' 
+          AND start_time > now()
+        ORDER BY start_time ASC
+        LIMIT 3
+    ) AS sub;
+
+    -- 6. Determine Plan Status
+    IF person_record.subscription_end_date IS NULL OR person_record.subscription_end_date < CURRENT_DATE THEN
+        plan_status := 'inactive';
+    ELSE
+        plan_status := 'active';
+    END IF;
+
+    -- 7. Get Diet for Target Date
+    SELECT * INTO diet_record FROM public.diet_logs
+    WHERE person_id = p_person_id AND log_date = target_date
+    LIMIT 1;
+
+    -- 8. Get Exercise for Target Date
+    SELECT * INTO exercise_record FROM public.exercise_logs
+    WHERE person_id = p_person_id AND log_date = target_date
+    LIMIT 1;
+
+    -- 9. Construct JSON Result
+    result := json_build_object(
+        'profile', json_build_object(
+            'name', person_record.full_name,
+            'health_goal', person_record.health_goal,
+            'plan_status', plan_status,
+            'subscription_end', person_record.subscription_end_date
+        ),
+        'clinical_context', json_build_object(
+             'allergies', COALESCE(allergies_record, '[]'::json),
+             'conditions', COALESCE(history_record, '[]'::json),
+             'habits', json_build_object(
+                'smokes', habits_record.smokes,
+                'alcohol', habits_record.alcohol_frequency
+             )
+        ),
+        'upcoming_appointments', COALESCE(appointments_record, '[]'::json),
+        'target_date', target_date,
+        'diet_plan', CASE WHEN diet_record.id IS NULL THEN NULL ELSE json_build_object(
+            'breakfast', diet_record.desayuno,
+            'snack1', diet_record.colacion_1,
+            'lunch', diet_record.comida,
+            'snack2', diet_record.colacion_2,
+            'dinner', diet_record.cena,
+            'completed', diet_record.completed
+        ) END,
+        'exercise_plan', CASE WHEN exercise_record.id IS NULL THEN NULL ELSE json_build_object(
+            'focus', exercise_record.enfoque,
+            'exercises', exercise_record.ejercicios,
+            'completed', exercise_record.completed
+        ) END
+    );
+
+    RETURN result;
+END;
+$$;
+
+COMMIT;
+-- =================================================================
+-- Fin del Script de Migración V24.0
+-- =================================================================
+
+
+-- =================================================================
 -- V23.0 SCRIPT DE MIGRACIÓN (Chat Multimedia)
 -- Ejecuta este script para habilitar imágenes y audios en el chat.
 -- =================================================================

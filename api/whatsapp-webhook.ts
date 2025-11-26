@@ -157,7 +157,7 @@ export default async function handler(req: any, res: any) {
     const normalizedUserPhone = normalizePhoneNumber(userPhoneNumber);
     const { data: personData, error: personError } = await supabaseAdmin
         .from('persons')
-        .select('id, full_name, subscription_end_date')
+        .select('id, full_name, subscription_end_date, health_goal, birth_date')
         .eq('clinic_id', clinicId)
         .eq('normalized_phone_number', normalizedUserPhone)
         .single();
@@ -374,12 +374,54 @@ export default async function handler(req: any, res: any) {
     - Tienes capacidades multimodales. Si el usuario envía una imagen o audio, analízalo y responde acorde al contexto clínico o administrativo.`;
 
     if (personData) {
+        // FETCH CRITICAL CLINICAL CONTEXT AND APPOINTMENTS
+        const [allergiesRes, historyRes, lifestyleRes, appointmentsRes] = await Promise.all([
+            supabaseAdmin.from('allergies_intolerances').select('substance, severity').eq('person_id', personData.id),
+            supabaseAdmin.from('medical_history').select('condition').eq('person_id', personData.id),
+            supabaseAdmin.from('lifestyle_habits').select('*').eq('person_id', personData.id).single(),
+            supabaseAdmin.from('appointments')
+                .select('start_time, title')
+                .eq('person_id', personData.id)
+                .eq('status', 'scheduled')
+                .gte('start_time', new Date().toISOString())
+                .order('start_time', { ascending: true })
+                .limit(3)
+        ]);
+
+        const allergiesList = allergiesRes.data?.map(a => `${a.substance} (${a.severity || 'Moderada'})`).join(', ') || 'Ninguna registrada';
+        const conditionsList = historyRes.data?.map(h => h.condition).join(', ') || 'Ninguna registrada';
+        const habits = lifestyleRes.data || {};
+        const preferences = [
+            habits.smokes ? 'Fumador' : null,
+            habits.alcohol_frequency ? `Alcohol: ${habits.alcohol_frequency}` : null
+        ].filter(Boolean).join(', ');
+        
+        const appointmentsList = appointmentsRes.data?.map(appt => 
+            `- ${new Date(appt.start_time).toLocaleString('es-MX', { timeZone: 'America/Mexico_City', dateStyle: 'medium', timeStyle: 'short' })}: ${appt.title}`
+        ).join('\n') || 'No hay citas próximas programadas.';
+
         systemInstruction += `\n\nIMPORTANTE: Estás conversando con un paciente registrado: ${personData.full_name}.
-Tu función principal es ayudarle con su plan de salud.
-- Para cualquier pregunta sobre su plan de comidas, rutina de ejercicio, estado del plan de servicio o progreso, DEBES usar la herramienta 'get_my_data_for_ai'.
-- Para agendar una cita, DEBES usar la herramienta 'book_appointment'.
-- Si la pregunta es un saludo o conversación casual (ej. 'Hola'), responde de forma natural y pregunta en qué puedes ayudar.
-- Está estrictamente prohibido proporcionar información sobre CUALQUIER otro paciente.`;
+        
+        ⚠️ **ALERTA DE SEGURIDAD CLÍNICA - CONTEXTO DEL PACIENTE** ⚠️
+        - ALERGIAS/INTOLERANCIAS: ${allergiesList}
+        - CONDICIONES MÉDICAS: ${conditionsList}
+        - PREFERENCIAS/HÁBITOS: ${preferences || 'Sin datos'}
+        - OBJETIVO DE SALUD: ${personData.health_goal || 'No especificado'}
+        
+        📅 **PRÓXIMAS CITAS PROGRAMADAS**:
+        ${appointmentsList}
+
+        **INSTRUCCIONES CRÍTICAS:**
+        1. ANTES de sugerir cualquier alimento o receta, VERIFICA las alergias e intolerancias listadas arriba. NUNCA sugieras algo que contenga un alérgeno del paciente.
+        2. Si el usuario pregunta sobre una dieta o ejercicio, considera sus condiciones médicas.
+        3. Si no estás seguro si un alimento es seguro, advierte al paciente.
+        4. Si el paciente pregunta "¿Cuándo es mi cita?" o "¿Tengo cita?", consulta la lista de "PRÓXIMAS CITAS PROGRAMADAS" provista arriba.
+
+        Tu función principal es ayudarle con su plan de salud.
+        - Para cualquier pregunta sobre su plan de comidas ESPECÍFICO DEL DÍA, rutina de ejercicio, estado del plan de servicio o progreso, DEBES usar la herramienta 'get_my_data_for_ai'.
+        - Para agendar una NUEVA cita, DEBES usar la herramienta 'book_appointment'.
+        - Si la pregunta es un saludo o conversación casual (ej. 'Hola'), responde de forma natural y pregunta en qué puedes ayudar.
+        - Está estrictamente prohibido proporcionar información sobre CUALQUIER otro paciente.`;
     } else {
         systemInstruction += `\n\nEstás conversando con un usuario no registrado. Puedes proporcionar información general sobre la clínica, pero no puedes acceder o proporcionar datos de ningún paciente.`;
     }
