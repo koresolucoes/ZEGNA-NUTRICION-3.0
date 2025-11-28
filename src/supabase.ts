@@ -33,6 +33,65 @@ export const supabase = supabaseClient as ReturnType<typeof createClient<Databas
 
 /*
 -- =================================================================
+-- V27.0 SCRIPT DE CORRECCIÓN (Enlaces de Afiliados para Aliados)
+-- Actualiza create_user_affiliate_link para buscar nombres en 'allies' también.
+-- POR FAVOR, EJECUTA ESTE SCRIPT EN TU EDITOR SQL DE SUPABASE.
+-- =================================================================
+BEGIN;
+
+CREATE OR REPLACE FUNCTION public.create_user_affiliate_link(p_program_id uuid)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    new_code TEXT;
+    user_full_name TEXT;
+    new_link RECORD;
+BEGIN
+    -- Check if user already has a link for this program
+    PERFORM 1 FROM public.affiliate_links WHERE user_id = auth.uid() AND program_id = p_program_id;
+    IF FOUND THEN
+        RAISE EXCEPTION 'User already has a link for this program.';
+    END IF;
+
+    -- 1. Try to get name from nutritionist_profiles (Clinic Owners/Members)
+    SELECT full_name INTO user_full_name FROM public.nutritionist_profiles WHERE user_id = auth.uid();
+    
+    -- 2. If not found, try to get name from allies (Collaborators)
+    IF user_full_name IS NULL THEN
+        SELECT full_name INTO user_full_name FROM public.allies WHERE user_id = auth.uid();
+    END IF;
+
+    -- 3. If still not found, raise exception
+    IF user_full_name IS NULL THEN
+        RAISE EXCEPTION 'User profile not found or name is missing.';
+    END IF;
+    
+    -- Generate a unique code (e.g., JUANP-XYZ)
+    new_code := UPPER(REGEXP_REPLACE(user_full_name, '\s.*', '')) || '-' || UPPER(SUBSTRING(md5(random()::text) FOR 3));
+
+    WHILE EXISTS (SELECT 1 FROM public.affiliate_links WHERE code = new_code) LOOP
+        new_code := UPPER(REGEXP_REPLACE(user_full_name, '\s.*', '')) || '-' || UPPER(SUBSTRING(md5(random()::text) FOR 3));
+    END LOOP;
+    
+    -- Insert the new link and return it
+    INSERT INTO public.affiliate_links (user_id, program_id, code)
+    VALUES (auth.uid(), p_program_id, new_code)
+    RETURNING * INTO new_link;
+    
+    RETURN row_to_json(new_link);
+END;
+$$;
+
+COMMIT;
+-- =================================================================
+-- Fin del Script de Corrección V27.0
+-- =================================================================
+
+
+-- =================================================================
 -- V26.0 SCRIPT DE CORRECCIÓN (Registro de Aliados)
 -- Corrige el trigger handle_new_user_setup para incluir el campo obligatorio 'specialty'.
 -- POR FAVOR, EJECUTA ESTE SCRIPT EN TU EDITOR SQL DE SUPABASE.
@@ -88,45 +147,5 @@ $$;
 COMMIT;
 -- =================================================================
 -- Fin del Script de Corrección V26.0
--- =================================================================
-
--- =================================================================
--- SCRIPT PARA CAPTURA DE FEEDBACK BETA (Temporal)
--- POR FAVOR, EJECUTA ESTE SCRIPT EN TU EDITOR SQL DE SUPABASE.
--- =================================================================
-BEGIN;
-
--- 1. Crear la tabla 'beta_feedback'
-CREATE TABLE IF NOT EXISTS public.beta_feedback (
-    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-    user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE SET NULL,
-    clinic_id uuid REFERENCES public.clinics(id) ON DELETE SET NULL,
-    feedback_type text NOT NULL,
-    message text NOT NULL,
-    contact_allowed boolean DEFAULT false NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-COMMENT ON TABLE public.beta_feedback IS 'Tabla temporal para recolectar feedback de usuarios beta.';
-
--- 2. Habilitar RLS
-ALTER TABLE public.beta_feedback ENABLE ROW LEVEL SECURITY;
-
--- 3. Crear Políticas de RLS
--- Los usuarios autenticados pueden insertar su propio feedback.
-DROP POLICY IF EXISTS "Los usuarios pueden enviar su propio feedback" ON public.beta_feedback;
-CREATE POLICY "Los usuarios pueden enviar su propio feedback"
-ON public.beta_feedback FOR INSERT
-WITH CHECK (auth.uid() = user_id);
-
--- Los usuarios pueden ver su propio feedback (opcional, pero buena práctica).
-DROP POLICY IF EXISTS "Los usuarios pueden ver su propio feedback" ON public.beta_feedback;
-CREATE POLICY "Los usuarios pueden ver su propio feedback"
-ON public.beta_feedback FOR SELECT
-USING (auth.uid() = user_id);
-
-
-COMMIT;
--- =================================================================
--- Fin del Script de Feedback
 -- =================================================================
 */

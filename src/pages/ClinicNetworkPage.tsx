@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { styles } from '../constants';
@@ -8,6 +9,7 @@ import ConfirmationModal from '../components/shared/ConfirmationModal';
 import ClinicDetailsModal from '../components/ally_portal/ClinicDetailsModal';
 import SendReferralToClinicModal from '../components/clinic_network/SendReferralToClinicModal';
 import SkeletonLoader from '../components/shared/SkeletonLoader';
+import CatalogCard from '../components/shared/CatalogCard';
 
 const calculateAge = (birthDate: string | null | undefined): string => {
     if (!birthDate) return 'N/A';
@@ -39,6 +41,7 @@ const ClinicNetworkPage: FC<{ navigate: (page: string, context?: any) => void; }
     const [searchTerm, setSearchTerm] = useState('');
     const [referralSearchTerm, setReferralSearchTerm] = useState('');
     const [debouncedReferralSearchTerm, setDebouncedReferralSearchTerm] = useState('');
+    const [requestStatus, setRequestStatus] = useState<Record<string, 'idle' | 'loading'>>({});
 
     useEffect(() => {
         const handler = setTimeout(() => {
@@ -94,9 +97,10 @@ const ClinicNetworkPage: FC<{ navigate: (page: string, context?: any) => void; }
         return () => { supabase.removeChannel(channel); };
     }, [myClinic, fetchData]);
     
-    // --- Handlers ---
     const handlePartnershipRequest = async (clinicId: string) => {
+        setRequestStatus(prev => ({...prev, [clinicId]: 'loading'}));
         const { error } = await supabase.rpc('request_clinic_partnership', { p_responder_clinic_id: clinicId });
+        setRequestStatus(prev => ({...prev, [clinicId]: 'idle'}));
         if (error) setError(error.message);
     };
 
@@ -139,35 +143,6 @@ const ClinicNetworkPage: FC<{ navigate: (page: string, context?: any) => void; }
         </span>
     );
     
-    // --- Custom Styles ---
-    const cardStyle: React.CSSProperties = {
-        backgroundColor: 'var(--surface-color)',
-        borderRadius: '16px',
-        padding: '0',
-        display: 'flex',
-        flexDirection: 'column',
-        border: '1px solid var(--border-color)',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-        position: 'relative',
-        transition: 'transform 0.2s, box-shadow 0.2s',
-        overflow: 'hidden'
-    };
-
-    const cardHeaderStyle: React.CSSProperties = {
-        display: 'flex',
-        gap: '1rem',
-        padding: '1.5rem',
-        alignItems: 'flex-start'
-    };
-
-    const cardActionsStyle: React.CSSProperties = {
-        display: 'flex',
-        backgroundColor: 'var(--surface-hover-color)',
-        borderTop: '1px solid var(--border-color)',
-        padding: '0.75rem',
-        gap: '0.5rem'
-    };
-
     const actionButtonStyle = (primary: boolean = false): React.CSSProperties => ({
         flex: 1,
         padding: '0.6rem',
@@ -208,45 +183,55 @@ const ClinicNetworkPage: FC<{ navigate: (page: string, context?: any) => void; }
                     />
                 </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
                 {directoryClinics.map(clinic => {
                  const partnership = partnerships.find(p => (p.requester_id === myClinic?.id && p.responder_id === clinic.id) || (p.requester_id === clinic.id && p.responder_id === myClinic?.id));
                  const status = partnership?.status;
                  const isMyRequest = partnership?.requester_id === myClinic?.id;
+                 const isLoading = requestStatus[clinic.id] === 'loading';
+                 
+                 // Define actions based on status
+                 const renderActions = () => {
+                    if (status === 'active') {
+                        return (
+                            <button onClick={() => setModal({ type: 'sendReferral', data: { receivingClinic: clinic } })} style={actionButtonStyle(true)}>
+                                {ICONS.send} Referir
+                            </button>
+                        );
+                    } else if (status === 'pending') {
+                        return (
+                            <button disabled style={{...actionButtonStyle(), opacity: 0.7, cursor: 'default', backgroundColor: 'var(--surface-hover-color)'}}>
+                                {isMyRequest ? 'Enviada' : 'Pendiente'}
+                            </button>
+                        );
+                    } else {
+                        return (
+                             <button onClick={() => handlePartnershipRequest(clinic.id)} disabled={isLoading} style={actionButtonStyle(true)}>
+                                {isLoading ? '...' : (status === 'revoked' || status === 'rejected' ? 'Reconectar' : 'Conectar')}
+                            </button>
+                        );
+                    }
+                 };
 
                 return (
-                    <div key={clinic.id} style={cardStyle} className="card-hover">
-                        <div style={cardHeaderStyle}>
-                             <img 
-                                src={clinic.logo_url || `https://api.dicebear.com/8.x/initials/svg?seed=${clinic.name?.charAt(0) || 'C'}&radius=50`} 
-                                alt="logo" 
-                                style={{width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid var(--border-color)'}} 
-                            />
-                            <div style={{overflow: 'hidden', flex: 1}}>
-                                <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', color: 'var(--text-color)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{clinic.name}</h4>
-                                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-light)', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{clinic.address || 'Sin dirección'}</p>
-                            </div>
-                        </div>
-                        
-                        <div style={cardActionsStyle}>
-                            <button onClick={() => setModal({ type: 'viewDetails', data: clinic })} style={actionButtonStyle()}>
-                                {ICONS.details} Detalles
-                            </button>
-                            {status === 'active' ? (
-                                 <button onClick={() => setModal({ type: 'sendReferral', data: { receivingClinic: clinic } })} style={actionButtonStyle(true)}>
-                                    {ICONS.send} Referir
+                    <CatalogCard
+                        key={clinic.id}
+                        title={clinic.name}
+                        subtitle={clinic.address || 'Ubicación no disponible'}
+                        description={clinic.email ? `Contacto: ${clinic.email}` : undefined}
+                        avatarSrc={clinic.logo_url}
+                        avatarSeed={clinic.name}
+                        headerGradientSeed={clinic.name}
+                        overlayBadge={status === 'active' ? 'VINCULADO' : undefined}
+                        actions={
+                            <>
+                                <button onClick={() => setModal({ type: 'viewDetails', data: clinic })} style={actionButtonStyle()}>
+                                    {ICONS.details} Detalles
                                 </button>
-                            ) : status === 'pending' ? (
-                                 <button disabled style={{...actionButtonStyle(), opacity: 0.7, cursor: 'default', backgroundColor: 'var(--surface-hover-color)'}}>
-                                    {isMyRequest ? 'Enviada' : 'Pendiente'}
-                                </button>
-                            ) : (
-                                 <button onClick={() => handlePartnershipRequest(clinic.id)} style={actionButtonStyle(true)}>
-                                    {status === 'revoked' || status === 'rejected' ? 'Reconectar' : 'Conectar'}
-                                </button>
-                            )}
-                        </div>
-                    </div>
+                                {renderActions()}
+                            </>
+                        }
+                    />
                 )
             })}
             </div>
@@ -277,30 +262,30 @@ const ClinicNetworkPage: FC<{ navigate: (page: string, context?: any) => void; }
             <div>
                 <h3 style={{fontSize: '1.5rem', marginBottom: '1.5rem', color: 'var(--text-color)'}}>Vínculos Activos</h3>
                 {activePartnerships.length > 0 ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
                         {activePartnerships.map(p => { 
                             const otherClinic = p.requester_id === myClinic?.id ? p.responder : p.requester; 
                             return (
-                                <div key={p.id} style={cardStyle} className="card-hover">
-                                    <div style={cardHeaderStyle}>
-                                         <div style={{width: '56px', height: '56px', borderRadius: '16px', backgroundColor: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 800, color: 'var(--primary-dark)', fontSize: '1.2rem'}}>
-                                             {otherClinic.name.charAt(0)}
-                                         </div>
-                                         <div style={{flex: 1, overflow: 'hidden'}}>
-                                             <h4 style={{margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-color)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{otherClinic.name}</h4>
-                                             <p style={{margin: 0, fontSize: '0.9rem', color: 'var(--text-light)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{otherClinic.email || 'Sin contacto'}</p>
-                                         </div>
-                                    </div>
-                                    
-                                    <div style={cardActionsStyle}>
-                                        <button onClick={() => setModal({ type: 'sendReferral', data: { receivingClinic: otherClinic } })} style={actionButtonStyle(true)}>
-                                            {ICONS.send} Referir
-                                        </button>
-                                        <button onClick={() => setModal({ type: 'deletePartnership', data: p })} style={{...actionButtonStyle(), color: 'var(--error-color)', borderColor: 'transparent'}}>
-                                            {ICONS.delete} Revocar
-                                        </button>
-                                    </div>
-                                </div> 
+                                <CatalogCard
+                                    key={p.id}
+                                    title={otherClinic.name}
+                                    subtitle="Clínica Aliada"
+                                    description={otherClinic.email || undefined}
+                                    avatarSrc={otherClinic.logo_url}
+                                    avatarSeed={otherClinic.name}
+                                    headerGradientSeed={otherClinic.name}
+                                    overlayBadge="VINCULADO"
+                                    actions={
+                                        <>
+                                             <button onClick={() => setModal({ type: 'sendReferral', data: { receivingClinic: otherClinic } })} style={actionButtonStyle(true)}>
+                                                {ICONS.send} Referir
+                                            </button>
+                                            <button onClick={() => setModal({ type: 'deletePartnership', data: p })} style={{...actionButtonStyle(), color: 'var(--error-color)', borderColor: 'transparent'}}>
+                                                {ICONS.delete} Revocar
+                                            </button>
+                                        </>
+                                    }
+                                />
                             )
                         })}
                     </div>
@@ -315,12 +300,13 @@ const ClinicNetworkPage: FC<{ navigate: (page: string, context?: any) => void; }
         </div>
     );
     
+    // Referrals section remains largely the same style but within the new container
     const renderReferrals = (type: 'received' | 'sent') => {
         const referrals = type === 'received' ? receivedReferrals : sentReferrals;
         return (
             <div className="fade-in">
-                <div style={{...styles.filterBar, marginBottom: '2rem', padding: 0, border: 'none', background: 'transparent', boxShadow: 'none', maxWidth: '500px'}}>
-                     <div style={styles.searchInputContainer}>
+                <div style={{...styles.filterBar, maxWidth: '400px', marginBottom: '2rem', padding: 0, border: 'none', background: 'transparent', boxShadow: 'none'}}> 
+                    <div style={styles.searchInputContainer}>
                         <span style={styles.searchInputIcon}>🔍</span>
                         <input type="text" placeholder="Buscar por paciente..." value={referralSearchTerm} onChange={e => setReferralSearchTerm(e.target.value)} style={{...styles.searchInput, backgroundColor: 'var(--surface-color)', borderColor: 'var(--border-color)', borderRadius: '12px', paddingLeft: '2.5rem', height: '50px', fontSize: '1rem'}} />
                     </div>
@@ -334,7 +320,11 @@ const ClinicNetworkPage: FC<{ navigate: (page: string, context?: any) => void; }
                             const age = patientInfo?.age || (personData?.birth_date ? calculateAge(personData.birth_date) : 'N/A');
 
                             return (
-                                <div key={r.id} style={cardStyle} className="card-hover">
+                                <div key={r.id} className="card-hover" style={{
+                                    backgroundColor: 'var(--surface-color)', borderRadius: '16px', padding: '0',
+                                    display: 'flex', flexDirection: 'column', border: '1px solid var(--border-color)',
+                                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)', overflow: 'hidden'
+                                }}>
                                     <div style={{padding: '1.5rem'}}>
                                         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem'}}>
                                             <h4 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary-color)' }}>{patientInfo.name}</h4>
@@ -348,7 +338,7 @@ const ClinicNetworkPage: FC<{ navigate: (page: string, context?: any) => void; }
                                         </div>
                                     </div>
 
-                                    <div style={cardActionsStyle}>
+                                    <div style={{ display: 'flex', backgroundColor: 'var(--surface-hover-color)', borderTop: '1px solid var(--border-color)', padding: '0.75rem', gap: '0.5rem' }}>
                                         {type === 'received' && r.status === 'pending' ? (
                                             <>
                                                 <button onClick={(e) => { e.stopPropagation(); navigate('client-form', { referralData: r }); }} style={actionButtonStyle(true)}>

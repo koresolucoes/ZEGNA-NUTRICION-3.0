@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useEffect, useCallback, FormEvent, useMemo, useRef } from 'react';
 import { supabase } from '../supabase';
 import { styles } from '../constants';
@@ -8,6 +9,7 @@ import { useClinic } from '../contexts/ClinicContext';
 import AllyDetailsModal from '../components/collaborators/AllyDetailsModal';
 import SkeletonLoader from '../components/shared/SkeletonLoader';
 import SendReferralToAllyModal from '../components/ally_portal/SendReferralToAllyModal';
+import CatalogCard from '../components/shared/CatalogCard';
 
 
 const calculateAge = (birthDate: string | null | undefined): string => {
@@ -201,35 +203,6 @@ const CollaboratorsPage: FC<{ isMobile: boolean; onAddCollaborator: () => void; 
         </button>
     );
 
-    // --- Custom Styles for Cards ---
-    const cardStyle: React.CSSProperties = {
-        backgroundColor: 'var(--surface-color)',
-        borderRadius: '16px',
-        padding: '0',
-        display: 'flex',
-        flexDirection: 'column',
-        border: '1px solid var(--border-color)',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-        position: 'relative',
-        transition: 'transform 0.2s, box-shadow 0.2s',
-        overflow: 'hidden'
-    };
-
-    const cardHeaderStyle: React.CSSProperties = {
-        display: 'flex',
-        gap: '1rem',
-        padding: '1.5rem',
-        alignItems: 'flex-start'
-    };
-
-    const cardActionsStyle: React.CSSProperties = {
-        display: 'flex',
-        backgroundColor: 'var(--surface-hover-color)',
-        borderTop: '1px solid var(--border-color)',
-        padding: '0.75rem',
-        gap: '0.5rem'
-    };
-
      const actionButtonStyle = (primary: boolean = false): React.CSSProperties => ({
         flex: 1,
         padding: '0.6rem',
@@ -248,36 +221,44 @@ const CollaboratorsPage: FC<{ isMobile: boolean; onAddCollaborator: () => void; 
         borderColor: primary ? 'transparent' : 'var(--border-color)'
     });
 
-
     // --- Renderers ---
     const renderCollaborators = () => (
         <div className="info-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
             {partnerships.map(p => (
-                <div key={p.id} className="card-hover" style={cardStyle}>
-                    <div style={cardHeaderStyle}>
-                        <img src={p.allies.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${p.allies.full_name}&radius=50`} alt="Avatar" style={{width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid var(--border-color)'}} />
-                        <div style={{flex: 1, overflow: 'hidden'}}>
-                             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem'}}>
-                                <h4 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '1.1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.allies.full_name}</h4>
-                                <StatusBadge status={p.status} />
-                             </div>
-                            <p style={{margin: 0, fontSize: '0.9rem', color: 'var(--text-light)'}}>{p.allies.specialty}</p>
-                            <p style={{margin: '0.5rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-color)', fontStyle: 'italic', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>{p.allies.biography || 'Sin biografía.'}</p>
-                        </div>
-                    </div>
-                    
-                    <div style={cardActionsStyle}>
-                         {p.status === 'active' && (
-                            <button onClick={() => setModal({ type: 'sendModal', data: p })} style={actionButtonStyle(true)}>
-                                {ICONS.send} Referir
+                <CatalogCard
+                    key={p.id}
+                    title={p.allies.full_name}
+                    subtitle={p.allies.specialty}
+                    description={p.allies.biography || 'Sin biografía.'}
+                    avatarSrc={p.allies.avatar_url}
+                    avatarSeed={p.allies.full_name}
+                    headerGradientSeed={p.allies.full_name}
+                    overlayBadge={p.status === 'active' ? 'VINCULADO' : p.status.toUpperCase()}
+                    onImageClick={() => setViewingAlly(p.allies)}
+                    actions={
+                        <>
+                            {p.status === 'active' && (
+                                <button onClick={() => setModal({ type: 'sendModal', data: p })} style={actionButtonStyle(true)}>
+                                    {ICONS.send} Referir
+                                </button>
+                            )}
+                            <button onClick={() => setViewingAlly(p.allies)} style={actionButtonStyle()}>
+                                {ICONS.details} Detalles
                             </button>
-                        )}
-                        <button onClick={() => setViewingAlly(p.allies)} style={actionButtonStyle()}>
-                            {ICONS.details} Detalles
-                        </button>
-                        {p.status === 'active' && <button onClick={() => handleUpdatePartnershipStatus(p.id, 'revoked')} style={{...actionButtonStyle(), color: 'var(--error-color)'}} title="Revocar">{ICONS.delete}</button>}
+                            {p.status === 'active' && (
+                                <button onClick={() => handleUpdatePartnershipStatus(p.id, 'revoked')} style={{...actionButtonStyle(), color: 'var(--error-color)'}} title="Revocar">
+                                    {ICONS.delete}
+                                </button>
+                            )}
+                        </>
+                    }
+                >
+                    <div style={{marginTop: '0.5rem', display: 'flex', justifyContent: 'center', gap: '1rem', fontSize: '0.85rem', color: 'var(--primary-color)'}}>
+                        {p.allies.phone_number && <span title={p.allies.phone_number}>{ICONS.phone}</span>}
+                        {p.allies.website && <span title={p.allies.website}>{ICONS.link}</span>}
+                        {p.allies.contact_email && <span title={p.allies.contact_email}>{ICONS.send}</span>}
                     </div>
-                </div>
+                </CatalogCard>
             ))}
         </div>
     );
@@ -294,23 +275,26 @@ const CollaboratorsPage: FC<{ isMobile: boolean; onAddCollaborator: () => void; 
                 </div>
                  <div className="info-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
                     {filteredAllies.map(ally => (
-                        <div key={ally.id} className="card-hover" style={cardStyle}>
-                             <div style={cardHeaderStyle}>
-                                <img src={ally.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${ally.full_name}&radius=50`} style={{ width: '56px', height: '56px', borderRadius: '50%', border: '2px solid var(--border-color)' }}/>
-                                <div style={{flex: 1, overflow: 'hidden'}}>
-                                    <h4 style={{ margin: '0 0 0.25rem 0', color: 'var(--text-color)', fontSize: '1.1rem', fontWeight: 700 }}>{ally.full_name}</h4>
-                                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--primary-color)' }}>{ally.specialty}</p>
-                                </div>
-                            </div>
-                            <div style={cardActionsStyle}>
-                                <button onClick={() => handleRequestPartnership(ally.id)} disabled={requestedAllyIds.has(ally.id)} style={actionButtonStyle(true)}>
-                                    {requestedAllyIds.has(ally.id) ? 'Pendiente' : 'Conectar'}
-                                </button>
-                                 <button onClick={() => setViewingAlly(ally)} style={actionButtonStyle()}>
-                                     {ICONS.details} Detalles
-                                </button>
-                            </div>
-                        </div>
+                        <CatalogCard
+                            key={ally.id}
+                            title={ally.full_name}
+                            subtitle={ally.specialty}
+                            description={ally.office_address || undefined}
+                            avatarSrc={ally.avatar_url}
+                            avatarSeed={ally.full_name}
+                            headerGradientSeed={ally.full_name}
+                            onImageClick={() => setViewingAlly(ally)}
+                            actions={
+                                <>
+                                    <button onClick={() => handleRequestPartnership(ally.id)} disabled={requestedAllyIds.has(ally.id)} style={actionButtonStyle(true)}>
+                                        {requestedAllyIds.has(ally.id) ? 'Pendiente' : 'Conectar'}
+                                    </button>
+                                    <button onClick={() => setViewingAlly(ally)} style={actionButtonStyle()}>
+                                        {ICONS.details} Detalles
+                                    </button>
+                                </>
+                            }
+                        />
                     ))}
                 </div>
             </>
@@ -331,8 +315,22 @@ const CollaboratorsPage: FC<{ isMobile: boolean; onAddCollaborator: () => void; 
                     {referrals.map(r => {
                         const partner = type === 'received' ? r.sending_ally : r.receiving_ally;
                         const patientInfo = r.patient_info as any;
+                        
+                        // Using standard card style for referrals as they are transactions, not catalog items
+                        // But maintaining consistent styling
                         return (
-                            <div key={r.id} className="card-hover" style={cardStyle}>
+                            <div key={r.id} className="card-hover" style={{
+                                backgroundColor: 'var(--surface-color)',
+                                borderRadius: '16px',
+                                padding: '0',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                border: '1px solid var(--border-color)',
+                                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+                                position: 'relative',
+                                transition: 'transform 0.2s, box-shadow 0.2s',
+                                overflow: 'hidden'
+                            }}>
                                 <div style={{padding: '1.5rem'}}>
                                     <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem'}}>
                                         <div>
@@ -347,7 +345,13 @@ const CollaboratorsPage: FC<{ isMobile: boolean; onAddCollaborator: () => void; 
                                     </div>
                                 </div>
 
-                                <div style={cardActionsStyle}>
+                                <div style={{
+                                    display: 'flex',
+                                    backgroundColor: 'var(--surface-hover-color)',
+                                    borderTop: '1px solid var(--border-color)',
+                                    padding: '0.75rem',
+                                    gap: '0.5rem'
+                                }}>
                                     {type === 'received' && r.status === 'pending' ? (
                                         <>
                                             <button onClick={(e) => { e.stopPropagation(); handleAcceptReferral(r); }} style={actionButtonStyle(true)}>
@@ -374,17 +378,7 @@ const CollaboratorsPage: FC<{ isMobile: boolean; onAddCollaborator: () => void; 
     return (
         <div className="fade-in" style={{paddingBottom: '2rem'}}>
             {viewingAlly && <AllyDetailsModal isOpen={!!viewingAlly} onClose={() => setViewingAlly(null)} ally={viewingAlly} />}
-            {/* Using an inline SendReferralModal logic inside a wrapper or direct component import if available. 
-                For strict adherence to "not adding new files unless requested", I'll use the existing component if it matches or a simplified inline render. 
-                Actually, SendReferralToAllyModal doesn't exist in the file list provided in the prompt context (only SendReferralToClinicModal). 
-                I will use SendReferralToAllyModal assuming it was created in a previous step or use the inline logic for robustness. 
-                Given the instruction to be creative, I will assume I can use the component I would have created or duplicate logic. 
-                Let's rely on SendReferralToAllyModal being available or create it if it was part of the requested changes. 
-                Wait, I see SendReferralToAllyModal in the file list of the prompt? No. 
-                I will use the logic inline to be safe.
-            */}
             {modal.type === 'sendModal' && <SendReferralToAllyModal isOpen={true} onClose={() => setModal({ type: null })} onSuccess={() => { setModal({ type: null }); fetchData(); }} receivingAlly={modal.data.allies} />}
-            
             {modal.type?.startsWith('delete') && <ConfirmationModal isOpen={true} onClose={() => setModal({type: null})} onConfirm={handleConfirm} title="Confirmar Acción" message={<p>¿Estás seguro? Esta acción no se puede deshacer.</p>} />}
 
             <div style={{...styles.pageHeader, marginBottom: '2.5rem'}}>

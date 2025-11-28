@@ -6,6 +6,7 @@ import { ICONS } from '../AuthPage';
 import { Clinic } from '../../types';
 import ClinicDetailsModal from '../../components/ally_portal/ClinicDetailsModal';
 import SkeletonLoader from '../../components/shared/SkeletonLoader';
+import CatalogCard from '../../components/shared/CatalogCard';
 
 // Define a type for partnership status for easier mapping
 type PartnershipStatusMap = { [clinicId: string]: 'pending' | 'active' | 'revoked' | 'none' };
@@ -99,8 +100,21 @@ const AllyClinicDirectoryPage: FC = () => {
         clinic.address?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    const actionButtonStyle = (primary: boolean = false): React.CSSProperties => ({
+        width: '100%',
+        padding: '0.6rem',
+        borderRadius: '8px',
+        border: primary ? 'none' : '1px solid var(--border-color)',
+        cursor: primary ? 'pointer' : 'default',
+        fontSize: '0.85rem',
+        fontWeight: 600,
+        backgroundColor: primary ? 'var(--primary-color)' : 'var(--surface-hover-color)',
+        color: primary ? 'white' : 'var(--text-light)',
+        transition: 'all 0.2s'
+    });
+
     return (
-        <div className="fade-in">
+        <div className="fade-in" style={{maxWidth: '1200px', margin: '0 auto'}}>
              {viewingClinic && (
                 <ClinicDetailsModal
                     isOpen={!!viewingClinic}
@@ -108,22 +122,30 @@ const AllyClinicDirectoryPage: FC = () => {
                     clinic={viewingClinic}
                 />
             )}
-            <div style={{marginBottom: '2.5rem'}}>
-                <h1 style={{ margin: '0 0 0.5rem 0', fontSize: '2rem', fontWeight: 800, letterSpacing: '-1px' }}>Directorio de Clínicas</h1>
-                <p style={{ margin: 0, color: 'var(--text-light)', maxWidth: '700px' }}>
-                    Descubre centros de salud para colaborar y ampliar tus servicios.
+            <div style={{marginBottom: '2rem'}}>
+                <h1 style={{ margin: '0 0 0.5rem 0', fontSize: '2rem', fontWeight: 800, letterSpacing: '-1px' }}>Centros de Salud</h1>
+                <p style={{ margin: 0, color: 'var(--text-light)' }}>
+                    Conecta con clínicas para recibir referidos y expandir tu práctica.
                 </p>
             </div>
 
-            <div style={{...styles.filterBar, maxWidth: '500px', marginBottom: '2rem', padding: 0, background: 'transparent', border: 'none', boxShadow: 'none'}}>
-                <div style={{...styles.searchInputContainer, flex: 1}}>
+            {/* Search Filter */}
+            <div style={{
+                backgroundColor: 'var(--surface-color)', 
+                padding: '1rem', 
+                borderRadius: '16px', 
+                border: '1px solid var(--border-color)',
+                boxShadow: 'var(--shadow)',
+                marginBottom: '2rem',
+            }}>
+                <div style={{...styles.searchInputContainer, width: '100%', maxWidth: '500px'}}>
                     <span style={styles.searchInputIcon}>🔍</span>
                     <input 
                         type="text" 
-                        placeholder="Buscar clínica por nombre o ubicación..." 
+                        placeholder="Buscar por nombre o ubicación..." 
                         value={searchTerm} 
                         onChange={e => setSearchTerm(e.target.value)} 
-                        style={{...styles.searchInput, height: '50px', borderRadius: '12px', fontSize: '1rem', paddingLeft: '2.5rem'}} 
+                        style={{...styles.searchInput, height: '42px', backgroundColor: 'var(--background-color)', borderColor: 'var(--border-color)', fontSize: '1rem'}} 
                     />
                 </div>
             </div>
@@ -132,77 +154,71 @@ const AllyClinicDirectoryPage: FC = () => {
             {error && <p style={styles.error}>{error}</p>}
             
             {!loading && (
-                <div className="info-grid">
-                    {filteredClinics.map(clinic => {
-                         const status = partnershipStatus[clinic.id];
-                         const isLoading = requestStatus[clinic.id] === 'loading';
-                         
-                         let statusIndicator = null;
-                         let actionButton = null;
+                <>
+                    <p style={{fontSize: '0.9rem', color: 'var(--text-light)', marginBottom: '1rem'}}>
+                        {filteredClinics.length} clínica{filteredClinics.length !== 1 ? 's' : ''} disponible{filteredClinics.length !== 1 ? 's' : ''}
+                    </p>
 
-                         if (status === 'active') {
-                             statusIndicator = <span style={{color: '#10B981', fontWeight: 700, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px'}}>{ICONS.check} Vinculado</span>;
-                             actionButton = <button onClick={() => setViewingClinic(clinic)} style={{flex: 1, padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', fontWeight: 600}}>Ver Detalles</button>;
-                         } else if (status === 'pending') {
-                             statusIndicator = <span style={{color: '#EAB308', fontWeight: 700, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px'}}>⏳ Pendiente</span>;
-                             actionButton = <button disabled style={{flex: 1, padding: '0.6rem', borderRadius: '8px', border: 'none', backgroundColor: 'var(--surface-hover-color)', color: 'var(--text-light)', cursor: 'default'}}>Solicitud Enviada</button>;
-                         } else {
-                             // None or Revoked
-                             actionButton = (
-                                 <button 
-                                    onClick={() => handleRequestPartnership(clinic.id)} 
-                                    disabled={isLoading}
-                                    className="button-primary"
-                                    style={{flex: 1, padding: '0.6rem', fontSize: '0.9rem'}}
-                                 >
-                                    {isLoading ? 'Enviando...' : 'Conectar'}
-                                 </button>
-                             );
-                         }
+                    <div className="info-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                        {filteredClinics.map(clinic => {
+                             const status = partnershipStatus[clinic.id];
+                             const isLoading = requestStatus[clinic.id] === 'loading';
+                             
+                             let actionButton = null;
 
-                        return (
-                            <div key={clinic.id} className="card-hover" style={{
-                                backgroundColor: 'var(--surface-color)', borderRadius: '16px', border: '1px solid var(--border-color)',
-                                display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow)'
-                            }}>
-                                <div style={{padding: '1.5rem', flex: 1}}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                                        <img 
-                                            src={clinic.logo_url || `https://api.dicebear.com/8.x/initials/svg?seed=${clinic.name?.charAt(0) || 'C'}&radius=50`} 
-                                            alt="logo" 
-                                            style={{width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', border: '4px solid var(--surface-hover-color)'}} 
-                                        />
-                                        {statusIndicator}
-                                    </div>
-                                    
-                                    <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-color)', lineHeight: 1.2 }}>{clinic.name}</h4>
-                                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-light)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.5 }}>
-                                        {clinic.address || 'Ubicación no disponible'}
-                                    </p>
-                                    
-                                    {(clinic.phone_number || clinic.website) && (
-                                        <div style={{marginTop: '1rem', display: 'flex', gap: '1rem', fontSize: '0.85rem', color: 'var(--primary-color)'}}>
-                                            {clinic.website && <span style={{display: 'flex', alignItems: 'center', gap: '4px'}}>{ICONS.link} Web</span>}
-                                            {clinic.phone_number && <span style={{display: 'flex', alignItems: 'center', gap: '4px'}}>{ICONS.phone} Tel</span>}
+                             if (status === 'active') {
+                                 actionButton = <button disabled style={{...actionButtonStyle(), backgroundColor: '#DCFCE7', color: '#166534', border: '1px solid #86EFAC'}}>{ICONS.check} Vinculado</button>;
+                             } else if (status === 'pending') {
+                                 actionButton = <button disabled style={actionButtonStyle()}>{ICONS.clock} Pendiente</button>;
+                             } else {
+                                 actionButton = (
+                                     <button 
+                                        onClick={() => handleRequestPartnership(clinic.id)} 
+                                        disabled={isLoading}
+                                        className="button-primary"
+                                        style={{width: '100%', padding: '0.6rem', borderRadius: '8px', fontSize: '0.85rem'}}
+                                     >
+                                        {isLoading ? 'Enviando...' : 'Conectar'}
+                                     </button>
+                                 );
+                             }
+
+                            return (
+                                <CatalogCard
+                                    key={clinic.id}
+                                    title={clinic.name}
+                                    subtitle={clinic.address || 'Sin dirección'}
+                                    avatarSrc={clinic.logo_url}
+                                    avatarSeed={clinic.name}
+                                    headerGradientSeed={clinic.name}
+                                    overlayBadge={status === 'active' ? 'VINCULADO' : undefined}
+                                    onImageClick={() => setViewingClinic(clinic)}
+                                    children={
+                                        <div style={{marginTop: '1rem', display: 'flex', justifyContent: 'center', gap: '1rem', fontSize: '0.85rem', color: 'var(--primary-color)'}}>
+                                            {clinic.phone_number && <span title={clinic.phone_number}>{ICONS.phone}</span>}
+                                            {clinic.website && <span title={clinic.website}>{ICONS.link}</span>}
+                                            {clinic.email && <span title={clinic.email}>{ICONS.send}</span>}
                                         </div>
-                                    )}
-                                </div>
-                                
-                                <div style={{ padding: '1rem', backgroundColor: 'var(--surface-hover-color)', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '0.75rem' }}>
-                                    <button onClick={() => setViewingClinic(clinic)} style={{padding: '0.6rem', borderRadius: '8px', border: 'none', background: 'transparent', color: 'var(--text-color)', fontWeight: 600, cursor: 'pointer'}}>
-                                        Info
-                                    </button>
-                                    {actionButton}
-                                </div>
-                            </div>
-                        )
-                    })}
+                                    }
+                                    actions={
+                                        <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%'}}>
+                                            {actionButton}
+                                            <button onClick={() => setViewingClinic(clinic)} style={{width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-color)', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem'}}>
+                                                Ver Detalles
+                                            </button>
+                                        </div>
+                                    }
+                                />
+                            )
+                        })}
+                    </div>
+                    
                     {filteredClinics.length === 0 && (
-                        <div style={{gridColumn: '1 / -1', textAlign: 'center', padding: '4rem', color: 'var(--text-light)', border: '2px dashed var(--border-color)', borderRadius: '16px'}}>
+                        <div style={{textAlign: 'center', padding: '4rem', color: 'var(--text-light)', border: '2px dashed var(--border-color)', borderRadius: '16px'}}>
                             <p style={{fontSize: '1.1rem'}}>No se encontraron clínicas.</p>
                         </div>
                     )}
-                </div>
+                </>
             )}
         </div>
     );
