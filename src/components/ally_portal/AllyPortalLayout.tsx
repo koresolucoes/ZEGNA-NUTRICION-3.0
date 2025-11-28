@@ -16,7 +16,7 @@ import AffiliatesPage from '../../pages/AffiliatesPage';
 
 const AllyPortalLayout: FC<{ session: Session }> = ({ session }) => {
     const [view, setView] = useState('referrals');
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 768); // Changed breakpoint to standard tablet/mobile split
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768); 
     const [allyProfile, setAllyProfile] = useState<Ally | null>(null);
     const { setTheme } = useThemeManager();
     
@@ -119,7 +119,6 @@ const AllyPortalLayout: FC<{ session: Session }> = ({ session }) => {
         );
     };
     
-    // Mobile Bottom Nav Item
     const BottomNavItem: FC<{ name: string, pageName: string, icon: React.ReactNode }> = ({ name, pageName, icon }) => {
         const isActive = view === pageName;
         return (
@@ -200,7 +199,6 @@ const AllyPortalLayout: FC<{ session: Session }> = ({ session }) => {
     return (
         <div style={{ ...styles.dashboardLayout, flexDirection: 'column' }}>
             
-            {/* DESKTOP TOP NAVBAR */}
             {!isMobile && (
                 <header style={{
                     height: '70px',
@@ -262,8 +260,8 @@ const AllyPortalLayout: FC<{ session: Session }> = ({ session }) => {
                                  <p style={{margin: 0, fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-color)'}}>{allyProfile?.full_name || 'Colaborador'}</p>
                                  <p style={{margin: 0, fontSize: '0.75rem', color: 'var(--text-light)'}}>{allyProfile?.specialty}</p>
                              </div>
-                             <NavItem name="Mi Perfil" pageName="profile" icon={ICONS.user} />
-                             <NavItem name="Notificaciones" pageName="notifications" icon={ICONS.settings} />
+                             <NavItem name="Configuración" pageName="profile" icon={ICONS.settings} />
+                             <NavItem name="Notificaciones" pageName="notifications" icon="🔔" />
                              <div onClick={() => supabase.auth.signOut()} style={{marginTop: '0.5rem', padding: '0.75rem 1rem', cursor: 'pointer', color: 'var(--error-color)', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.9rem'}} className="nav-item-hover">
                                  {ICONS.logout} Cerrar Sesión
                              </div>
@@ -272,7 +270,6 @@ const AllyPortalLayout: FC<{ session: Session }> = ({ session }) => {
                 </header>
             )}
 
-            {/* MOBILE HEADER */}
             {isMobile && (
                 <header style={{
                     height: '64px',
@@ -293,7 +290,7 @@ const AllyPortalLayout: FC<{ session: Session }> = ({ session }) => {
                             style={{width: '36px', height: '36px', borderRadius: '50%', border: '1px solid var(--border-color)', objectFit: 'cover'}}
                         />
                         <span style={{fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-color)'}}>
-                            {view === 'referrals' ? 'Inicio' : view === 'partnerships' ? 'Vínculos' : view === 'profile' ? 'Mi Perfil' : 'Zegna'}
+                            {view === 'referrals' ? 'Inicio' : view === 'partnerships' ? 'Vínculos' : view === 'profile' ? 'Configuración' : 'Zegna'}
                         </span>
                     </div>
                 </header>
@@ -303,9 +300,8 @@ const AllyPortalLayout: FC<{ session: Session }> = ({ session }) => {
                 {renderContent()}
             </main>
 
-            {/* MOBILE BOTTOM NAVIGATION */}
             {isMobile && (
-                <div style={{ height: '70px' }}> {/* Spacer */}
+                <div style={{ height: '70px' }}>
                     <nav style={{
                         position: 'fixed',
                         bottom: 0,
