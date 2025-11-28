@@ -16,8 +16,7 @@ import AffiliatesPage from '../../pages/AffiliatesPage';
 
 const AllyPortalLayout: FC<{ session: Session }> = ({ session }) => {
     const [view, setView] = useState('referrals');
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 960);
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768); // Changed breakpoint to standard tablet/mobile split
     const [allyProfile, setAllyProfile] = useState<Ally | null>(null);
     const { setTheme } = useThemeManager();
     
@@ -42,23 +41,18 @@ const AllyPortalLayout: FC<{ session: Session }> = ({ session }) => {
         }
     }, [allyProfile, setTheme]);
 
-
     useEffect(() => {
         const handleResize = () => {
-            const mobile = window.innerWidth < 960;
-            if (isMobile !== mobile) {
-                setIsMobile(mobile);
-                if (!mobile) setIsMobileMenuOpen(false);
-            }
+            setIsMobile(window.innerWidth < 768);
         };
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
-    }, [isMobile]);
+    }, []);
 
     const navigate = (page: string) => {
         setView(page);
-        setIsMobileMenuOpen(false);
         setActiveDropdown(null);
+        window.scrollTo(0,0);
     };
     
     const handleProfileUpdate = () => {
@@ -76,7 +70,6 @@ const AllyPortalLayout: FC<{ session: Session }> = ({ session }) => {
             setActiveDropdown(null);
         }, 200);
     };
-
 
     const renderContent = () => {
         switch (view) {
@@ -100,44 +93,56 @@ const AllyPortalLayout: FC<{ session: Session }> = ({ session }) => {
     };
 
     const NavItem: FC<{ name: string, pageName: string, icon?: React.ReactNode }> = ({ name, pageName, icon }) => {
-        const isActive = view.startsWith(pageName);
+        const isActive = view === pageName;
         return (
             <div
                 onClick={() => navigate(pageName)}
                 style={{ 
-                    padding: '0.75rem 1rem',
+                    padding: '0.6rem 1rem',
                     cursor: 'pointer',
-                    color: isActive ? 'var(--primary-color)' : 'var(--text-color)',
+                    color: isActive ? 'var(--primary-color)' : 'var(--text-light)',
                     fontWeight: isActive ? 600 : 500,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.75rem',
-                    borderRadius: '8px',
+                    gap: '0.5rem',
+                    borderRadius: '10px',
                     fontSize: '0.9rem',
-                    backgroundColor: isActive ? 'var(--surface-hover-color)' : 'transparent'
+                    backgroundColor: isActive ? 'var(--surface-hover-color)' : 'transparent',
+                    transition: 'all 0.2s ease'
                 }}
                 className="nav-item-hover"
                 role="button"
-                aria-label={`Navegar a ${name}`}
             >
-                {icon && <span style={{fontSize: '1.1rem'}}>{icon}</span>}
+                {icon}
                 {name}
             </div>
         );
     };
     
-    // Mobile Nav Item
-    const MobileNavItem: FC<{ name: string, pageName: string, icon?: React.ReactNode, isSubItem?: boolean }> = ({ name, pageName, icon, isSubItem = false }) => {
-        const isActive = view.startsWith(pageName);
+    // Mobile Bottom Nav Item
+    const BottomNavItem: FC<{ name: string, pageName: string, icon: React.ReactNode }> = ({ name, pageName, icon }) => {
+        const isActive = view === pageName;
         return (
-            <div
+            <button
                 onClick={() => navigate(pageName)}
-                style={{ ...styles.navItem, backgroundColor: isActive ? 'var(--primary-light)' : 'transparent', color: isActive ? 'var(--primary-color)' : 'var(--text-color)', gap: '0.75rem', ...(isSubItem && {paddingLeft: '2.5rem'}) }}
-                className="nav-item-hover"
+                style={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'transparent',
+                    border: 'none',
+                    color: isActive ? 'var(--primary-color)' : 'var(--text-light)',
+                    padding: '0.5rem',
+                    cursor: 'pointer',
+                    transition: 'color 0.2s ease',
+                    gap: '4px'
+                }}
             >
-                {icon && <span style={{color: 'var(--primary-color)'}}>{icon}</span>}
-                {name}
-            </div>
+                <span style={{ fontSize: '1.4rem', transform: isActive ? 'scale(1.1)' : 'scale(1)', transition: 'transform 0.2s' }}>{icon}</span>
+                <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>{name}</span>
+            </button>
         );
     };
 
@@ -156,17 +161,18 @@ const AllyPortalLayout: FC<{ session: Session }> = ({ session }) => {
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.5rem',
-                        padding: '0.5rem 1rem',
+                        padding: '0.5rem 0.8rem',
                         cursor: 'pointer',
-                        color: isOpen ? 'var(--primary-color)' : 'var(--text-color)',
+                        color: isOpen ? 'var(--primary-color)' : 'var(--text-light)',
                         fontWeight: 500,
                         height: '40px',
                         borderRadius: '8px',
-                        transition: 'all 0.2s'
+                        transition: 'all 0.2s',
+                        fontSize: '0.9rem'
                     }}
                     className="nav-item-hover"
                 >
-                    <span style={{fontSize: '1.1rem'}}>{icon}</span>
+                    {icon}
                     {title}
                     <span style={{ fontSize: '0.7rem', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>{ICONS.chevronDown}</span>
                 </button>
@@ -174,7 +180,7 @@ const AllyPortalLayout: FC<{ session: Session }> = ({ session }) => {
                 {isOpen && (
                     <div className="fade-in" style={{
                         position: 'absolute',
-                        top: '100%',
+                        top: '90%',
                         left: 0,
                         backgroundColor: 'var(--surface-color)',
                         boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
@@ -183,7 +189,6 @@ const AllyPortalLayout: FC<{ session: Session }> = ({ session }) => {
                         minWidth: '220px',
                         border: '1px solid var(--border-color)',
                         zIndex: 1000,
-                        marginTop: '5px'
                     }}>
                         {children}
                     </div>
@@ -195,43 +200,40 @@ const AllyPortalLayout: FC<{ session: Session }> = ({ session }) => {
     return (
         <div style={{ ...styles.dashboardLayout, flexDirection: 'column' }}>
             
-            {/* TOP NAVBAR */}
-            <header style={{
-                height: '70px',
-                backgroundColor: 'var(--surface-color)',
-                borderBottom: '1px solid var(--border-color)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '0 1.5rem',
-                position: 'sticky',
-                top: 0,
-                zIndex: 1000,
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                     {isMobile && (
-                        <button onClick={() => setIsMobileMenuOpen(true)} style={{...styles.hamburger, padding: '0.5rem', marginRight: '-0.5rem'}}>
-                            {ICONS.menu}
-                        </button>
-                    )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            {/* DESKTOP TOP NAVBAR */}
+            {!isMobile && (
+                <header style={{
+                    height: '70px',
+                    backgroundColor: 'var(--surface-color)',
+                    borderBottom: '1px solid var(--border-color)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0 2rem',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000,
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                          <div style={{
                             width: '36px', height: '36px', borderRadius: '10px', 
-                            background: 'linear-gradient(135deg, var(--accent-color), var(--primary-color))',
+                            background: 'linear-gradient(135deg, var(--primary-color), var(--primary-dark))',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: 'white', fontSize: '1.1rem', fontWeight: 800,
+                            color: 'white', fontSize: '1.2rem', fontWeight: 800,
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                         }}>
-                             {allyProfile?.full_name ? allyProfile.full_name.charAt(0).toUpperCase() : 'A'}
+                             Z
                         </div>
-                        {!isMobile && <h2 style={{ color: 'var(--primary-color)', fontSize: '1.1rem', margin: 0 }}>Portal de Aliado</h2>}
+                        <div>
+                            <h2 style={{ color: 'var(--text-color)', fontSize: '1rem', fontWeight: 700, margin: 0 }}>Portal Colaborador</h2>
+                            <p style={{margin: 0, fontSize: '0.75rem', color: 'var(--text-light)'}}>Red Zegna Nutrición</p>
+                        </div>
                     </div>
-                </div>
 
-                {!isMobile && (
-                    <nav style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', height: '100%' }}>
-                        <NavItem name="Referidos" pageName="referrals" icon={ICONS.transfer} />
-                        <NavItem name="Mis Vínculos" pageName="partnerships" icon={ICONS.network} />
+                    <nav style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', height: '100%' }}>
+                        <NavItem name="Dashboard" pageName="referrals" icon={ICONS.home} />
+                        <NavItem name="Vínculos" pageName="partnerships" icon={ICONS.network} />
                         
                         <NavDropdown title="Directorios" icon={ICONS.book} id="directories">
                             <NavItem name="Clínicas" pageName="directory" icon={ICONS.clinic} />
@@ -240,23 +242,24 @@ const AllyPortalLayout: FC<{ session: Session }> = ({ session }) => {
                         
                         <NavItem name="Afiliados" pageName="affiliates" icon={ICONS.sparkles} />
                     </nav>
-                )}
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                     {!isMobile && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                          <NavDropdown 
                             title="" 
                             id="profile" 
                             icon={
-                                <img 
-                                    src={allyProfile?.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${session.user.email}`} 
-                                    alt="Profile" 
-                                    style={{width: '32px', height: '32px', borderRadius: '50%', border: '2px solid var(--border-color)'}}
-                                />
+                                <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+                                    <span style={{fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-color)'}}>{allyProfile?.full_name?.split(' ')[0] || 'Perfil'}</span>
+                                    <img 
+                                        src={allyProfile?.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${session.user.email}`} 
+                                        alt="Profile" 
+                                        style={{width: '36px', height: '36px', borderRadius: '50%', border: '2px solid var(--surface-hover-color)', objectFit: 'cover'}}
+                                    />
+                                </div>
                             }
                         >
-                            <div style={{padding: '0.5rem 1rem', borderBottom: '1px solid var(--border-color)', marginBottom: '0.5rem'}}>
-                                 <p style={{margin: 0, fontWeight: 600, fontSize: '0.9rem'}}>{allyProfile?.full_name || 'Colaborador'}</p>
+                            <div style={{padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', marginBottom: '0.5rem'}}>
+                                 <p style={{margin: 0, fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-color)'}}>{allyProfile?.full_name || 'Colaborador'}</p>
                                  <p style={{margin: 0, fontSize: '0.75rem', color: 'var(--text-light)'}}>{allyProfile?.specialty}</p>
                              </div>
                              <NavItem name="Mi Perfil" pageName="profile" icon={ICONS.user} />
@@ -265,45 +268,64 @@ const AllyPortalLayout: FC<{ session: Session }> = ({ session }) => {
                                  {ICONS.logout} Cerrar Sesión
                              </div>
                         </NavDropdown>
-                     )}
-                </div>
-            </header>
-
-            {/* MOBILE MENU DRAWER */}
-            {isMobile && isMobileMenuOpen && (
-                <>
-                    <div style={{...styles.modalOverlay, zIndex: 1050, justifyContent: 'flex-start', alignItems: 'flex-start'}} onClick={() => setIsMobileMenuOpen(false)}></div>
-                    <div style={{
-                        position: 'fixed', top: 0, left: 0, bottom: 0, width: '80%', maxWidth: '300px',
-                        backgroundColor: 'var(--surface-color)', zIndex: 1100, boxShadow: '4px 0 15px rgba(0,0,0,0.1)',
-                        display: 'flex', flexDirection: 'column', animation: 'slideIn 0.3s ease-out'
-                    }}>
-                        <div style={{padding: '1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                             <h2 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--primary-color)' }}>Menú</h2>
-                             <button onClick={() => setIsMobileMenuOpen(false)} style={{background: 'none', border: 'none', fontSize: '1.5rem', color: 'var(--text-light)'}}>&times;</button>
-                        </div>
-                        <div style={{flex: 1, overflowY: 'auto', padding: '1rem'}}>
-                            <MobileNavItem name="Gestión de Referidos" pageName="referrals" icon={ICONS.transfer} />
-                            <MobileNavItem name="Mis Vínculos" pageName="partnerships" icon={ICONS.network} />
-                            <MobileNavItem name="Directorio de Clínicas" pageName="directory" icon={ICONS.clinic} />
-                            <MobileNavItem name="Directorio de Aliados" pageName="ally-directory" icon={ICONS.users} />
-                            <MobileNavItem name="Programa de Afiliados" pageName="affiliates" icon={ICONS.sparkles} />
-                        </div>
-                        <div style={{padding: '1rem', borderTop: '1px solid var(--border-color)'}}>
-                            <MobileNavItem name="Mi Perfil" pageName="profile" icon={ICONS.user} />
-                            <MobileNavItem name="Notificaciones" pageName="notifications" icon={ICONS.settings} />
-                            <div onClick={() => supabase.auth.signOut()} style={{...styles.navItem, gap: '0.75rem'}} className="nav-item-hover" role="button">
-                                {ICONS.logout}Cerrar Sesión
-                            </div>
-                        </div>
                     </div>
-                    <style>{`@keyframes slideIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }`}</style>
-                </>
+                </header>
+            )}
+
+            {/* MOBILE HEADER */}
+            {isMobile && (
+                <header style={{
+                    height: '64px',
+                    backgroundColor: 'var(--surface-color)',
+                    borderBottom: '1px solid var(--border-color)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0 1rem',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1000
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <img 
+                            src={allyProfile?.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${session.user.email}`} 
+                            alt="Profile" 
+                            style={{width: '36px', height: '36px', borderRadius: '50%', border: '1px solid var(--border-color)', objectFit: 'cover'}}
+                        />
+                        <span style={{fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-color)'}}>
+                            {view === 'referrals' ? 'Inicio' : view === 'partnerships' ? 'Vínculos' : view === 'profile' ? 'Mi Perfil' : 'Zegna'}
+                        </span>
+                    </div>
+                </header>
             )}
 
             <main style={{ flex: 1, padding: isMobile ? '1rem' : '2rem', maxWidth: '1200px', margin: '0 auto', width: '100%', overflowX: 'hidden' }}>
                 {renderContent()}
             </main>
+
+            {/* MOBILE BOTTOM NAVIGATION */}
+            {isMobile && (
+                <div style={{ height: '70px' }}> {/* Spacer */}
+                    <nav style={{
+                        position: 'fixed',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        backgroundColor: 'var(--surface-color)',
+                        borderTop: '1px solid var(--border-color)',
+                        display: 'flex',
+                        justifyContent: 'space-around',
+                        padding: '0.5rem 0',
+                        zIndex: 1000,
+                        boxShadow: '0 -4px 15px rgba(0,0,0,0.05)'
+                    }}>
+                        <BottomNavItem name="Inicio" pageName="referrals" icon={ICONS.home} />
+                        <BottomNavItem name="Vínculos" pageName="partnerships" icon={ICONS.network} />
+                        <BottomNavItem name="Explorar" pageName="directory" icon={ICONS.clinic} />
+                        <BottomNavItem name="Perfil" pageName="profile" icon={ICONS.user} />
+                    </nav>
+                </div>
+            )}
         </div>
     );
 };

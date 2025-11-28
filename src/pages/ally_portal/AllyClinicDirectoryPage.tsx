@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../supabase';
 import { styles } from '../../constants';
@@ -70,24 +71,15 @@ const AllyClinicDirectoryPage: FC = () => {
         if (rpcError) {
             setError(`Error al enviar solicitud: ${rpcError.message}`);
         } else {
-            // Optimistically update UI and send notification
+            // Optimistically update UI
             setPartnershipStatus(prev => ({ ...prev, [clinicId]: 'pending' }));
             
-            // Send notification to the clinic owner
+            // Send notification (optimistic fire-and-forget)
             try {
-                const { data: clinicData } = await supabase
-                    .from('clinics')
-                    .select('owner_id, name')
-                    .eq('id', clinicId)
-                    .single();
-                
-                const { data: allyData } = await supabase
-                    .from('allies')
-                    .select('full_name')
-                    .eq('id', allyId)
-                    .single();
+                const { data: clinicData } = await supabase.from('clinics').select('owner_id, name').eq('id', clinicId).single();
+                const { data: allyData } = await supabase.from('allies').select('full_name').eq('id', allyId).single();
 
-                if (clinicData && clinicData.owner_id && allyData) {
+                if (clinicData?.owner_id && allyData) {
                     fetch('/api/send-notification', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -96,11 +88,9 @@ const AllyClinicDirectoryPage: FC = () => {
                             title: 'Nueva Solicitud de Vínculo',
                             body: `${allyData.full_name} quiere colaborar con tu clínica ${clinicData.name}.`
                         })
-                    }).catch(err => console.error("Failed to send notification:", err));
+                    }).catch(console.error);
                 }
-            } catch (e) {
-                console.error("Could not send partnership request notification", e);
-            }
+            } catch (e) { console.error(e); }
         }
     };
     
@@ -108,23 +98,6 @@ const AllyClinicDirectoryPage: FC = () => {
         clinic.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         clinic.address?.toLowerCase().includes(searchTerm.toLowerCase())
     );
-
-    const actionButtonStyle: React.CSSProperties = {
-        background: 'none',
-        border: 'none',
-        color: 'var(--text-light)',
-        cursor: 'pointer',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '0.25rem',
-        padding: '0.5rem',
-        borderRadius: '8px',
-        flex: 1,
-        fontSize: '0.75rem',
-        textAlign: 'center',
-        lineHeight: 1.2
-    };
 
     return (
         <div className="fade-in">
@@ -135,76 +108,100 @@ const AllyClinicDirectoryPage: FC = () => {
                     clinic={viewingClinic}
                 />
             )}
-            <div style={{...styles.pageHeader, marginBottom: '0.25rem'}}>
-                <h1>Directorio de Clínicas</h1>
+            <div style={{marginBottom: '2.5rem'}}>
+                <h1 style={{ margin: '0 0 0.5rem 0', fontSize: '2rem', fontWeight: 800, letterSpacing: '-1px' }}>Directorio de Clínicas</h1>
+                <p style={{ margin: 0, color: 'var(--text-light)', maxWidth: '700px' }}>
+                    Descubre centros de salud para colaborar y ampliar tus servicios.
+                </p>
             </div>
-            <p style={{marginTop: 0, color: 'var(--text-light)', maxWidth: '800px'}}>
-                Explora las clínicas disponibles en la red. Solicita un vínculo para empezar a recibir y enviar referidos.
-            </p>
 
-            <div style={{...styles.filterBar, maxWidth: '500px'}}>
-                <div style={styles.searchInputContainer}>
+            <div style={{...styles.filterBar, maxWidth: '500px', marginBottom: '2rem', padding: 0, background: 'transparent', border: 'none', boxShadow: 'none'}}>
+                <div style={{...styles.searchInputContainer, flex: 1}}>
                     <span style={styles.searchInputIcon}>🔍</span>
-                    <input type="text" placeholder="Buscar por nombre o dirección..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={styles.searchInput} />
+                    <input 
+                        type="text" 
+                        placeholder="Buscar clínica por nombre o ubicación..." 
+                        value={searchTerm} 
+                        onChange={e => setSearchTerm(e.target.value)} 
+                        style={{...styles.searchInput, height: '50px', borderRadius: '12px', fontSize: '1rem', paddingLeft: '2.5rem'}} 
+                    />
                 </div>
             </div>
 
             {loading && <SkeletonLoader type="card" count={6} />}
             {error && <p style={styles.error}>{error}</p>}
+            
             {!loading && (
-                <div className="info-grid" style={{marginTop: '1.5rem'}}>
+                <div className="info-grid">
                     {filteredClinics.map(clinic => {
                          const status = partnershipStatus[clinic.id];
                          const isLoading = requestStatus[clinic.id] === 'loading';
                          
-                         let statusButton;
-                         switch(status) {
-                             case 'active':
-                                 statusButton = <button disabled style={{...actionButtonStyle, opacity: 0.7}}> {ICONS.check} <span>Vinculado</span> </button>;
-                                 break;
-                             case 'pending':
-                                 statusButton = <button disabled style={{...actionButtonStyle, opacity: 0.7}}> {ICONS.clock} <span>Pendiente</span> </button>;
-                                 break;
-                             case 'revoked':
-                                 statusButton = <button onClick={() => handleRequestPartnership(clinic.id)} disabled={isLoading} style={{...actionButtonStyle, color: 'var(--primary-color)'}} className="nav-item-hover"> {isLoading ? ICONS.clock : ICONS.add} <span>Re-solicitar</span> </button>;
-                                 break;
-                             default:
-                                 statusButton = <button onClick={() => handleRequestPartnership(clinic.id)} disabled={isLoading} style={{...actionButtonStyle, color: 'var(--primary-color)'}} className="nav-item-hover"> {isLoading ? ICONS.clock : ICONS.network} <span>Vincular</span> </button>;
+                         let statusIndicator = null;
+                         let actionButton = null;
+
+                         if (status === 'active') {
+                             statusIndicator = <span style={{color: '#10B981', fontWeight: 700, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px'}}>{ICONS.check} Vinculado</span>;
+                             actionButton = <button onClick={() => setViewingClinic(clinic)} style={{flex: 1, padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', fontWeight: 600}}>Ver Detalles</button>;
+                         } else if (status === 'pending') {
+                             statusIndicator = <span style={{color: '#EAB308', fontWeight: 700, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px'}}>⏳ Pendiente</span>;
+                             actionButton = <button disabled style={{flex: 1, padding: '0.6rem', borderRadius: '8px', border: 'none', backgroundColor: 'var(--surface-hover-color)', color: 'var(--text-light)', cursor: 'default'}}>Solicitud Enviada</button>;
+                         } else {
+                             // None or Revoked
+                             actionButton = (
+                                 <button 
+                                    onClick={() => handleRequestPartnership(clinic.id)} 
+                                    disabled={isLoading}
+                                    className="button-primary"
+                                    style={{flex: 1, padding: '0.6rem', fontSize: '0.9rem'}}
+                                 >
+                                    {isLoading ? 'Enviando...' : 'Conectar'}
+                                 </button>
+                             );
                          }
 
                         return (
-                            <div key={clinic.id} className="info-card" style={{display: 'flex', flexDirection: 'column', alignItems: 'stretch', padding: 0}}>
-                                <div style={{padding: '1rem', flex: 1}}>
-                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                            <div key={clinic.id} className="card-hover" style={{
+                                backgroundColor: 'var(--surface-color)', borderRadius: '16px', border: '1px solid var(--border-color)',
+                                display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: 'var(--shadow)'
+                            }}>
+                                <div style={{padding: '1.5rem', flex: 1}}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                                         <img 
                                             src={clinic.logo_url || `https://api.dicebear.com/8.x/initials/svg?seed=${clinic.name?.charAt(0) || 'C'}&radius=50`} 
                                             alt="logo" 
-                                            style={{width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0}} 
+                                            style={{width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', border: '4px solid var(--surface-hover-color)'}} 
                                         />
-                                        <div style={{flex: 1, minWidth: 0, overflow: 'hidden'}}>
-                                            <h4 style={{ margin: 0, color: 'var(--primary-color)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{clinic.name}</h4>
-                                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.9rem', color: 'var(--text-light)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{clinic.address}</p>
-                                        </div>
+                                        {statusIndicator}
                                     </div>
-                                    {(clinic.phone_number || clinic.email || clinic.website) && (
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)', fontSize: '0.9rem', color: 'var(--text-light)' }}>
-                                            {clinic.phone_number && <span style={{display: 'flex', alignItems: 'center', gap: '0.35rem'}}>{ICONS.phone}{clinic.phone_number}</span>}
-                                            {clinic.email && <a href={`mailto:${clinic.email}`} style={{...styles.link, display: 'flex', alignItems: 'center', gap: '0.35rem'}}>{ICONS.send}{clinic.email}</a>}
-                                            {clinic.website && <a href={clinic.website} target="_blank" rel="noopener noreferrer" style={{...styles.link, display: 'flex', alignItems: 'center', gap: '0.35rem'}}>{ICONS.link}Sitio Web</a>}
+                                    
+                                    <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-color)', lineHeight: 1.2 }}>{clinic.name}</h4>
+                                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-light)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.5 }}>
+                                        {clinic.address || 'Ubicación no disponible'}
+                                    </p>
+                                    
+                                    {(clinic.phone_number || clinic.website) && (
+                                        <div style={{marginTop: '1rem', display: 'flex', gap: '1rem', fontSize: '0.85rem', color: 'var(--primary-color)'}}>
+                                            {clinic.website && <span style={{display: 'flex', alignItems: 'center', gap: '4px'}}>{ICONS.link} Web</span>}
+                                            {clinic.phone_number && <span style={{display: 'flex', alignItems: 'center', gap: '4px'}}>{ICONS.phone} Tel</span>}
                                         </div>
                                     )}
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-around', padding: '0.5rem', borderTop: '1px solid var(--border-color)', gap: '0.5rem' }}>
-                                    {statusButton}
-                                    <button onClick={() => setViewingClinic(clinic)} style={actionButtonStyle} className="nav-item-hover">
-                                        {ICONS.details}
-                                        <span>Detalles</span>
+                                
+                                <div style={{ padding: '1rem', backgroundColor: 'var(--surface-hover-color)', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '0.75rem' }}>
+                                    <button onClick={() => setViewingClinic(clinic)} style={{padding: '0.6rem', borderRadius: '8px', border: 'none', background: 'transparent', color: 'var(--text-color)', fontWeight: 600, cursor: 'pointer'}}>
+                                        Info
                                     </button>
+                                    {actionButton}
                                 </div>
                             </div>
                         )
                     })}
-                    {filteredClinics.length === 0 && <p>No se encontraron clínicas con ese criterio de búsqueda.</p>}
+                    {filteredClinics.length === 0 && (
+                        <div style={{gridColumn: '1 / -1', textAlign: 'center', padding: '4rem', color: 'var(--text-light)', border: '2px dashed var(--border-color)', borderRadius: '16px'}}>
+                            <p style={{fontSize: '1.1rem'}}>No se encontraron clínicas.</p>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

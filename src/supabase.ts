@@ -33,194 +33,100 @@ export const supabase = supabaseClient as ReturnType<typeof createClient<Databas
 
 /*
 -- =================================================================
--- V25.0 SCRIPT DE MIGRACIÓN (Análisis de Progreso para IA)
--- Crea una función para obtener historial clínico y comparar progreso.
+-- V26.0 SCRIPT DE CORRECCIÓN (Registro de Aliados)
+-- Corrige el trigger handle_new_user_setup para incluir el campo obligatorio 'specialty'.
+-- POR FAVOR, EJECUTA ESTE SCRIPT EN TU EDITOR SQL DE SUPABASE.
 -- =================================================================
 BEGIN;
 
-CREATE OR REPLACE FUNCTION public.get_patient_progress(p_person_id uuid)
-RETURNS json
+CREATE OR REPLACE FUNCTION public.handle_new_user_setup()
+RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
 AS $$
 DECLARE
-    history_records json;
-    gamification_record RECORD;
-    adherence_stats json;
-    result json;
+  meta_data jsonb := new.raw_user_meta_data;
+  ally_profile_id uuid;
 BEGIN
-    -- 1. Get Consultation History (Weight, BMI, Labs) - Last 10 records ordered chronologically
-    SELECT json_agg(row_to_json(t))
-    INTO history_records
-    FROM (
-        SELECT 
-            c.consultation_date,
-            c.weight_kg,
-            c.imc,
-            c.ta,
-            l.glucose_mg_dl,
-            l.cholesterol_mg_dl,
-            l.triglycerides_mg_dl,
-            l.hba1c
-        FROM public.consultations c
-        LEFT JOIN public.lab_results l ON l.consultation_id = c.id
-        WHERE c.person_id = p_person_id
-        ORDER BY c.consultation_date ASC
-        LIMIT 10
-    ) t;
+  -- CASO 1: Inscripción de Aliado (Colaborador)
+  IF (meta_data->>'is_ally_signup')::boolean IS TRUE THEN
+    SELECT id INTO ally_profile_id
+    FROM public.allies
+    WHERE contact_email = new.email AND user_id IS NULL;
 
-    -- 2. Get Gamification Stats
-    SELECT gamification_points, gamification_rank INTO gamification_record
-    FROM public.persons WHERE id = p_person_id;
-
-    -- 3. Calculate Adherence (Last 30 days)
-    SELECT json_build_object(
-        'diet_logs_total', COUNT(d.id),
-        'diet_logs_completed', COUNT(d.id) FILTER (WHERE d.completed = true),
-        'exercise_logs_total', COUNT(e.id),
-        'exercise_logs_completed', COUNT(e.id) FILTER (WHERE e.completed = true)
-    ) INTO adherence_stats
-    FROM public.persons p
-    LEFT JOIN public.diet_logs d ON d.person_id = p.id AND d.log_date >= (CURRENT_DATE - INTERVAL '30 days')
-    LEFT JOIN public.exercise_logs e ON e.person_id = p.id AND e.log_date >= (CURRENT_DATE - INTERVAL '30 days')
-    WHERE p.id = p_person_id
-    GROUP BY p.id;
-
-    -- 4. Construct Result
-    result := json_build_object(
-        'history', COALESCE(history_records, '[]'::json),
-        'gamification', json_build_object(
-            'points', gamification_record.gamification_points,
-            'rank', gamification_record.gamification_rank
-        ),
-        'last_30_days_adherence', adherence_stats
-    );
-
-    RETURN result;
-END;
-$$;
-
-COMMIT;
--- =================================================================
--- Fin del Script de Migración V25.0
--- =================================================================
-
-
--- =================================================================
--- V24.0 SCRIPT DE MIGRACIÓN (Contexto Clínico Completo + Citas)
--- Actualiza la función 'get_my_data_for_ai' para incluir:
--- 1. Alergias, historial médico y hábitos.
--- 2. Lista de próximas citas programadas.
--- =================================================================
-BEGIN;
-
-CREATE OR REPLACE FUNCTION public.get_my_data_for_ai(p_person_id uuid, day_offset integer DEFAULT 0)
-RETURNS json
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    target_date DATE;
-    diet_record RECORD;
-    exercise_record RECORD;
-    person_record RECORD;
-    allergies_record json;
-    history_record json;
-    habits_record RECORD;
-    appointments_record json;
-    plan_status TEXT;
-    result json;
-BEGIN
-    target_date := (now() + (day_offset || ' days')::interval)::date;
-
-    -- 1. Get Basic Person Info
-    SELECT full_name, health_goal, subscription_end_date INTO person_record
-    FROM public.persons WHERE id = p_person_id;
-    
-    -- 2. Get Allergies (Aggregated)
-    SELECT json_agg(json_build_object('substance', substance, 'severity', severity)) 
-    INTO allergies_record
-    FROM public.allergies_intolerances WHERE person_id = p_person_id;
-
-    -- 3. Get Medical History (Aggregated)
-    SELECT json_agg(json_build_object('condition', condition))
-    INTO history_record
-    FROM public.medical_history WHERE person_id = p_person_id;
-    
-    -- 4. Get Lifestyle Habits
-    SELECT * INTO habits_record FROM public.lifestyle_habits WHERE person_id = p_person_id;
-
-    -- 5. Get Upcoming Appointments (Next 3 scheduled)
-    SELECT json_agg(json_build_object('date', start_time, 'title', title))
-    INTO appointments_record
-    FROM (
-        SELECT start_time, title 
-        FROM public.appointments 
-        WHERE person_id = p_person_id 
-          AND status = 'scheduled' 
-          AND start_time > now()
-        ORDER BY start_time ASC
-        LIMIT 3
-    ) AS sub;
-
-    -- 6. Determine Plan Status
-    IF person_record.subscription_end_date IS NULL OR person_record.subscription_end_date < CURRENT_DATE THEN
-        plan_status := 'inactive';
+    IF ally_profile_id IS NOT NULL THEN
+      -- Si el perfil ya existía (por invitación), lo actualizamos y vinculamos
+      UPDATE public.allies
+      SET user_id = new.id,
+          full_name = COALESCE((meta_data->>'full_name'), full_name),
+          -- Actualizamos especialidad si viene en metadatos
+          specialty = COALESCE((meta_data->>'specialty'), specialty)
+      WHERE id = ally_profile_id;
     ELSE
-        plan_status := 'active';
+      -- Si es un registro nuevo directo
+      -- FIX: Incluimos 'specialty' que es NOT NULL en la tabla
+      INSERT INTO public.allies (user_id, contact_email, full_name, specialty)
+      VALUES (
+          new.id, 
+          new.email, 
+          COALESCE((meta_data->>'full_name'), 'Usuario'),
+          COALESCE((meta_data->>'specialty'), 'General') -- Valor por defecto para evitar errores
+      );
     END IF;
 
-    -- 7. Get Diet for Target Date
-    SELECT * INTO diet_record FROM public.diet_logs
-    WHERE person_id = p_person_id AND log_date = target_date
-    LIMIT 1;
+  -- CASO 2: Invitación de Miembro de la Clínica
+  ELSIF meta_data->>'role' IS NOT NULL AND meta_data->>'clinic_id' IS NOT NULL THEN
+    INSERT INTO public.clinic_members (user_id, clinic_id, role)
+    VALUES (new.id, (meta_data->>'clinic_id')::uuid, (meta_data->>'role')::text);
+  
+  END IF;
 
-    -- 8. Get Exercise for Target Date
-    SELECT * INTO exercise_record FROM public.exercise_logs
-    WHERE person_id = p_person_id AND log_date = target_date
-    LIMIT 1;
-
-    -- 9. Construct JSON Result
-    result := json_build_object(
-        'profile', json_build_object(
-            'name', person_record.full_name,
-            'health_goal', person_record.health_goal,
-            'plan_status', plan_status,
-            'subscription_end', person_record.subscription_end_date
-        ),
-        'clinical_context', json_build_object(
-             'allergies', COALESCE(allergies_record, '[]'::json),
-             'conditions', COALESCE(history_record, '[]'::json),
-             'habits', json_build_object(
-                'smokes', habits_record.smokes,
-                'alcohol', habits_record.alcohol_frequency
-             )
-        ),
-        'upcoming_appointments', COALESCE(appointments_record, '[]'::json),
-        'target_date', target_date,
-        'diet_plan', CASE WHEN diet_record.id IS NULL THEN NULL ELSE json_build_object(
-            'breakfast', diet_record.desayuno,
-            'snack1', diet_record.colacion_1,
-            'lunch', diet_record.comida,
-            'snack2', diet_record.colacion_2,
-            'dinner', diet_record.cena,
-            'completed', diet_record.completed
-        ) END,
-        'exercise_plan', CASE WHEN exercise_record.id IS NULL THEN NULL ELSE json_build_object(
-            'focus', exercise_record.enfoque,
-            'exercises', exercise_record.ejercicios,
-            'completed', exercise_record.completed
-        ) END
-    );
-
-    RETURN result;
+  RETURN new;
 END;
 $$;
 
 COMMIT;
 -- =================================================================
--- Fin del Script de Migración V24.0
+-- Fin del Script de Corrección V26.0
+-- =================================================================
+
+-- =================================================================
+-- SCRIPT PARA CAPTURA DE FEEDBACK BETA (Temporal)
+-- POR FAVOR, EJECUTA ESTE SCRIPT EN TU EDITOR SQL DE SUPABASE.
+-- =================================================================
+BEGIN;
+
+-- 1. Crear la tabla 'beta_feedback'
+CREATE TABLE IF NOT EXISTS public.beta_feedback (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE SET NULL,
+    clinic_id uuid REFERENCES public.clinics(id) ON DELETE SET NULL,
+    feedback_type text NOT NULL,
+    message text NOT NULL,
+    contact_allowed boolean DEFAULT false NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+COMMENT ON TABLE public.beta_feedback IS 'Tabla temporal para recolectar feedback de usuarios beta.';
+
+-- 2. Habilitar RLS
+ALTER TABLE public.beta_feedback ENABLE ROW LEVEL SECURITY;
+
+-- 3. Crear Políticas de RLS
+-- Los usuarios autenticados pueden insertar su propio feedback.
+DROP POLICY IF EXISTS "Los usuarios pueden enviar su propio feedback" ON public.beta_feedback;
+CREATE POLICY "Los usuarios pueden enviar su propio feedback"
+ON public.beta_feedback FOR INSERT
+WITH CHECK (auth.uid() = user_id);
+
+-- Los usuarios pueden ver su propio feedback (opcional, pero buena práctica).
+DROP POLICY IF EXISTS "Los usuarios pueden ver su propio feedback" ON public.beta_feedback;
+CREATE POLICY "Los usuarios pueden ver su propio feedback"
+ON public.beta_feedback FOR SELECT
+USING (auth.uid() = user_id);
+
+
+COMMIT;
+-- =================================================================
+-- Fin del Script de Feedback
 -- =================================================================
 */

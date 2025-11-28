@@ -1,4 +1,5 @@
-import React, { FC, useState, useEffect, useCallback } from 'react';
+
+import React, { FC, useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../../supabase';
 import { styles } from '../../constants';
 import { ICONS } from '../AuthPage';
@@ -17,14 +18,6 @@ const calculateAge = (birthDate: string | null | undefined): string => {
     }
     return `${age} años`;
 };
-
-const actionButtonStyle: React.CSSProperties = {
-    background: 'none', border: 'none', color: 'var(--text-light)', cursor: 'pointer',
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem',
-    padding: '0.5rem', borderRadius: '8px', flex: 1, fontSize: '0.75rem',
-    textAlign: 'center', lineHeight: 1.2
-};
-
 
 const AllyReferralsPage: FC = () => {
     const [referrals, setReferrals] = useState<PopulatedReferral[]>([]);
@@ -50,34 +43,34 @@ const AllyReferralsPage: FC = () => {
             const { data: allyIdData, error: allyIdError } = await supabase.rpc('get_ally_id_for_current_user');
             if(allyIdError) throw allyIdError;
 
-            let query;
-            if (viewType === 'received') {
-                query = supabase
-                    .from('referrals')
-                    .select('*, sending_clinic:clinics!referrals_sending_clinic_id_fkey(name), sending_ally:allies!referrals_sending_ally_id_fkey(full_name, specialty), persons!referrals_person_id_fkey(*)')
-                    .eq('receiving_ally_id', allyIdData);
-            } else { // 'sent'
-                 query = supabase
-                    .from('referrals')
-                    .select('*, receiving_clinic:clinics!referrals_receiving_clinic_id_fkey(name), receiving_ally:allies!referrals_receiving_ally_id_fkey(full_name, specialty), persons!referrals_person_id_fkey(*)')
-                    .eq('sending_ally_id', allyIdData);
-            }
+            // Fetch both types to calculate stats
+            const [receivedRes, sentRes] = await Promise.all([
+                supabase.from('referrals')
+                .select('*, sending_clinic:clinics!referrals_sending_clinic_id_fkey(name), sending_ally:allies!referrals_sending_ally_id_fkey(full_name, specialty), persons!referrals_person_id_fkey(*)')
+                .eq('receiving_ally_id', allyIdData)
+                .order('created_at', { ascending: false }),
+                
+                supabase.from('referrals')
+                .select('*, receiving_clinic:clinics!referrals_receiving_clinic_id_fkey(name), receiving_ally:allies!referrals_receiving_ally_id_fkey(full_name, specialty), persons!referrals_person_id_fkey(*)')
+                .eq('sending_ally_id', allyIdData)
+                .order('created_at', { ascending: false })
+            ]);
 
-            query = query.order('created_at', { ascending: false });
+            if (receivedRes.error) throw receivedRes.error;
+            if (sentRes.error) throw sentRes.error;
+
+            const receivedData = receivedRes.data as PopulatedReferral[];
+            const sentData = sentRes.data as PopulatedReferral[];
             
-            if (debouncedSearchTerm) {
-                query = query.ilike('patient_info->>name', `%${debouncedSearchTerm}%`);
-            }
+            // We store all data but filter in render or derived state based on viewType
+            setReferrals(viewType === 'received' ? receivedData : sentData);
             
-            const { data, error } = await query;
-            if (error) throw error;
-            setReferrals(data as PopulatedReferral[]);
         } catch (err: any) {
             setError(err.message);
         } finally {
             setLoading(false);
         }
-    }, [debouncedSearchTerm, viewType]);
+    }, [viewType]); // Re-fetch when view type changes to keep logic simple
 
     useEffect(() => {
         fetchReferrals();
@@ -95,7 +88,6 @@ const AllyReferralsPage: FC = () => {
         if (error) {
             setError(`Error al actualizar: ${error.message}`);
         }
-        // Data will refresh via realtime subscription
     };
     
     const handleDeleteReferral = async () => {
@@ -105,19 +97,83 @@ const AllyReferralsPage: FC = () => {
             setError(`Error al eliminar: ${error.message}`);
         }
         setReferralToDelete(null);
-        // data will refetch via subscription
     };
 
-    const filteredReferrals = referrals.filter(r => r.status === activeStatusTab);
+    const filteredReferrals = useMemo(() => {
+        return referrals.filter(r => {
+            const matchesStatus = r.status === activeStatusTab;
+            const patientInfo = r.patient_info as any;
+            const matchesSearch = !debouncedSearchTerm || (patientInfo?.name?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()));
+            return matchesStatus && matchesSearch;
+        });
+    }, [referrals, activeStatusTab, debouncedSearchTerm]);
     
-    const renderReferralsList = (referralsToRender: PopulatedReferral[]) => {
-        if (loading) return <SkeletonLoader type="card" count={4} />;
+    const stats = useMemo(() => {
+        const pendingCount = referrals.filter(r => r.status === 'pending').length;
+        const acceptedCount = referrals.filter(r => r.status === 'accepted').length;
+        return { pendingCount, acceptedCount };
+    }, [referrals]);
+
+    const StatWidget: FC<{ label: string; value: number; icon: string; color: string }> = ({ label, value, icon, color }) => (
+        <div style={{
+            backgroundColor: 'var(--surface-color)',
+            padding: '1.25rem',
+            borderRadius: '16px',
+            border: '1px solid var(--border-color)',
+            boxShadow: 'var(--shadow)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem',
+            flex: 1
+        }}>
+            <div style={{
+                width: '48px', height: '48px', borderRadius: '12px', 
+                backgroundColor: `${color}20`, color: color,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem'
+            }}>
+                {icon}
+            </div>
+            <div>
+                <div style={{ fontSize: '1.8rem', fontWeight: 800, lineHeight: 1, color: 'var(--text-color)' }}>{value}</div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-light)', fontWeight: 500 }}>{label}</div>
+            </div>
+        </div>
+    );
+
+    const TabButton = ({ id, label }: { id: string, label: string }) => (
+        <button
+            onClick={() => setActiveStatusTab(id as any)}
+            style={{
+                flex: 1,
+                padding: '0.75rem',
+                borderRadius: '10px',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '0.9rem',
+                backgroundColor: activeStatusTab === id ? 'var(--surface-color)' : 'transparent',
+                color: activeStatusTab === id ? 'var(--primary-color)' : 'var(--text-light)',
+                boxShadow: activeStatusTab === id ? '0 2px 8px rgba(0,0,0,0.05)' : 'none',
+                transition: 'all 0.2s ease'
+            }}
+        >
+            {label}
+        </button>
+    );
+
+    const renderReferralsList = () => {
+        if (loading) return <SkeletonLoader type="card" count={3} />;
         if (error) return <p style={styles.error}>{error}</p>;
-        if (referralsToRender.length === 0) return <p>No hay referidos en esta categoría.</p>;
+        if (filteredReferrals.length === 0) return (
+            <div style={{textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--border-color)', borderRadius: '16px', color: 'var(--text-light)'}}>
+                <div style={{fontSize: '3rem', marginBottom: '1rem', opacity: 0.5}}>📭</div>
+                <p>No hay referidos {activeStatusTab === 'pending' ? 'pendientes' : activeStatusTab === 'accepted' ? 'aceptados' : 'rechazados'}.</p>
+            </div>
+        );
 
         return (
-            <div className="info-grid">
-                {referralsToRender.map(r => {
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                {filteredReferrals.map(r => {
                     const patientInfo = r.patient_info as any;
                     const personData = r.persons;
                     
@@ -133,55 +189,67 @@ const AllyReferralsPage: FC = () => {
                     }
 
                     const age = patientInfo?.age || (personData?.birth_date ? calculateAge(personData.birth_date) : 'N/A');
-                    const gender = patientInfo?.gender || (personData?.gender === 'male' ? 'Hombre' : personData?.gender === 'female' ? 'Mujer' : 'N/A');
-                    const healthGoal = patientInfo?.health_goal || personData?.health_goal || 'No especificado';
-                    const lastWeight = patientInfo?.last_weight;
-                    const lastImc = patientInfo?.last_imc;
-
+                    
                     return (
-                        <div key={r.id} className="info-card" style={{ display: 'flex', flexDirection: 'column', padding: 0, alignItems: 'stretch' }}>
-                            <div style={{ padding: '1rem', flex: 1 }}>
-                                <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--primary-color)' }}>{patientInfo.name}</h4>
-                                <p style={{ margin: '0.25rem 0' }}><strong>Tel:</strong> {patientInfo.phone || personData?.phone_number || '-'}</p>
-                                <p style={{ margin: '0.25rem 0 0.75rem 0' }}><strong>{viewType === 'received' ? 'Referido por:' : 'Referido a:'}</strong> {partnerName} ({partnerType})</p>
-                                
-                                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
-                                    <h5 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--text-light)', fontWeight: 600 }}>Motivo del Referido</h5>
-                                    <p style={{ margin: 0, fontSize: '0.9rem' }}><em>{r.notes || 'Sin notas.'}</em></p>
+                        <div key={r.id} className="card-hover" style={{
+                            backgroundColor: 'var(--surface-color)',
+                            borderRadius: '16px',
+                            border: '1px solid var(--border-color)',
+                            overflow: 'hidden',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            boxShadow: 'var(--shadow)'
+                        }}>
+                            <div style={{ padding: '1.25rem', flex: 1 }}>
+                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem'}}>
+                                    <span style={{
+                                        fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px',
+                                        color: 'var(--primary-color)', backgroundColor: 'var(--primary-light)', padding: '2px 8px', borderRadius: '4px'
+                                    }}>
+                                        {viewType === 'received' ? 'Entrante' : 'Saliente'}
+                                    </span>
+                                    <span style={{fontSize: '0.8rem', color: 'var(--text-light)'}}>{new Date(r.created_at).toLocaleDateString()}</span>
                                 </div>
                                 
-                                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
-                                    <h5 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--text-light)', fontWeight: 600 }}>Contexto Clínico</h5>
-                                    <p style={{ margin: '0.25rem 0', fontSize: '0.9rem' }}><strong>Edad:</strong> {age}</p>
-                                    <p style={{ margin: '0.25rem 0', fontSize: '0.9rem' }}><strong>Género:</strong> {gender}</p>
-                                    <p style={{ margin: '0.25rem 0', fontSize: '0.9rem' }}><strong>Objetivo:</strong> {healthGoal}</p>
-                                    <p style={{ margin: '0.25rem 0', fontSize: '0.9rem' }}><strong>Último Peso:</strong> {lastWeight ? `${lastWeight} kg` : 'N/A'}</p>
-                                    <p style={{ margin: '0.25rem 0', fontSize: '0.9rem' }}><strong>Último IMC:</strong> {lastImc || 'N/A'}</p>
+                                <h4 style={{ margin: '0 0 0.25rem 0', fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-color)' }}>
+                                    {patientInfo.name}
+                                </h4>
+                                <p style={{margin: 0, fontSize: '0.9rem', color: 'var(--text-light)'}}>
+                                    {age} • {patientInfo.gender || 'N/A'} • {patientInfo.phone || personData?.phone_number || '-'}
+                                </p>
+
+                                <div style={{marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)'}}>
+                                    <p style={{fontSize: '0.85rem', color: 'var(--text-light)', margin: '0 0 0.25rem 0'}}>
+                                        {viewType === 'received' ? 'Referido por:' : 'Enviado a:'}
+                                    </p>
+                                    <p style={{margin: 0, fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-color)'}}>
+                                        {partnerName} <span style={{fontWeight: 400, color: 'var(--text-light)'}}>({partnerType})</span>
+                                    </p>
                                 </div>
+                                
+                                {r.notes && (
+                                    <div style={{marginTop: '1rem', backgroundColor: 'var(--surface-hover-color)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.9rem', fontStyle: 'italic'}}>
+                                        "{r.notes}"
+                                    </div>
+                                )}
                             </div>
                             
-                            {( (viewType === 'received' && activeStatusTab === 'pending') || (viewType === 'sent' && activeStatusTab === 'pending') ) && (
-                                <div style={{ display: 'flex', justifyContent: 'space-around', padding: '0.5rem', borderTop: '1px solid var(--border-color)', gap: '0.25rem' }}>
-                                    {viewType === 'received' && activeStatusTab === 'pending' && (
-                                        <>
-                                            <button onClick={() => handleStatusUpdate(r.id, 'accepted')} style={{...actionButtonStyle, color: 'var(--primary-color)'}} className="nav-item-hover">
-                                                {ICONS.check}
-                                                <span>Aceptar</span>
-                                            </button>
-                                            <button onClick={() => handleStatusUpdate(r.id, 'rejected')} style={{...actionButtonStyle, color: 'var(--error-color)'}} className="nav-item-hover">
-                                                {ICONS.close}
-                                                <span>Rechazar</span>
-                                            </button>
-                                        </>
-                                    )}
-                                    {viewType === 'sent' && activeStatusTab === 'pending' && (
-                                        <button onClick={(e) => { e.stopPropagation(); setReferralToDelete(r); }} style={{...actionButtonStyle, color: 'var(--error-color)'}} className="nav-item-hover">
-                                            {ICONS.delete}
-                                            <span>Cancelar Envío</span>
+                            <div style={{ padding: '1rem', backgroundColor: 'var(--surface-hover-color)', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '0.75rem' }}>
+                                {viewType === 'received' && activeStatusTab === 'pending' ? (
+                                    <>
+                                        <button onClick={() => handleStatusUpdate(r.id, 'accepted')} className="button-primary" style={{flex: 1, justifyContent: 'center', fontSize: '0.9rem'}}>
+                                            {ICONS.check} Aceptar
                                         </button>
-                                    )}
-                                </div>
-                            )}
+                                        <button onClick={() => handleStatusUpdate(r.id, 'rejected')} style={{flex: 1, border: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', color: 'var(--error-color)', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'}}>
+                                            {ICONS.close} Rechazar
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button onClick={(e) => { e.stopPropagation(); setReferralToDelete(r); }} style={{width: '100%', padding: '0.6rem', border: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', color: 'var(--text-light)', borderRadius: '8px', cursor: 'pointer', fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'}}>
+                                        {ICONS.delete} Eliminar
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     );
                 })}
@@ -197,33 +265,77 @@ const AllyReferralsPage: FC = () => {
                     onClose={() => setReferralToDelete(null)}
                     onConfirm={handleDeleteReferral}
                     title="Confirmar Acción"
-                    message={<p>¿Estás seguro de que quieres {viewType === 'sent' ? 'cancelar el envío de' : 'eliminar'} este referido? Esta acción no se puede deshacer.</p>}
+                    message={<p>¿Estás seguro de que quieres eliminar este registro de referido?</p>}
                 />
             )}
-            <div style={styles.pageHeader}>
-                <h1>Gestión de Referidos</h1>
+            
+            {/* Header Section */}
+            <div style={{marginBottom: '2rem'}}>
+                <h1 style={{ margin: '0 0 0.5rem 0', fontSize: '2rem', fontWeight: 800, letterSpacing: '-1px' }}>
+                    Dashboard
+                </h1>
+                <p style={{ margin: 0, color: 'var(--text-light)' }}>
+                    Resumen de tu actividad de referencias y colaboración.
+                </p>
             </div>
             
-            <nav className="tabs">
-                <button className={`tab-button ${viewType === 'received' ? 'active' : ''}`} onClick={() => setViewType('received')}>Recibidos</button>
-                <button className={`tab-button ${viewType === 'sent' ? 'active' : ''}`} onClick={() => setViewType('sent')}>Enviados</button>
-            </nav>
-            
-            <div style={{ marginTop: '1.5rem', backgroundColor: 'var(--surface-color)', borderRadius: '12px', padding: '1.5rem' }}>
-                <nav className="sub-tabs" style={{marginTop: 0, marginBottom: '1.5rem'}}>
-                    <button className={`sub-tab-button ${activeStatusTab === 'pending' ? 'active' : ''}`} onClick={() => setActiveStatusTab('pending')}>Pendientes</button>
-                    <button className={`sub-tab-button ${activeStatusTab === 'accepted' ? 'active' : ''}`} onClick={() => setActiveStatusTab('accepted')}>Aceptados</button>
-                    <button className={`sub-tab-button ${activeStatusTab === 'rejected' ? 'active' : ''}`} onClick={() => setActiveStatusTab('rejected')}>Rechazados</button>
-                </nav>
+            {/* Stats Overview */}
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '2.5rem', flexWrap: 'wrap' }}>
+                <StatWidget label="Pendientes" value={stats.pendingCount} icon="⏳" color="#EAB308" />
+                <StatWidget label="Aceptados" value={stats.acceptedCount} icon="✅" color="#10B981" />
+            </div>
 
-                <div style={{...styles.filterBar, marginBottom: '1.5rem'}}>
-                    <div style={styles.searchInputContainer}>
+            {/* Main Content Area */}
+            <div style={{display: 'flex', flexDirection: 'column', gap: '1.5rem'}}>
+                {/* Controls Row */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div style={{ display: 'flex', backgroundColor: 'var(--surface-hover-color)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                        <button 
+                            onClick={() => setViewType('received')}
+                            style={{
+                                padding: '0.5rem 1.5rem', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem',
+                                backgroundColor: viewType === 'received' ? 'var(--surface-color)' : 'transparent',
+                                color: viewType === 'received' ? 'var(--primary-color)' : 'var(--text-light)',
+                                boxShadow: viewType === 'received' ? '0 2px 5px rgba(0,0,0,0.05)' : 'none',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            Recibidos
+                        </button>
+                        <button 
+                            onClick={() => setViewType('sent')}
+                            style={{
+                                padding: '0.5rem 1.5rem', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem',
+                                backgroundColor: viewType === 'sent' ? 'var(--surface-color)' : 'transparent',
+                                color: viewType === 'sent' ? 'var(--primary-color)' : 'var(--text-light)',
+                                boxShadow: viewType === 'sent' ? '0 2px 5px rgba(0,0,0,0.05)' : 'none',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            Enviados
+                        </button>
+                    </div>
+                    
+                    <div style={{...styles.searchInputContainer, margin: 0, maxWidth: '300px'}}>
                         <span style={styles.searchInputIcon}>🔍</span>
-                        <input type="text" placeholder="Buscar por paciente..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={styles.searchInput} />
+                        <input 
+                            type="text" 
+                            placeholder="Buscar paciente..." 
+                            value={searchTerm} 
+                            onChange={e => setSearchTerm(e.target.value)} 
+                            style={{...styles.searchInput, backgroundColor: 'var(--surface-color)', height: '42px'}} 
+                        />
                     </div>
                 </div>
                 
-                {renderReferralsList(filteredReferrals)}
+                {/* Status Tabs */}
+                <div style={{ backgroundColor: 'var(--surface-hover-color)', padding: '4px', borderRadius: '12px', display: 'flex', gap: '4px', maxWidth: '400px' }}>
+                    <TabButton id="pending" label="Pendientes" />
+                    <TabButton id="accepted" label="Aceptados" />
+                    <TabButton id="rejected" label="Rechazados" />
+                </div>
+
+                {renderReferralsList()}
             </div>
         </div>
     );
