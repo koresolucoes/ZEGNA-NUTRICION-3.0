@@ -13,6 +13,7 @@ import AllyNotificationsPage from '../../pages/ally_portal/AllyNotificationsPage
 import AllyDirectoryPage from '../../pages/ally_portal/AllyDirectoryPage';
 import { useThemeManager } from '../../contexts/ThemeContext';
 import AffiliatesPage from '../../pages/AffiliatesPage';
+import AllyNotificationsMenu from './AllyNotificationsMenu';
 
 const AllyPortalLayout: FC<{ session: Session }> = ({ session }) => {
     const [view, setView] = useState('referrals');
@@ -242,6 +243,9 @@ const AllyPortalLayout: FC<{ session: Session }> = ({ session }) => {
                     </nav>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                         {/* Added Notifications Menu */}
+                         <AllyNotificationsMenu onNavigate={navigate} />
+                         
                          <NavDropdown 
                             title="" 
                             id="profile" 
@@ -293,6 +297,8 @@ const AllyPortalLayout: FC<{ session: Session }> = ({ session }) => {
                             {view === 'referrals' ? 'Inicio' : view === 'partnerships' ? 'Vínculos' : view === 'profile' ? 'Configuración' : 'Zegna'}
                         </span>
                     </div>
+                    {/* Added Notifications Menu Mobile */}
+                    <AllyNotificationsMenu onNavigate={navigate} />
                 </header>
             )}
 
