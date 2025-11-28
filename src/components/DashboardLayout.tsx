@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, FC, useCallback } from 'react';
-import type { Session } from '@supabase/supabase-js';
+import React, { useState, useEffect, FC, useCallback, useMemo } from 'react';
+import { Session, User } from '@supabase/supabase-js';
 import { styles } from '../constants';
 import { ICONS } from '../pages/AuthPage';
 import { supabase } from '../supabase';
@@ -26,10 +26,10 @@ import QuickConsultationModal from './shared/QuickConsultationModal';
 import FloatingActionButton from './FloatingActionButton';
 import AgendaPage from '../pages/AgendaPage';
 import WaitingQueuePage from '../pages/WaitingQueuePage';
-import PersonDetailPage from '../pages/PersonDetailPage';
+import PersonDetailPage from '../pages/PersonDetailPage'; // Import the new unified component
 import ClinicNetworkPage from '../pages/ClinicNetworkPage';
 import ChatPage from '../pages/ChatPage';
-import FinanzasPage from '../pages/FinanzasPage';
+import FinanzasPage from '../pages/FinanzasPage'; // Import the new finance page
 import ClinicSettingsPage from '../pages/ClinicSettingsPage';
 import ServiceManagement from '../components/dashboard/ServiceManagement';
 import ServicePlansManagement from '../components/dashboard/ServicePlansManagement';
@@ -38,9 +38,7 @@ import FiscalApiManagement from '../components/dashboard/FiscalApiManagement';
 import SubscriptionPage from '../pages/SubscriptionPage';
 import AffiliatesPage from '../pages/AffiliatesPage';
 import BetaFeedbackModal from './shared/BetaFeedbackModal';
-import UserGuidePage from '../pages/UserGuidePage';
-import NotificationsCenterPage from '../pages/NotificationsCenterPage';
-import NotificationsMenu from '../components/dashboard/NotificationsMenu';
+import UserGuidePage from '../pages/UserGuidePage'; // Importar la nueva página de guía
 import { useThemeManager } from '../contexts/ThemeContext';
 
 const PlanLockedView: FC<{ onGoToBilling: () => void }> = ({ onGoToBilling }) => (
@@ -79,24 +77,25 @@ const PlanLockedView: FC<{ onGoToBilling: () => void }> = ({ onGoToBilling }) =>
 );
 
 const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
-    const { clinic, role, subscription } = useClinic();
+    const { clinic, role, subscription } = useClinic(); // Use clinic context
     const [view, setView] = useState({ page: 'home', context: {} as any });
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 960);
+    const [isSidebarOpen, setSidebarOpen] = useState(!isMobile);
     const [profile, setProfile] = useState<NutritionistProfile | null>(null);
     const { setTheme } = useThemeManager();
-    
-    // Dropdown state for horizontal menu
-    const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-    const dropdownTimeoutRef = React.useRef<number | null>(null);
 
+    // State for new collapsible sidebar
+    const [openCategory, setOpenCategory] = useState<string | null>(null);
+
+    // State lifted for FAB and Quick Consultation Modal
     const [isQuickConsultModalOpen, setQuickConsultModalOpen] = useState(false);
     const [isFeedbackModalOpen, setFeedbackModalOpen] = useState(false);
     const [clients, setClients] = useState<Pick<Person, 'id' | 'full_name' | 'avatar_url'>[]>([]);
     const [afiliados, setAfiliados] = useState<Pick<Person, 'id' | 'full_name' | 'avatar_url'>[]>([]);
 
     const isSubscriptionActive = subscription?.status === 'active' || subscription?.status === 'trialing';
-    const unrestrictedPages = ['profile', 'profile-form', 'settings', 'clinic-settings', 'billing', 'fiscal-settings', 'notifications-center'];
+    // List of pages that are allowed even when subscription is inactive
+    const unrestrictedPages = ['profile', 'profile-form', 'settings', 'clinic-settings', 'billing', 'fiscal-settings'];
 
     const fetchPersons = useCallback(async () => {
         if (!clinic) return;
@@ -140,12 +139,15 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
         fetchProfile();
     }, [session.user.id]);
 
+    const toggleSidebar = () => setSidebarOpen(prevState => !prevState);
+    const closeSidebar = () => setSidebarOpen(false);
+
     useEffect(() => {
         const handleResize = () => {
-            const mobile = window.innerWidth < 1024;
+            const mobile = window.innerWidth < 960;
             if (isMobile !== mobile) {
                 setIsMobile(mobile);
-                if (!mobile) setIsMobileMenuOpen(false);
+                setSidebarOpen(!mobile);
             }
         };
         window.addEventListener('resize', handleResize);
@@ -154,26 +156,17 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
     
     const navigate = (page: string, context = {}) => {
         setView({ page, context });
-        setIsMobileMenuOpen(false);
-        setActiveDropdown(null);
-        window.scrollTo(0, 0);
+        // Smarter sidebar: close for content-heavy pages or on mobile
+        const contentHeavyPages = ['client-detail', 'afiliado-detail', 'calculators', 'consultation-form', 'log-form', 'profile-form', 'aliado-form', 'afiliado-form', 'client-form', 'agenda', 'queue', 'clinic-network', 'chat', 'finanzas', 'affiliates', 'user-guide', 'fiscal-settings'];
+        if (contentHeavyPages.includes(page) || isMobile) {
+            setSidebarOpen(false);
+        }
     };
     
-    // --- Dropdown Logic for Horizontal Menu ---
-    const handleMouseEnter = (key: string) => {
-        if (dropdownTimeoutRef.current) clearTimeout(dropdownTimeoutRef.current);
-        setActiveDropdown(key);
-    };
-
-    const handleMouseLeave = () => {
-        dropdownTimeoutRef.current = window.setTimeout(() => {
-            setActiveDropdown(null);
-        }, 200);
-    };
-
     const renderContent = () => {
         const { page, context } = view;
 
+        // Check if access is restricted
         if (!isSubscriptionActive && !unrestrictedPages.includes(page)) {
              return <PlanLockedView onGoToBilling={() => navigate('billing')} />;
         }
@@ -194,7 +187,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                     navigate={navigate}
                     initialConsultationMode={!!context.startInConsultation}
                     onBack={() => navigate(personType === 'client' ? 'clients' : 'afiliados')}
-                    onStartConsultation={() => {}}
+                    onStartConsultation={closeSidebar}
                 />;
             
             case 'client-form': return <ClientFormPage clientToEditId={context.personId} onBack={() => navigate('clients')} referralData={context.referralData} />;
@@ -224,6 +217,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
             case 'chat': return <ChatPage isMobile={isMobile} />;
             case 'finanzas': return <FinanzasPage isMobile={isMobile} navigate={navigate} />;
             case 'affiliates': return <AffiliatesPage navigate={navigate} />;
+            case 'user-guide': return <UserGuidePage />;
 
             case 'profile': return <ProfilePage user={session.user} onEditProfile={() => navigate('profile-form')} />;
             case 'profile-form': return <ProfileFormPage user={session.user} onBack={() => navigate('profile')} />;
@@ -244,103 +238,76 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
             case 'service-plans': return <ServicePlansManagement />;
             case 'displays': return <DisplayManagement />;
             case 'billing': return <SubscriptionPage navigate={navigate} />;
-            case 'user-guide': return <UserGuidePage />;
-            case 'notifications-center': return <NotificationsCenterPage navigate={navigate} />;
             default: return <HomePage user={session.user} isMobile={isMobile} navigate={navigate} openQuickConsult={() => setQuickConsultModalOpen(true)} />;
         }
     }
 
-    // --- Navigation Components ---
-
-    const NavItem: FC<{ name: string, pageName: string, icon?: React.ReactNode, context?: any }> = ({ name, pageName, icon, context }) => {
-        const isActive = (view.page === pageName);
+    const NavItem: FC<{name: string, pageName: string, icon?: React.ReactNode, isSubItem?: boolean, context?: any}> = ({ name, pageName, icon, isSubItem = false, context }) => {
+        const isActive = (view.page === pageName) && (context?.initialTab ? view.context?.initialTab === context.initialTab : true);
         const isLocked = !isSubscriptionActive && !unrestrictedPages.includes(pageName);
-        
+
         return (
-            <div
-                onClick={isLocked ? undefined : () => navigate(pageName, context)}
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.5rem 1rem',
-                    borderRadius: '20px',
-                    cursor: isLocked ? 'not-allowed' : 'pointer',
-                    backgroundColor: isActive ? 'var(--surface-hover-color)' : 'transparent',
-                    color: isActive ? 'var(--primary-color)' : isLocked ? 'var(--text-light)' : 'var(--text-color)',
-                    fontWeight: isActive ? 600 : 500,
-                    fontSize: '0.9rem',
-                    transition: 'all 0.2s ease',
-                    opacity: isLocked ? 0.6 : 1,
-                    whiteSpace: 'nowrap'
-                }}
-                className={!isLocked ? "nav-item-hover" : ""}
-                role="button"
-            >
-                {icon}
-                {name}
-                {isLocked && <span style={{ fontSize: '0.7rem' }}>{ICONS.lock}</span>}
-            </div>
-        );
-    };
+        <div
+            onClick={isLocked ? () => navigate('billing') : () => navigate(pageName, context)}
+            style={{
+                ...styles.navItem, 
+                backgroundColor: isActive ? 'var(--primary-light)' : 'transparent', 
+                color: isActive ? 'var(--primary-color)' : isLocked ? 'var(--text-light)' : 'var(--text-color)', 
+                borderLeft: isActive ? '4px solid var(--primary-color)' : '4px solid transparent', 
+                ...(isSubItem && {paddingLeft: '2.5rem'}),
+                opacity: isLocked ? 0.7 : 1,
+                cursor: 'pointer'
+            }}
+            className="nav-item-hover"
+            role="button"
+            aria-label={`Navegar a ${name}`}
+        >
+            {icon && <span style={{color: isActive ? 'var(--primary-color)' : 'inherit'}}>{icon}</span>}
+            <span style={{flex: 1}}>{name}</span>
+            {isLocked && <span style={{fontSize: '0.8rem', color: 'var(--text-light)'}}>{ICONS.lock}</span>}
+        </div>
+    )};
     
-    const NavDropdown: FC<{ title: string; icon: React.ReactNode; children: React.ReactNode; id: string }> = ({ title, icon, children, id }) => {
-        const isActive = activeDropdown === id;
-        
+    const CollapsibleCategory: FC<{
+        name: string;
+        icon: React.ReactNode;
+        categoryKey: string;
+        pageNames: string[];
+        children: React.ReactNode;
+    }> = ({ name, icon, categoryKey, pageNames, children }) => {
+        const isActive = pageNames.some(page => view.page.startsWith(page));
+        const isOpen = openCategory === categoryKey;
+
         return (
-            <div 
-                onMouseEnter={() => handleMouseEnter(id)} 
-                onMouseLeave={handleMouseLeave}
-                style={{ position: 'relative', height: '100%', display: 'flex', alignItems: 'center' }}
-            >
+            <div>
                 <div
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        padding: '0.5rem 1rem',
-                        cursor: 'pointer',
-                        color: isActive ? 'var(--primary-color)' : 'var(--text-color)',
-                        fontWeight: 500,
-                        fontSize: '0.9rem',
-                        borderRadius: '20px',
-                        backgroundColor: isActive ? 'var(--surface-hover-color)' : 'transparent',
-                        transition: 'all 0.2s ease'
-                    }}
-                    className="nav-item-hover"
+                    onClick={() => setOpenCategory(isOpen ? null : categoryKey)}
+                    style={{...styles.navItem, backgroundColor: isActive && !isOpen ? 'var(--primary-light)' : 'transparent', color: isActive && !isOpen ? 'var(--primary-color)' : 'var(--text-color)', borderLeft: isActive && !isOpen ? '4px solid var(--primary-color)' : '4px solid transparent'}}
+                    className="nav-item-hover category-header"
+                    role="button"
+                    aria-expanded={isOpen}
                 >
-                    {icon}
-                    {title}
-                    <span style={{ fontSize: '0.7rem', transform: isActive ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>{ICONS.chevronDown}</span>
-                </div>
-                
-                {isActive && (
-                    <div className="fade-in" style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        backgroundColor: 'var(--surface-color)',
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                        borderRadius: '12px',
-                        padding: '0.5rem',
-                        minWidth: '200px',
-                        border: '1px solid var(--border-color)',
-                        zIndex: 1000,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '2px'
-                    }}>
-                        {children}
+                    <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+                        {icon && <span style={{color: 'var(--primary-color)'}}>{icon}</span>}
+                        {name}
                     </div>
-                )}
+                    <span className={`category-chevron ${isOpen ? 'open' : ''}`}>{ICONS.chevronDown}</span>
+                </div>
+                {isOpen && <div className="submenu-container">{children}</div>}
             </div>
         );
     };
 
-    const isFabHidden = ['client-form', 'afiliado-form', 'aliado-form', 'consultation-form', 'log-form', 'profile-form', 'settings', 'calculators', 'agenda', 'queue', 'client-detail', 'afiliado-detail', 'chat', 'finanzas', 'clinic-settings', 'affiliates', 'user-guide'].includes(view.page);
+    const mainContentStyle: React.CSSProperties = {
+        ...styles.mainContent,
+        ...(isMobile ? styles.mainContentMobile : (isSidebarOpen ? styles.mainContentDesktop : { ...styles.mainContentDesktop, marginLeft: '0' }))
+    };
+
+    const pagesWithoutFab = ['client-form', 'afiliado-form', 'aliado-form', 'consultation-form', 'log-form', 'profile-form', 'settings', 'calculators', 'agenda', 'queue', 'client-detail', 'afiliado-detail', 'chat', 'finanzas', 'clinic-settings', 'affiliates', 'user-guide', 'fiscal-settings'];
+    const isFabHidden = pagesWithoutFab.includes(view.page);
 
     return (
-        <div style={{ ...styles.dashboardLayout, flexDirection: 'column' }}>
+        <div style={styles.dashboardLayout}>
             {isQuickConsultModalOpen && (
                  <QuickConsultationModal
                     isOpen={isQuickConsultModalOpen}
@@ -356,190 +323,88 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                     onClose={() => setFeedbackModalOpen(false)}
                 />
             )}
+            {isMobile && isSidebarOpen && <div style={{...styles.modalOverlay, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 1050}} onClick={toggleSidebar}></div>}
             
-            {/* --- HORIZONTAL NAVIGATION HEADER --- */}
-            {!isMobile && (
-                <header style={{
-                    height: '70px',
-                    backgroundColor: 'var(--surface-color)',
-                    borderBottom: '1px solid var(--border-color)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '0 2rem',
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 1000,
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
-                }}>
-                    {/* Logo & Title */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{
-                            width: '36px', height: '36px', borderRadius: '10px', 
-                            background: 'linear-gradient(135deg, var(--primary-color), var(--primary-dark))',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: 'white', fontSize: '1.2rem', fontWeight: 800,
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                        }}>
-                             {clinic?.name ? clinic.name.charAt(0).toUpperCase() : 'Z'}
-                        </div>
-                        <h2 style={{ color: 'var(--text-color)', fontSize: '1rem', fontWeight: 700, margin: 0, whiteSpace: 'nowrap' }}>
-                            {clinic?.name || 'Zegna Nutrición'}
+            <div style={{...styles.sidebar, ...(!isSidebarOpen && styles.sidebarHidden)}}>
+                 <div style={styles.sidebarHeader}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexGrow: 1, overflow: 'hidden' }}>
+                        <img 
+                            src={clinic?.logo_url || `https://api.dicebear.com/8.x/initials/svg?seed=${clinic?.name || session.user.email}&radius=50&backgroundColor=007BFF`} 
+                            alt="Logo de la clínica" 
+                            style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                        />
+                        <h2 style={{ color: 'var(--primary-color)', fontSize: '1.1rem', fontWeight: 600, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {clinic?.name || 'zegna nutricion'}
                         </h2>
                     </div>
-
-                    {/* Center Navigation */}
-                    <nav style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', height: '100%' }}>
-                        <NavItem name="Dashboard" pageName="home" icon={ICONS.home} />
-                        <NavItem name="Agenda" pageName="agenda" icon={ICONS.calendar} />
-                        
-                        <NavDropdown title="Pacientes" icon={ICONS.users} id="patients">
-                            <NavItem name="Lista de Pacientes" pageName="clients" />
-                            <NavItem name="Afiliados" pageName="afiliados" />
-                            <NavItem name="Sala de Espera" pageName="queue" />
-                        </NavDropdown>
-
-                        <NavDropdown title="Recursos" icon={ICONS.book} id="resources">
-                             <NavItem name="Biblioteca" pageName="knowledge-base" />
-                             <NavItem name="Calculadoras" pageName="calculators" />
-                             <NavItem name="Guía de Uso" pageName="user-guide" />
-                        </NavDropdown>
-
-                        <NavDropdown title="Red & Crecimiento" icon={ICONS.network} id="network">
-                            <NavItem name="Colaboradores" pageName="aliados" />
-                            <NavItem name="Red de Clínicas" pageName="clinic-network" />
-                            <NavItem name="Programa Afiliados" pageName="affiliates" />
-                        </NavDropdown>
-
-                        <NavDropdown title="Gestión" icon={ICONS.briefcase} id="admin">
-                            <NavItem name="Finanzas" pageName="finanzas" />
-                            <NavItem name="Chat" pageName="chat" />
-                            {role === 'admin' && (
-                                <>
-                                    <div style={{height: '1px', backgroundColor: 'var(--border-color)', margin: '0.5rem 0'}}></div>
-                                    <NavItem name="Mi Clínica" pageName="clinic-settings" />
-                                    <NavItem name="Facturación" pageName="fiscal-settings" />
-                                    <NavItem name="Servicios" pageName="services" />
-                                    <NavItem name="Planes" pageName="service-plans" />
-                                    <NavItem name="Pantallas" pageName="displays" />
-                                    <NavItem name="Suscripción" pageName="billing" />
-                                </>
-                            )}
-                        </NavDropdown>
-                    </nav>
-
-                    {/* Right Actions */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                         <NotificationsMenu onNavigate={navigate} />
-                         
-                         <NavDropdown 
-                            title="" 
-                            id="profile" 
-                            icon={
-                                <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-                                    <img 
-                                        src={profile?.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${session.user.email}`} 
-                                        alt="Profile" 
-                                        style={{width: '32px', height: '32px', borderRadius: '50%', border: '2px solid var(--surface-hover-color)', objectFit: 'cover'}}
-                                    />
-                                    <span style={{fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-color)'}}>{profile?.full_name?.split(' ')[0] || 'Perfil'}</span>
-                                </div>
-                            }
-                        >
-                             <NavItem name="Mi Perfil" pageName="profile" icon={ICONS.user} />
-                             <NavItem name="Configuración" pageName="settings" icon={ICONS.settings} context={{ initialTab: 'account' }} />
-                             <div onClick={() => supabase.auth.signOut()} style={{padding: '0.5rem 1rem', cursor: 'pointer', color: 'var(--error-color)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem'}} className="nav-item-hover">
-                                 {ICONS.logout} Cerrar Sesión
-                             </div>
-                        </NavDropdown>
-                    </div>
-                </header>
-            )}
-
-            {/* --- MOBILE HEADER & SIDEBAR --- */}
-            {isMobile && (
-                <>
-                    <header style={{
-                        height: '64px',
-                        backgroundColor: 'var(--surface-color)',
-                        borderBottom: '1px solid var(--border-color)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '0 1rem',
-                        position: 'sticky',
-                        top: 0,
-                        zIndex: 1000,
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-                    }}>
-                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <button onClick={() => setIsMobileMenuOpen(true)} style={{...styles.hamburger, padding: '0.5rem', marginRight: '-0.5rem'}}>
-                                {ICONS.menu}
-                            </button>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <img 
-                                    src={clinic?.logo_url || `https://api.dicebear.com/8.x/initials/svg?seed=${clinic?.name}&radius=50`} 
-                                    alt="Logo" 
-                                    style={{width: '32px', height: '32px', borderRadius: '8px', objectFit: 'cover'}}
-                                />
-                                 <h2 style={{ color: 'var(--text-color)', fontSize: '1rem', fontWeight: 700, margin: 0 }}>
-                                    {clinic?.name || 'Zegna'}
-                                </h2>
-                            </div>
-                        </div>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-                             <NotificationsMenu onNavigate={navigate} />
-                             {isSubscriptionActive && (
-                                <button onClick={() => setQuickConsultModalOpen(true)} style={{...styles.iconButton, backgroundColor: 'var(--primary-light)', color: 'var(--primary-color)', borderRadius: '50%', width: '36px', height: '36px'}} title="Consulta Rápida">
-                                    +
-                                </button>
-                            )}
-                        </div>
-                    </header>
-
-                    {isMobileMenuOpen && (
-                         <div style={{...styles.modalOverlay, zIndex: 1050, justifyContent: 'flex-start'}} onClick={() => setIsMobileMenuOpen(false)}>
-                             <div 
-                                style={{width: '280px', height: '100%', backgroundColor: 'var(--surface-color)', overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem'}}
-                                onClick={e => e.stopPropagation()}
-                             >
-                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem'}}>
-                                    <h3 style={{margin: 0}}>Menú</h3>
-                                    <button onClick={() => setIsMobileMenuOpen(false)} style={{...styles.iconButton}}>{ICONS.close}</button>
-                                </div>
-                                
-                                <NavItem name="Dashboard" pageName="home" icon={ICONS.home} />
-                                <NavItem name="Agenda" pageName="agenda" icon={ICONS.calendar} />
-                                <NavItem name="Pacientes" pageName="clients" icon={ICONS.users} />
-                                <NavItem name="Afiliados" pageName="afiliados" icon={ICONS.list} />
-                                <NavItem name="Finanzas" pageName="finanzas" icon={ICONS.dollar} />
-                                <NavItem name="Chat" pageName="chat" icon={ICONS.phone} />
-                                <div style={{height: '1px', backgroundColor: 'var(--border-color)', margin: '0.5rem 0'}}></div>
-                                <NavItem name="Centro Notificaciones" pageName="notifications-center" icon="🔔" />
-                                <NavItem name="Mi Perfil" pageName="profile" icon={ICONS.user} />
-                                <NavItem name="Configuración" pageName="settings" icon={ICONS.settings} />
-                                <button onClick={() => supabase.auth.signOut()} style={{marginTop: 'auto', ...styles.iconButton, justifyContent: 'flex-start', width: '100%', color: 'var(--error-color)'}}>
-                                    {ICONS.logout} Cerrar Sesión
-                                </button>
-                             </div>
-                         </div>
+                    {!isMobile && (
+                        <button onClick={toggleSidebar} style={{...styles.sidebarToggleButton, flexShrink: 0}} className="nav-item-hover" aria-label="Ocultar menú">
+                            {ICONS.back}
+                        </button>
                     )}
-                </>
-            )}
+                </div>
+                <nav style={{flex: 1, overflowY: 'auto'}} className="hide-scrollbar">
+                    <NavItem name="Dashboard" pageName="home" icon={ICONS.home} />
+                    
+                    <CollapsibleCategory name="Gestión Clínica" icon={ICONS.users} categoryKey="gestion-clinica" pageNames={['clients', 'afiliados', 'agenda', 'queue']}>
+                        <NavItem name="Pacientes" pageName="clients" isSubItem />
+                        <NavItem name="Afiliados" pageName="afiliados" isSubItem />
+                        <NavItem name="Agenda" pageName="agenda" isSubItem />
+                        <NavItem name="Sala de Espera" pageName="queue" isSubItem />
+                    </CollapsibleCategory>
+                    
+                     <CollapsibleCategory name="Administración" icon={ICONS.dollar} categoryKey="administracion" pageNames={['finanzas', 'chat']}>
+                        <NavItem name="Finanzas" pageName="finanzas" isSubItem />
+                        <NavItem name="Conversaciones" pageName="chat" isSubItem />
+                    </CollapsibleCategory>
 
-            {/* --- MAIN CONTENT AREA --- */}
-            <main style={{
-                flex: 1,
-                padding: isMobile ? '1rem' : '2rem',
-                maxWidth: '1400px',
-                margin: '0 auto',
-                width: '100%',
-                overflowX: 'hidden',
-            }}>
+                    <CollapsibleCategory name="Red" icon={ICONS.network} categoryKey="red" pageNames={['aliados', 'clinic-network']}>
+                        <NavItem name="Red de Colaboradores" pageName="aliados" isSubItem />
+                        <NavItem name="Red de Clínicas" pageName="clinic-network" isSubItem />
+                    </CollapsibleCategory>
+                    
+                     <CollapsibleCategory name="Recursos" icon={ICONS.book} categoryKey="recursos" pageNames={['knowledge-base', 'calculators']}>
+                        <NavItem name="Biblioteca" pageName="knowledge-base" isSubItem />
+                        <NavItem name="Herramientas" pageName="calculators" isSubItem />
+                    </CollapsibleCategory>
+                    
+                    <CollapsibleCategory name="Crecimiento" icon={ICONS.sparkles} categoryKey="crecimiento" pageNames={['affiliates']}>
+                        <NavItem name="Programa de Afiliados" pageName="affiliates" isSubItem />
+                    </CollapsibleCategory>
+
+                    {role === 'admin' && (
+                        <CollapsibleCategory name="Mi Clínica" icon={ICONS.clinic} categoryKey="mi-clinica" pageNames={['clinic-settings', 'fiscal-settings', 'services', 'service-plans', 'displays', 'billing']}>
+                            <NavItem name="Datos de la Clínica" pageName="clinic-settings" isSubItem />
+                            <NavItem name="Facturación" pageName="fiscal-settings" isSubItem />
+                            <NavItem name="Servicios" pageName="services" isSubItem />
+                            <NavItem name="Planes de Servicio" pageName="service-plans" isSubItem />
+                            <NavItem name="Pantallas de Espera" pageName="displays" isSubItem />
+                            <NavItem name="Suscripción y Pagos" pageName="billing" isSubItem />
+                        </CollapsibleCategory>
+                    )}
+
+                </nav>
+                 <div>
+                     <NavItem name="Mi Perfil" pageName="profile" icon={ICONS.user} />
+                     <NavItem name="Configuración" pageName="settings" icon={ICONS.settings} context={{ initialTab: 'account' }} />
+                     <NavItem name="Guía de Uso" pageName="user-guide" icon={ICONS.book} />
+                </div>
+            </div>
+
+            <main style={mainContentStyle}>
+                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', minHeight: '40px' /* Prevents layout shift */ }}>
+                   {!isSidebarOpen && (
+                       <button onClick={toggleSidebar} style={styles.hamburger} aria-label="Abrir menú">
+                         {ICONS.menu}
+                       </button>
+                   )}
+                   {isMobile && !isSidebarOpen && (
+                       <h2 style={{margin: '0 0 0 1rem', color: 'var(--primary-color)'}}>{clinic?.name || 'zegna nutricion'}</h2>
+                   )}
+                </div>
                 {renderContent()}
             </main>
-            
-            {isSubscriptionActive && !isFabHidden && (
+            {!isFabHidden && isSubscriptionActive && (
                 <FloatingActionButton
                     onNewClient={() => navigate('client-form')}
                     onNewAfiliado={() => navigate('afiliado-form')}

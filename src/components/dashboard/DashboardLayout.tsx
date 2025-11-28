@@ -40,8 +40,6 @@ import SubscriptionPage from '../../pages/SubscriptionPage';
 import AffiliatesPage from '../../pages/AffiliatesPage';
 import BetaFeedbackModal from '../shared/BetaFeedbackModal';
 import UserGuidePage from '../../pages/UserGuidePage';
-import NotificationsMenu from './NotificationsMenu';
-import NotificationsCenterPage from '../../pages/NotificationsCenterPage'; // Import new page
 import { useThemeManager } from '../../contexts/ThemeContext';
 
 const PlanLockedView: FC<{ onGoToBilling: () => void }> = ({ onGoToBilling }) => (
@@ -243,7 +241,6 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
             case 'displays': return <DisplayManagement />;
             case 'billing': return <SubscriptionPage navigate={navigate} />;
             case 'user-guide': return <UserGuidePage />;
-            case 'notifications-center': return <NotificationsCenterPage navigate={navigate} />;
             default: return <HomePage user={session.user} isMobile={isMobile} navigate={navigate} openQuickConsult={() => setQuickConsultModalOpen(true)} />;
         }
     }
@@ -474,14 +471,11 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                             </h2>
                         </div>
                     </div>
-                    <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-                         <NotificationsMenu onNavigate={navigate} />
-                         {isSubscriptionActive && (
-                            <button onClick={() => setQuickConsultModalOpen(true)} style={{...styles.iconButton, backgroundColor: 'var(--primary-light)', color: 'var(--primary-color)', borderRadius: '50%', width: '36px', height: '36px'}} title="Consulta Rápida">
-                                +
-                            </button>
-                        )}
-                    </div>
+                    {isSubscriptionActive && (
+                        <button onClick={() => setQuickConsultModalOpen(true)} style={{...styles.iconButton, backgroundColor: 'var(--primary-light)', color: 'var(--primary-color)', borderRadius: '50%', width: '36px', height: '36px'}} title="Consulta Rápida">
+                            +
+                        </button>
+                    )}
                 </header>
             )}
 
@@ -525,8 +519,6 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                 {/* Navigation Content */}
                 <nav style={{flex: 1, overflowY: 'auto', paddingBottom: '1rem'}} className="hide-scrollbar">
                     <NavItem name="Dashboard" pageName="home" icon={ICONS.home} />
-                    {/* Added explicit Notifications link in sidebar */}
-                    <NavItem name="Centro de Notificaciones" pageName="notifications-center" icon="🔔" />
                     
                     <SectionLabel label="Clínica" />
                     <NavItem name="Agenda" pageName="agenda" icon={ICONS.calendar} />
@@ -586,11 +578,6 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                 marginLeft: isMobile ? 0 : '260px',
                 transition: 'margin-left 0.3s ease'
             }}>
-                {!isMobile && (
-                    <header style={{display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1rem', height: '50px'}}>
-                        <NotificationsMenu onNavigate={navigate} />
-                    </header>
-                )}
                 {renderContent()}
             </main>
             
