@@ -50,6 +50,7 @@ const AuthPage: FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [fullName, setFullName] = useState('');
+    const [specialty, setSpecialty] = useState('');
     const [referralCode, setReferralCode] = useState('');
     const [agreedToTerms, setAgreedToTerms] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -92,8 +93,8 @@ const AuthPage: FC = () => {
                 const { error } = await supabase.auth.signInWithPassword({ email, password });
                 if (error) throw error;
             } else if (authMode === 'signupClinic' || authMode === 'signupAlly') {
-                if (authMode === 'signupAlly' && !fullName) {
-                    throw new Error("El nombre completo es obligatorio para el registro de colaborador.");
+                if (authMode === 'signupAlly' && (!fullName || !specialty)) {
+                    throw new Error("El nombre completo y la especialidad son obligatorios para el registro de colaborador.");
                 }
     
                 const signUpOptions = {
@@ -102,7 +103,7 @@ const AuthPage: FC = () => {
                     options: {
                         data: authMode === 'signupClinic'
                             ? { referral_code: referralCode.trim() || undefined }
-                            : { is_ally_signup: true, full_name: fullName }
+                            : { is_ally_signup: true, full_name: fullName, specialty: specialty }
                     }
                 };
     
@@ -176,6 +177,8 @@ const AuthPage: FC = () => {
         setMessage(null);
         setAgreedToTerms(false);
         setReferralCode('');
+        setFullName('');
+        setSpecialty('');
     };
 
     // --- Inline Styles for White Design ---
@@ -341,10 +344,16 @@ const AuthPage: FC = () => {
                      {(authMode === 'login' || authMode === 'signupClinic' || authMode === 'signupAlly') && (
                         <form onSubmit={handleAuth} style={{display: 'flex', flexDirection: 'column', gap: '1.25rem'}}>
                             {authMode === 'signupAlly' && (
-                                <div>
-                                    <label style={labelStyle} htmlFor="full_name">Nombre Completo</label>
-                                    <input id="full_name" type="text" value={fullName} onChange={e => setFullName(e.target.value)} required style={inputNewStyle} placeholder="Tu nombre" />
-                                </div>
+                                <>
+                                    <div>
+                                        <label style={labelStyle} htmlFor="full_name">Nombre Completo</label>
+                                        <input id="full_name" type="text" value={fullName} onChange={e => setFullName(e.target.value)} required style={inputNewStyle} placeholder="Tu nombre" />
+                                    </div>
+                                    <div>
+                                        <label style={labelStyle} htmlFor="specialty">Especialidad</label>
+                                        <input id="specialty" type="text" value={specialty} onChange={e => setSpecialty(e.target.value)} required style={inputNewStyle} placeholder="Ej: Médico General, Entrenador" />
+                                    </div>
+                                </>
                             )}
                             <div>
                                 <label style={labelStyle} htmlFor="email">Correo Electrónico</label>
