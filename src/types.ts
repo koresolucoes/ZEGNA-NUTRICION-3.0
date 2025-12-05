@@ -20,8 +20,6 @@ export type Clinic = Database['public']['Tables']['clinics']['Row'] & {
     // New fiscal fields
     rfc?: string | null;
     fiscal_regime?: string | null;
-    // UI Layout
-    navigation_layout?: 'sidebar' | 'header' | null;
 };
 export type ClinicMember = Omit<Database['public']['Tables']['clinic_members']['Row'], 'role'> & {
     role: 'admin' | 'nutritionist' | 'assistant' | 'receptionist';

@@ -34,25 +34,6 @@ export const supabase = supabaseClient as ReturnType<typeof createClient<Databas
 
 /*
 -- =================================================================
--- V30.0 SCRIPT: ADICIÓN DE CAMPO DE LAYOUT DE NAVEGACIÓN
--- =================================================================
-BEGIN;
-
--- 1. Añadir columna navigation_layout a la tabla clinics
---    Por defecto 'sidebar' para mantener la consistencia con el diseño actual
-ALTER TABLE public.clinics 
-ADD COLUMN IF NOT EXISTS navigation_layout text DEFAULT 'sidebar';
-
--- 2. Añadir comentario para documentación
-COMMENT ON COLUMN public.clinics.navigation_layout IS 'Define el diseño de navegación del dashboard: "sidebar" (lateral) o "header" (superior).';
-
-COMMIT;
--- =================================================================
--- Fin del Script V30.0
--- =================================================================
-
-
--- =================================================================
 -- V28.1 SCRIPT: ACTUALIZACIÓN DE ALIMENTOS SMAE CON MACROS
 -- =================================================================
 BEGIN;
@@ -96,6 +77,9 @@ INSERT INTO public.smae_foods (name, subgroup, amount, unit, gross_weight, net_w
 ('Sandía', 'Frutas', 1, 'taza', 180, 160, 48, 11, 1.0, 0),
 ('Jugo de naranja', 'Frutas', 0.5, 'taza', 125, 125, 56, 13, 0.9, 0.3)
 ON CONFLICT DO NOTHING;
+
+-- Si ya existían sin macros, se pueden actualizar manualmente o borrar y reinsertar.
+-- Para este script MVP, asumimos inserción limpia o que los nuevos registros conviven.
 
 COMMIT;
 -- =================================================================

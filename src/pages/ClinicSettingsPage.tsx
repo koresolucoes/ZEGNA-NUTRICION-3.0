@@ -31,7 +31,7 @@ const fiscalRegimeOptions = [
 const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
 // --- Subcomponent: Theme Preview Widget ---
-const ThemePreview: FC<{ themeKey: string, layout: 'sidebar' | 'header' }> = ({ themeKey, layout }) => {
+const ThemePreview: FC<{ themeKey: string }> = ({ themeKey }) => {
     const theme = themes[themeKey] || themes.default;
     
     return (
@@ -42,47 +42,11 @@ const ThemePreview: FC<{ themeKey: string, layout: 'sidebar' | 'header' }> = ({ 
             borderRadius: '12px',
             border: `1px solid ${theme.borderColor}`,
             boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-            marginTop: '1rem',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1rem'
+            marginTop: '1rem'
         }}>
-            <div style={{display: 'flex', justifyContent: 'space-between', borderBottom: `1px solid ${theme.borderColor}`, paddingBottom: '0.5rem'}}>
+            <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: `1px solid ${theme.borderColor}`, paddingBottom: '0.5rem'}}>
                 <span style={{fontWeight: 600, color: theme.primaryColor}}>Vista Previa</span>
-            </div>
-
-            {/* Layout Representation */}
-            <div style={{
-                display: 'flex', 
-                flexDirection: layout === 'header' ? 'column' : 'row', 
-                gap: '0.5rem', 
-                height: '100px',
-                border: `1px dashed ${theme.borderColor}`,
-                padding: '0.5rem',
-                borderRadius: '8px'
-            }}>
-                {/* Sidebar / Header */}
-                <div style={{
-                    width: layout === 'sidebar' ? '30%' : '100%',
-                    height: layout === 'sidebar' ? '100%' : '20px',
-                    backgroundColor: theme.surfaceColor,
-                    borderRadius: '4px',
-                    border: `1px solid ${theme.borderColor}`
-                }}></div>
-                
-                {/* Content */}
-                <div style={{
-                    flex: 1,
-                    backgroundColor: theme.surfaceHoverColor,
-                    borderRadius: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '0.7rem',
-                    color: theme.textLight
-                }}>
-                    Contenido
-                </div>
+                <span style={{fontSize: '0.8rem', color: theme.textLight}}>Dashboard</span>
             </div>
             
             <div style={{display: 'flex', gap: '1rem'}}>
@@ -97,7 +61,28 @@ const ThemePreview: FC<{ themeKey: string, layout: 'sidebar' | 'header' }> = ({ 
                         {ICONS.users}
                     </div>
                     <div style={{fontSize: '1.5rem', fontWeight: 700, color: theme.textColor}}>124</div>
-                    <div style={{fontSize: '0.8rem', color: theme.textLight}}>Pacientes</div>
+                    <div style={{fontSize: '0.8rem', color: theme.textLight}}>Pacientes Activos</div>
+                </div>
+                
+                <div style={{
+                    backgroundColor: theme.surfaceColor,
+                    padding: '1rem',
+                    borderRadius: '8px',
+                    flex: 1,
+                    boxShadow: theme.shadow
+                }}>
+                    <div style={{fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem'}}>Próxima Cita</div>
+                    <div style={{fontSize: '0.8rem', color: theme.textLight}}>Hoy, 10:00 AM</div>
+                    <button style={{
+                        backgroundColor: theme.primaryColor,
+                        color: '#FFF',
+                        border: 'none',
+                        padding: '6px 12px',
+                        borderRadius: '4px',
+                        marginTop: '0.5rem',
+                        fontSize: '0.75rem',
+                        cursor: 'default'
+                    }}>Iniciar</button>
                 </div>
             </div>
         </div>
@@ -113,7 +98,6 @@ const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile, navig
         operating_schedule: [] as OperatingScheduleItem[],
         rfc: '',
         fiscal_regime: '',
-        navigation_layout: 'sidebar' as 'sidebar' | 'header',
     });
     const [logoFile, setLogoFile] = useState<File | null>(null);
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -149,7 +133,6 @@ const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile, navig
                 operating_schedule: schedule,
                 rfc: clinic.rfc || '',
                 fiscal_regime: clinic.fiscal_regime || '',
-                navigation_layout: (clinic.navigation_layout as 'sidebar' | 'header') || 'sidebar',
             });
             setLogoPreview(clinic.logo_url || null);
         }
@@ -166,7 +149,6 @@ const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile, navig
                clinicFormData.address !== (clinic.address || '') ||
                clinicFormData.website !== (clinic.website || '') ||
                clinicFormData.theme !== (clinic.theme || 'default') ||
-               clinicFormData.navigation_layout !== (clinic.navigation_layout || 'sidebar') ||
                clinicFormData.rfc !== (clinic.rfc || '') ||
                clinicFormData.fiscal_regime !== (clinic.fiscal_regime || '') ||
                scheduleChanged ||
@@ -227,8 +209,6 @@ const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile, navig
                 const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
                 newLogoUrl = `${urlData.publicUrl}?t=${new Date().getTime()}`;
             }
-            // Update clinic with all fields including navigation_layout
-            // Note: navigation_layout column must exist in DB. See migration script.
             const { data: updatedData, error } = await supabase.from('clinics').update({ 
                 name: clinicFormData.name,
                 phone_number: clinicFormData.phone_number || null,
@@ -240,17 +220,15 @@ const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile, navig
                 operating_schedule: clinicFormData.operating_schedule,
                 rfc: clinicFormData.rfc || null,
                 fiscal_regime: clinicFormData.fiscal_regime || null,
-                navigation_layout: clinicFormData.navigation_layout
-            } as any).eq('id', clinic.id).select().single();
-
+            }).eq('id', clinic.id).select().single();
             if (error) throw error;
             if (!updatedData) throw new Error("La actualización falló o no tienes permisos para ver el resultado.");
             setClinic(updatedData as unknown as Clinic);
             setClinicSuccess("¡Configuración actualizada correctamente!");
             setLogoFile(null);
             
-            // If theme/layout changed, force a reload to ensure context updates immediately visually
-             if (clinic.theme !== clinicFormData.theme || clinic.navigation_layout !== clinicFormData.navigation_layout) {
+            // If theme changed, force a reload of style to ensure context updates immediately visually
+             if (clinic.theme !== clinicFormData.theme) {
                  setTimeout(() => window.location.reload(), 500);
              }
 
@@ -369,97 +347,46 @@ const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile, navig
                     {activeTab === 'theme' && (
                         <div className="fade-in">
                             <h2 style={{marginTop: 0, marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem'}}>Apariencia del Sistema</h2>
-                            
                             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '2rem' }}>
-                                {/* Left Column: Settings */}
                                 <div>
-                                    {/* Layout Section */}
-                                    <div style={{marginBottom: '2rem'}}>
-                                        <h3 style={{fontSize: '1rem', fontWeight: 700, color: 'var(--text-color)', marginBottom: '1rem'}}>Disposición del Menú</h3>
-                                        <div style={{display: 'flex', gap: '1rem'}}>
-                                            <div 
-                                                onClick={() => setClinicFormData(prev => ({...prev, navigation_layout: 'sidebar'}))}
-                                                style={{
-                                                    flex: 1,
-                                                    padding: '1rem',
-                                                    borderRadius: '12px',
-                                                    border: `2px solid ${clinicFormData.navigation_layout === 'sidebar' ? 'var(--primary-color)' : 'var(--border-color)'}`,
-                                                    cursor: 'pointer',
-                                                    backgroundColor: clinicFormData.navigation_layout === 'sidebar' ? 'var(--primary-light)' : 'transparent',
-                                                    textAlign: 'center',
-                                                    transition: 'all 0.2s'
-                                                }}
-                                            >
-                                                <div style={{fontSize: '1.5rem', marginBottom: '0.5rem'}}>
-                                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
-                                                </div>
-                                                <span style={{fontWeight: 600, fontSize: '0.9rem'}}>Lateral</span>
-                                            </div>
-                                            
-                                            <div 
-                                                onClick={() => setClinicFormData(prev => ({...prev, navigation_layout: 'header'}))}
-                                                style={{
-                                                    flex: 1,
-                                                    padding: '1rem',
-                                                    borderRadius: '12px',
-                                                    border: `2px solid ${clinicFormData.navigation_layout === 'header' ? 'var(--primary-color)' : 'var(--border-color)'}`,
-                                                    cursor: 'pointer',
-                                                    backgroundColor: clinicFormData.navigation_layout === 'header' ? 'var(--primary-light)' : 'transparent',
-                                                    textAlign: 'center',
-                                                    transition: 'all 0.2s'
-                                                }}
-                                            >
-                                                <div style={{fontSize: '1.5rem', marginBottom: '0.5rem'}}>
-                                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
-                                                </div>
-                                                <span style={{fontWeight: 600, fontSize: '0.9rem'}}>Superior</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Theme Section */}
-                                    <div>
-                                        <h3 style={{fontSize: '1rem', fontWeight: 700, color: 'var(--text-color)', marginBottom: '1rem'}}>Tema de Color</h3>
-                                        <div style={{display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
-                                            {themeOptions.map(theme => {
-                                                const isSelected = clinicFormData.theme === theme.id;
-                                                const themeDef = themes[theme.id] || themes.default;
-                                                return (
-                                                    <div 
-                                                        key={theme.id} 
-                                                        onClick={() => setClinicFormData(prev => ({...prev, theme: theme.id}))}
-                                                        style={{
-                                                            padding: '1rem',
-                                                            borderRadius: '8px',
-                                                            border: `2px solid ${isSelected ? 'var(--primary-color)' : 'var(--border-color)'}`,
-                                                            cursor: 'pointer',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '1rem',
-                                                            backgroundColor: isSelected ? 'var(--surface-hover-color)' : 'transparent',
-                                                            transition: 'all 0.2s'
-                                                        }}
-                                                    >
-                                                        <div style={{display: 'flex', gap: '-5px'}}>
-                                                            <div style={{width: '24px', height: '24px', borderRadius: '50%', backgroundColor: themeDef.primaryColor, border: '2px solid var(--surface-color)'}}></div>
-                                                            <div style={{width: '24px', height: '24px', borderRadius: '50%', backgroundColor: themeDef.accentColor, marginLeft: '-8px', border: '2px solid var(--surface-color)'}}></div>
-                                                            <div style={{width: '24px', height: '24px', borderRadius: '50%', backgroundColor: themeDef.backgroundColor, marginLeft: '-8px', border: '2px solid var(--surface-color)'}}></div>
-                                                        </div>
-                                                        <div>
-                                                            <p style={{margin: 0, fontWeight: 600}}>{theme.name}</p>
-                                                            <p style={{margin: 0, fontSize: '0.8rem', color: 'var(--text-light)'}}>{theme.description}</p>
-                                                        </div>
+                                    <p style={{color: 'var(--text-light)', marginBottom: '1.5rem'}}>Selecciona un tema visual para personalizar tu experiencia y la de tus pacientes.</p>
+                                    <div style={{display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
+                                        {themeOptions.map(theme => {
+                                            const isSelected = clinicFormData.theme === theme.id;
+                                            const themeDef = themes[theme.id] || themes.default;
+                                            return (
+                                                <div 
+                                                    key={theme.id} 
+                                                    onClick={() => setClinicFormData(prev => ({...prev, theme: theme.id}))}
+                                                    style={{
+                                                        padding: '1rem',
+                                                        borderRadius: '8px',
+                                                        border: `2px solid ${isSelected ? 'var(--primary-color)' : 'var(--border-color)'}`,
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '1rem',
+                                                        backgroundColor: isSelected ? 'var(--surface-hover-color)' : 'transparent',
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                >
+                                                    <div style={{display: 'flex', gap: '-5px'}}>
+                                                        <div style={{width: '24px', height: '24px', borderRadius: '50%', backgroundColor: themeDef.primaryColor, border: '2px solid var(--surface-color)'}}></div>
+                                                        <div style={{width: '24px', height: '24px', borderRadius: '50%', backgroundColor: themeDef.accentColor, marginLeft: '-8px', border: '2px solid var(--surface-color)'}}></div>
+                                                        <div style={{width: '24px', height: '24px', borderRadius: '50%', backgroundColor: themeDef.backgroundColor, marginLeft: '-8px', border: '2px solid var(--surface-color)'}}></div>
                                                     </div>
-                                                );
-                                            })}
-                                        </div>
+                                                    <div>
+                                                        <p style={{margin: 0, fontWeight: 600}}>{theme.name}</p>
+                                                        <p style={{margin: 0, fontSize: '0.8rem', color: 'var(--text-light)'}}>{theme.description}</p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
-
-                                {/* Right Column: Preview */}
-                                <div style={{position: isMobile ? 'static' : 'sticky', top: '20px'}}>
+                                <div style={{position: 'sticky', top: '20px'}}>
                                     <h3 style={{fontSize: '1rem', color: 'var(--text-light)', marginBottom: '0.5rem'}}>Vista Previa</h3>
-                                    <ThemePreview themeKey={clinicFormData.theme} layout={clinicFormData.navigation_layout} />
+                                    <ThemePreview themeKey={clinicFormData.theme} />
                                 </div>
                             </div>
                         </div>
