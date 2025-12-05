@@ -1,5 +1,6 @@
 
 import React, { FC, useState, useMemo, ChangeEvent, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { FoodEquivalent, Person, DietPlanHistoryItem, KnowledgeResource } from '../../types';
 import { styles } from '../../constants';
 import { ICONS } from '../../pages/AuthPage';
@@ -15,6 +16,8 @@ const MACRO_COLORS = {
     carb: '#3B82F6',    // Blue
     energy: '#10B981'   // Green
 };
+
+const modalRoot = document.getElementById('modal-root');
 
 // --- COMPONENT INTERFACES ---
 
@@ -271,6 +274,10 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
     const searchContainerRef = useRef<HTMLDivElement>(null);
     
     const [isAiPlanModalOpen, setIsAiPlanModalOpen] = useState(false);
+    
+    // --- NEW STATES FOR PATIENT SELECT MODAL ---
+    const [isPatientSelectModalOpen, setIsPatientSelectModalOpen] = useState(false);
+    const [modalSearchTerm, setModalSearchTerm] = useState('');
 
     const hasAiFeature = useMemo(() => {
         return subscription?.plans?.features ? (subscription.plans.features as any).ai_assistant === true : false;
@@ -374,7 +381,8 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
         kcal: parseFloat(goals.kcal) > 0 ? (planTotals.kcal / parseFloat(goals.kcal)) * 100 : 0
     }), [planTotals, goalGrams, goals.kcal]);
 
-    const handleSavePlan = async () => {
+    // --- REFACTORED SAVE LOGIC ---
+    const executeSave = async (targetPersonId: string | null, targetPersonName: string) => {
         if (!clinic) {
             setError("No se puede guardar el plan sin una clínica activa.");
             return;
@@ -385,8 +393,8 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
         try {
             const { error: dbError } = await supabase.from('diet_plan_history').insert({
                 clinic_id: clinic.id,
-                person_id: selectedPersonId || null,
-                person_name: personName || 'Plan sin nombre',
+                person_id: targetPersonId,
+                person_name: targetPersonName || 'Plan sin nombre',
                 goals: goals,
                 totals: planTotals,
                 portions: portions,
@@ -401,6 +409,15 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
             setLoading(false);
         }
     };
+
+    const handleSavePlanClick = () => {
+        if (selectedPersonId) {
+            executeSave(selectedPersonId, personName);
+        } else {
+            // No patient selected, open the selection modal
+            setIsPatientSelectModalOpen(true);
+        }
+    };
     
     const filteredPersons = useMemo(() => {
         if (!searchTerm) return persons;
@@ -411,6 +428,13 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
             p.full_name.toLowerCase().includes(searchTerm.toLowerCase())
         );
     }, [persons, searchTerm, selectedPersonId]);
+    
+    // Modal filtered persons
+    const modalFilteredPersons = useMemo(() => {
+        return persons.filter(p => 
+            p.full_name.toLowerCase().includes(modalSearchTerm.toLowerCase())
+        );
+    }, [persons, modalSearchTerm]);
 
     const handleSelectPerson = (person: Person | null) => {
         if (person) {
@@ -423,6 +447,13 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
             setPersonName('');
         }
         setIsDropdownOpen(false);
+    };
+
+    const handleSelectFromModal = (person: Person) => {
+        handleSelectPerson(person);
+        setIsPatientSelectModalOpen(false);
+        // Optionally verify confirmation before saving, but UX is faster if we save immediately
+        executeSave(person.id, person.full_name);
     };
 
     // --- HEURISTIC #1 & #7: VISIBILITY & EFFICIENCY (Sticky Footer) ---
@@ -478,7 +509,7 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
                         {ICONS.sparkles} {isMobile ? 'IA' : 'Menú IA'}
                     </button>
                     <button 
-                        onClick={handleSavePlan} 
+                        onClick={handleSavePlanClick} 
                         disabled={loading} 
                         className="button-primary"
                         style={{padding: '0.5rem 1rem', fontSize: '0.9rem', whiteSpace: 'nowrap', flex: 1}}
@@ -544,8 +575,88 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
                 />
             )}
             
+            {/* NEW: Patient Selection Modal for Saving */}
+            {isPatientSelectModalOpen && modalRoot && createPortal(
+                <div style={styles.modalOverlay}>
+                    <div style={{...styles.modalContent, maxWidth: '500px'}} className="fade-in">
+                        <div style={styles.modalHeader}>
+                            <h2 style={styles.modalTitle}>Guardar Plan</h2>
+                            <button onClick={() => setIsPatientSelectModalOpen(false)} style={{...styles.iconButton, border: 'none'}}>{ICONS.close}</button>
+                        </div>
+                        <div style={styles.modalBody}>
+                            <p style={{marginTop: 0, color: 'var(--text-light)'}}>Selecciona un paciente para guardar este cálculo en su historial.</p>
+                            
+                            <input 
+                                type="text" 
+                                placeholder="Buscar paciente..." 
+                                value={modalSearchTerm}
+                                onChange={e => setModalSearchTerm(e.target.value)}
+                                style={{...styles.input, marginBottom: '1rem'}}
+                                autoFocus
+                            />
+                            
+                            <div style={{maxHeight: '300px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px'}}>
+                                {modalFilteredPersons.map(p => (
+                                    <div 
+                                        key={p.id} 
+                                        onClick={() => handleSelectFromModal(p)}
+                                        className="nav-item-hover"
+                                        style={{padding: '0.75rem 1rem', cursor: 'pointer', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}
+                                    >
+                                        <span>{p.full_name}</span>
+                                        <span style={{fontSize: '1.2rem', color: 'var(--primary-color)'}}>→</span>
+                                    </div>
+                                ))}
+                                {modalFilteredPersons.length === 0 && (
+                                    <div style={{padding: '1rem', textAlign: 'center', color: 'var(--text-light)'}}>No se encontraron resultados.</div>
+                                )}
+                            </div>
+                            
+                            <div style={{marginTop: '1rem', textAlign: 'center'}}>
+                                <button 
+                                    onClick={() => { 
+                                        setIsPatientSelectModalOpen(false); 
+                                        // Save as generic plan without ID
+                                        executeSave(null, 'Plan Genérico ' + new Date().toLocaleDateString()); 
+                                    }}
+                                    className="button-secondary"
+                                    style={{fontSize: '0.9rem', width: '100%'}}
+                                >
+                                    Guardar como Plan Genérico (Sin asignar)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>,
+                modalRoot
+            )}
+            
             {error && <p style={styles.error}>{error}</p>}
-            {success && <p style={{...styles.error, backgroundColor: 'var(--primary-light)', color: 'var(--primary-dark)', borderColor: 'var(--primary-color)'}}>{success}</p>}
+            
+            {/* Notification Toast */}
+            {success && createPortal(
+                <div className="fade-in" style={{
+                    position: 'fixed',
+                    bottom: '5rem', // Above the sticky footer
+                    right: '2rem',
+                    backgroundColor: 'var(--surface-color)',
+                    borderLeft: '4px solid #10B981',
+                    padding: '1rem 1.5rem',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    zIndex: 2000,
+                    color: 'var(--text-color)',
+                    fontWeight: 500,
+                    fontSize: '0.9rem'
+                }}>
+                    <span style={{fontSize: '1.2rem'}}>✅</span>
+                    {success}
+                </div>,
+                document.body
+            )}
 
             <ConfigPanel />
 

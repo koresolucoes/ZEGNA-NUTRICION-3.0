@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useMemo, useEffect } from 'react';
 import { ToolProps } from './tool-types';
 import CalculatorCard from './shared/CalculatorCard';
@@ -77,7 +78,7 @@ const NutritionalSupportTools: FC<ToolProps> = ({ selectedPerson, lastConsultati
             <CalculatorCard
                 title="Calculadora de Soporte Enteral"
                 onSave={handleSave}
-                saveDisabled={!selectedPerson || !plan.volume || !plan.infusionTime}
+                saveDisabled={!plan.volume || !plan.infusionTime}
                 saveStatus={saveStatus['nutritionalSupport']}
             >
                 <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem'}}>

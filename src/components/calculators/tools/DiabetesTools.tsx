@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useMemo, useEffect } from 'react';
 import { ToolProps } from './tool-types';
 import CalculatorCard from './shared/CalculatorCard';
@@ -39,7 +40,7 @@ const DiabetesTools: FC<ToolProps> = ({ lastConsultation, selectedPerson, handle
                     </div>
                 }
                 onSave={() => handleSaveToLog('eag', 'Cálculo eAG', `HbA1c: ${hba1c}%, eAG: ${eagResult!.value} mg/dL`, { inputs: { hba1c }, result: eagResult })}
-                saveDisabled={!selectedPerson || !eagResult}
+                saveDisabled={!eagResult}
                 saveStatus={saveStatus['eag']}
             >
                 <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', padding: '1rem 0'}}>

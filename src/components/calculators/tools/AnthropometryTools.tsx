@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useMemo, useEffect } from 'react';
 import { ToolProps } from './tool-types';
 import HelpTooltip from './shared/HelpTooltip';
@@ -152,7 +153,11 @@ const AnthropometryTools: FC<ToolProps> = ({ selectedPerson, lastConsultation, h
         const criteriaMetCount = Object.values(criteria).filter(Boolean).length;
         const isMetabolicSyndrome = criteriaMetCount >= 3;
 
+        // Check if basic data is present to enable save
+        const hasBasicData = imcResult !== null;
+
         return { 
+            hasData: hasBasicData,
             imc: { value: imcResult?.toFixed(1) || '-', interpretation: imcInterpretation },
             healthyWeight: healthyWeightRange ? `${healthyWeightRange.min} - ${healthyWeightRange.max} kg` : '-',
             whr: { value: whrResult?.toFixed(2) || '-', interpretation: whrInterpretation },
@@ -253,7 +258,7 @@ const AnthropometryTools: FC<ToolProps> = ({ selectedPerson, lastConsultation, h
                 <CalculatorCard 
                     title="Diagnóstico y Riesgo" 
                     onSave={handleSave} 
-                    saveDisabled={!selectedPerson} 
+                    saveDisabled={!results.hasData} 
                     saveStatus={saveStatus['anthropometryPanel']}
                 >
                     <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>

@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useMemo, useEffect } from 'react';
 import { ToolProps } from './tool-types';
 import CalculatorCard from './shared/CalculatorCard';
@@ -69,8 +70,8 @@ const RenalTools: FC<ToolProps> = ({ selectedPerson, lastConsultation, handleSav
     const inputStyle = { ...styles.input, backgroundColor: 'var(--background-color)', marginBottom: 0 };
     
     const handleSaveEvaluation = () => {
-        if (!selectedPerson || !gfrResult || !proteinNeedsResult) return;
-        const description = `Evaluación Renal: TFG ${gfrResult.value} (${gfrResult.interpretation}), Proteína ${proteinNeedsResult.value} g/día.`;
+        if (!gfrResult && !proteinNeedsResult) return;
+        const description = `Evaluación Renal: TFG ${gfrResult ? gfrResult.value : 'N/A'} (${gfrResult ? gfrResult.interpretation : 'N/A'}), Proteína ${proteinNeedsResult ? proteinNeedsResult.value : 'N/A'} g/día.`;
         handleSaveToLog('renalEvaluation', 'Evaluación Renal', description, { inputs: { gfr, proteinNeeds }, result: { gfr: gfrResult, protein: proteinNeedsResult } });
     };
 
@@ -79,7 +80,7 @@ const RenalTools: FC<ToolProps> = ({ selectedPerson, lastConsultation, handleSav
             <CalculatorCard 
                 title="Evaluación Renal (CKD-EPI 2021)"
                 onSave={handleSaveEvaluation}
-                saveDisabled={!selectedPerson || !gfrResult || !proteinNeedsResult}
+                saveDisabled={!gfrResult && !proteinNeedsResult}
                 saveStatus={saveStatus['renalEvaluation']}
             >
                 <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem'}}>

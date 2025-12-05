@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useMemo, useEffect } from 'react';
 import { ToolProps } from './tool-types';
 import CalculatorCard from './shared/CalculatorCard';
@@ -97,7 +98,7 @@ const EnergyRequirementsTool: FC<ToolProps> = ({ selectedPerson, lastConsultatio
             <CalculatorCard 
                 title="Gasto Energético"
                 onSave={() => handleSaveToLog('energyCalculator', `Cálculo GET (${selectedFormulaName})`, `GET: ${energyResult!.get} kcal/día`, { inputs: { ...energyCalculator, activityFactorLabel, stressFactorLabel }, result: energyResult })} 
-                saveDisabled={!selectedPerson || !energyResult} 
+                saveDisabled={!energyResult} 
                 saveStatus={saveStatus['energyCalculator']}
             >
                 <div style={{marginBottom: '1.5rem'}}>

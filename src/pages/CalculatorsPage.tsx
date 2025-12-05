@@ -157,8 +157,9 @@ const CalculatorsPage: FC<CalculatorsPageProps> = ({ isMobile, initialPlanToLoad
     };
 
     const handleSaveToLog = async (calculatorKey: string, logType: string, description: string, data: { inputs: any, result: any }) => {
+        // This function expects selectedPerson to be set in parent state
         if (!selectedPerson) {
-             alert("Debes seleccionar un paciente primero para guardar en su bitácora.");
+             console.error("No person selected in parent state");
              return;
         }
         
@@ -202,6 +203,8 @@ const CalculatorsPage: FC<CalculatorsPageProps> = ({ isMobile, initialPlanToLoad
                         setActiveSubTab={setActiveToolSubTab}
                         handleSaveToLog={handleSaveToLog}
                         saveStatus={{}}
+                        persons={persons} // Passed for the modal inside QuickTools
+                        onPersonSelect={handleSelectPerson} // Passed to update parent state from modal
                     />
                 )}
                 {activeTab === 'references' && (
