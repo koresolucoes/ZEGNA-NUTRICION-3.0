@@ -596,6 +596,7 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
                     equivalentsData={equivalentsData}
                     planPortions={portions}
                     personId={selectedPersonId || null}
+                    persons={persons} // Passed full list for selection inside modal
                 />
             )}
             

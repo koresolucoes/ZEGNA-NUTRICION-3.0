@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../../supabase';
 import { styles } from '../../constants';
 import { ICONS } from '../../pages/AuthPage';
-import { FoodEquivalent } from '../../types';
+import { FoodEquivalent, Person } from '../../types';
 import { useClinic } from '../../contexts/ClinicContext';
 import { Type } from '@google/genai';
 
@@ -15,12 +15,17 @@ interface AiMealPlanGeneratorModalProps {
     equivalentsData: FoodEquivalent[];
     planPortions: Record<string, string>;
     personId: string | null;
+    persons?: Person[]; // Added to support selection inside modal
 }
 
 const modalRoot = document.getElementById('modal-root');
 
-const AiMealPlanGeneratorModal: FC<AiMealPlanGeneratorModalProps> = ({ isOpen, onClose, onPlanSaved, equivalentsData, planPortions, personId }) => {
+const AiMealPlanGeneratorModal: FC<AiMealPlanGeneratorModalProps> = ({ isOpen, onClose, onPlanSaved, equivalentsData, planPortions, personId, persons = [] }) => {
     const { clinic } = useClinic();
+    
+    // State to manage the selected patient locally within the modal
+    const [localPersonId, setLocalPersonId] = useState<string | null>(personId);
+    
     const [numDays, setNumDays] = useState('3');
     const [customInstructions, setCustomInstructions] = useState('');
     const [generatedPlan, setGeneratedPlan] = useState<any | null>(null);
@@ -52,15 +57,23 @@ const AiMealPlanGeneratorModal: FC<AiMealPlanGeneratorModalProps> = ({ isOpen, o
             });
     }, [planPortions, equivalentsData]);
 
-    // Fetch clinical data when modal opens
+    // Update local person ID if prop changes (e.g., selected outside)
+    useEffect(() => {
+        setLocalPersonId(personId);
+    }, [personId, isOpen]);
+
+    // Fetch clinical data whenever localPersonId changes
     useEffect(() => {
         const fetchClinicalData = async () => {
-            if (!personId) return;
+            if (!localPersonId) {
+                setClinicalContext({ allergies: [], conditions: [] });
+                return;
+            }
             setLoadingContext(true);
             try {
                 const [allergiesRes, historyRes] = await Promise.all([
-                    supabase.from('allergies_intolerances').select('substance').eq('person_id', personId),
-                    supabase.from('medical_history').select('condition').eq('person_id', personId)
+                    supabase.from('allergies_intolerances').select('substance').eq('person_id', localPersonId),
+                    supabase.from('medical_history').select('condition').eq('person_id', localPersonId)
                 ]);
                 
                 setClinicalContext({
@@ -77,7 +90,7 @@ const AiMealPlanGeneratorModal: FC<AiMealPlanGeneratorModalProps> = ({ isOpen, o
         if (isOpen) {
             fetchClinicalData();
         }
-    }, [isOpen, personId]);
+    }, [isOpen, localPersonId]);
 
     const handleGenerate = async () => {
         setError(null);
@@ -184,7 +197,8 @@ La respuesta DEBE ser únicamente un objeto JSON válido.`;
     };
     
     const handleSavePlanToPatient = async () => {
-        if (!generatedPlan || !generatedPlan.plan_semanal || !personId) {
+        // Use localPersonId instead of just prop personId
+        if (!generatedPlan || !generatedPlan.plan_semanal || !localPersonId) {
             setError("No hay un plan generado o no se ha seleccionado un paciente para asignarlo.");
             return;
         }
@@ -198,7 +212,7 @@ La respuesta DEBE ser únicamente un objeto JSON válido.`;
                 const planDate = new Date(tomorrowUTC);
                 planDate.setUTCDate(tomorrowUTC.getUTCDate() + index);
                 return {
-                    person_id: personId,
+                    person_id: localPersonId,
                     log_date: planDate.toISOString().split('T')[0],
                     desayuno: day.desayuno,
                     colacion_1: day.colacion_1 || null,
@@ -212,12 +226,12 @@ La respuesta DEBE ser únicamente un objeto JSON válido.`;
             if (dietLogError) throw dietLogError;
 
             await supabase.from('logs').insert({
-                person_id: personId,
+                person_id: localPersonId,
                 log_type: 'Plan Alimenticio (IA)',
                 description: `Se generó y guardó un nuevo plan alimenticio de ${numDays} días basado en equivalentes exactos.`,
             });
             
-            const { data: person } = await supabase.from('persons').select('user_id').eq('id', personId).single();
+            const { data: person } = await supabase.from('persons').select('user_id').eq('id', localPersonId).single();
             if (person?.user_id) {
                 fetch('/api/send-notification', {
                     method: 'POST',
@@ -255,6 +269,30 @@ La respuesta DEBE ser únicamente un objeto JSON válido.`;
                                 <p style={{marginTop: 0, fontSize: '0.9rem', color: 'var(--text-light)'}}>
                                     La IA utilizará estrictamente la distribución de equivalentes definida en el planificador para crear menús con medidas exactas.
                                 </p>
+                                
+                                {/* Patient Selector */}
+                                <div style={{marginBottom: '1.5rem'}}>
+                                    <label htmlFor="patient-selector">Paciente Asignado</label>
+                                    <select 
+                                        id="patient-selector" 
+                                        value={localPersonId || ''} 
+                                        onChange={(e) => setLocalPersonId(e.target.value || null)}
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.75rem',
+                                            borderRadius: '8px',
+                                            border: '1px solid var(--border-color)',
+                                            backgroundColor: 'var(--background-color)',
+                                            fontSize: '0.95rem'
+                                        }}
+                                    >
+                                        <option value="">-- Seleccionar Paciente --</option>
+                                        {persons.map(p => (
+                                            <option key={p.id} value={p.id}>{p.full_name}</option>
+                                        ))}
+                                    </select>
+                                    {!localPersonId && <p style={{fontSize: '0.8rem', color: 'var(--error-color)', marginTop: '0.25rem'}}>Debes seleccionar un paciente para guardar el plan.</p>}
+                                </div>
                                 
                                 <div style={{marginBottom: '1.5rem'}}>
                                     <label htmlFor="num_days">Días a generar</label>
@@ -350,8 +388,8 @@ La respuesta DEBE ser únicamente un objeto JSON válido.`;
                     {generatedPlan ? (
                          <button 
                             onClick={handleSavePlanToPatient} 
-                            disabled={loading || !personId} 
-                            title={!personId ? "Debes asociar un paciente al plan para guardarlo" : "Guardar el plan generado en el expediente del paciente"}
+                            disabled={loading || !localPersonId} 
+                            title={!localPersonId ? "Debes asociar un paciente al plan para guardarlo" : "Guardar el plan generado en el expediente del paciente"}
                          >
                             {loading ? 'Guardando...' : 'Guardar Plan al Paciente'}
                          </button>
