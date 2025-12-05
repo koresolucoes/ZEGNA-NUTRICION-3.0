@@ -83,6 +83,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
     const [view, setView] = useState({ page: 'home', context: {} as any });
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [profile, setProfile] = useState<NutritionistProfile | null>(null);
     const { setTheme } = useThemeManager();
     
@@ -111,6 +112,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
     const unrestrictedPages = ['profile', 'profile-form', 'settings', 'clinic-settings', 'billing', 'fiscal-settings', 'notifications-center'];
 
     const toggleCategory = (key: string) => {
+        if (isSidebarCollapsed) setIsSidebarCollapsed(false);
         setOpenCategories(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
@@ -274,6 +276,31 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
         
         // Style differentiation based on layout
         const isSidebar = navigationLayout === 'sidebar' && !isMobile;
+
+        if (isSidebar && isSidebarCollapsed) {
+            return (
+                <div
+                    onClick={isLocked ? undefined : () => navigate(pageName, context)}
+                    style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        padding: '0.75rem',
+                        margin: '0 0.25rem 4px 0.25rem',
+                        borderRadius: '12px',
+                        cursor: isLocked ? 'not-allowed' : 'pointer',
+                        backgroundColor: isActive ? 'var(--primary-light)' : 'transparent',
+                        color: isActive ? 'var(--primary-color)' : isLocked ? 'var(--text-light)' : 'var(--text-color)',
+                        transition: 'all 0.2s ease',
+                        opacity: isLocked ? 0.6 : 1
+                    }}
+                    className={!isLocked ? "nav-item-hover" : ""}
+                    title={`${name} ${isLocked ? '(Requiere plan)' : ''}`}
+                >
+                    <span style={{ fontSize: '1.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{icon}</span>
+                </div>
+            )
+        }
         
         return (
             <div
@@ -328,6 +355,30 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
     }> = ({ name, icon, categoryKey, pageNames, children }) => {
         const isActive = pageNames.some(page => view.page.startsWith(page));
         const isOpen = openCategories[categoryKey];
+
+        if (isSidebarCollapsed && navigationLayout === 'sidebar' && !isMobile) {
+             return (
+                 <div
+                    onClick={() => setIsSidebarCollapsed(false)}
+                    style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        padding: '0.75rem',
+                        margin: '0 0.25rem 4px 0.25rem',
+                        borderRadius: '12px',
+                        cursor: 'pointer',
+                        backgroundColor: isActive ? 'var(--surface-hover-color)' : 'transparent',
+                        color: isActive ? 'var(--primary-color)' : 'var(--text-color)',
+                        transition: 'all 0.2s ease'
+                    }}
+                    className="nav-item-hover"
+                    title={name}
+                >
+                    <span style={{ fontSize: '1.3rem' }}>{icon}</span>
+                </div>
+            );
+        }
 
         return (
             <div style={{ marginBottom: '2px' }}>
@@ -436,32 +487,37 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
         );
     };
     
-    const SectionLabel: FC<{ label: string }> = ({ label }) => (
-        <div style={{
-            padding: '1.5rem 1rem 0.5rem 1rem',
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            color: 'var(--text-light)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            opacity: 0.8
-        }}>
-            {label}
-        </div>
-    );
+    const SectionLabel: FC<{ label: string }> = ({ label }) => {
+        if (isSidebarCollapsed) return null;
+        return (
+            <div style={{
+                padding: '1.5rem 1rem 0.5rem 1rem',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                color: 'var(--text-light)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                opacity: 0.8
+            }}>
+                {label}
+            </div>
+        );
+    };
     
     // User Profile Widget for Sidebar
     const UserProfileWidget = () => (
         <div style={{
-            padding: '1rem',
+            padding: isSidebarCollapsed ? '1rem 0' : '1rem',
             marginTop: 'auto', 
             borderTop: '1px solid var(--border-color)',
             display: 'flex',
+            flexDirection: isSidebarCollapsed ? 'column' : 'row',
             alignItems: 'center',
             gap: '0.75rem',
             cursor: 'pointer',
             backgroundColor: 'var(--surface-color)',
             transition: 'background-color 0.2s',
+            justifyContent: isSidebarCollapsed ? 'center' : 'flex-start'
         }}
         className="nav-item-hover"
         onClick={(e) => { e.stopPropagation(); navigate('settings', { initialTab: 'account' }); }}
@@ -471,30 +527,34 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                 alt="Profile" 
                 style={{width: '40px', height: '40px', borderRadius: '10px', border: '1px solid var(--border-color)', objectFit: 'cover', flexShrink: 0}}
             />
-            <div style={{flex: 1, minWidth: 0}}>
-                <p style={{margin: 0, fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-color)'}}>
-                    {profile?.full_name || 'Usuario'}
-                </p>
-                <p style={{margin: 0, fontSize: '0.75rem', color: 'var(--text-light)', textTransform: 'capitalize'}}>
-                    {role === 'admin' ? 'Administrador' : role}
-                </p>
-            </div>
-            <button 
-                onClick={(e) => { e.stopPropagation(); supabase.auth.signOut(); }}
-                style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--text-light)',
-                    padding: '0.5rem',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}
-                title="Cerrar Sesión"
-                className="nav-item-hover"
-            >
-                {ICONS.logout}
-            </button>
+            {!isSidebarCollapsed && (
+                <div style={{flex: 1, minWidth: 0}}>
+                    <p style={{margin: 0, fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-color)'}}>
+                        {profile?.full_name || 'Usuario'}
+                    </p>
+                    <p style={{margin: 0, fontSize: '0.75rem', color: 'var(--text-light)', textTransform: 'capitalize'}}>
+                        {role === 'admin' ? 'Administrador' : role}
+                    </p>
+                </div>
+            )}
+            {!isSidebarCollapsed && (
+                <button 
+                    onClick={(e) => { e.stopPropagation(); supabase.auth.signOut(); }}
+                    style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-light)',
+                        padding: '0.5rem',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}
+                    title="Cerrar Sesión"
+                    className="nav-item-hover"
+                >
+                    {ICONS.logout}
+                </button>
+            )}
         </div>
     );
 
@@ -665,6 +725,8 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                     {/* Sidebar Element (Visible if desktop or mobile menu open) */}
                     <aside style={{
                         ...styles.sidebar,
+                        width: isMobile ? '280px' : (isSidebarCollapsed ? '80px' : '260px'),
+                        transition: 'width 0.3s ease, transform 0.3s ease',
                         ...(isMobile ? {
                             transform: isMobileMenuOpen ? 'translateX(0)' : 'translateX(-100%)',
                             position: 'fixed',
@@ -676,34 +738,70 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                         })
                     }}>
                          {/* Sidebar Header */}
-                         <div style={{ padding: '0.5rem 1rem 1.5rem 1rem', marginBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                         <div style={{ 
+                             padding: isSidebarCollapsed ? '1.5rem 0.5rem' : '1.5rem 1rem', 
+                             marginBottom: '0.5rem', 
+                             borderBottom: '1px solid var(--border-color)',
+                             display: 'flex',
+                             flexDirection: isSidebarCollapsed ? 'column' : 'row',
+                             alignItems: 'center',
+                             justifyContent: 'space-between',
+                             gap: isSidebarCollapsed ? '1rem' : '0.5rem'
+                         }}>
                              {isMobile && (
-                                 <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '1rem'}}>
+                                 <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', width: '100%'}}>
                                     <h3>Menú</h3>
                                     <button onClick={() => setIsMobileMenuOpen(false)} style={{...styles.iconButton}}>{ICONS.close}</button>
                                  </div>
                              )}
-                             <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+                             <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start', width: isSidebarCollapsed ? '100%' : 'auto'}}>
                                 <div style={{
-                                    width: '40px', height: '40px', borderRadius: '10px', 
+                                    width: isSidebarCollapsed ? '32px' : '40px', 
+                                    height: isSidebarCollapsed ? '32px' : '40px', 
+                                    borderRadius: '10px', 
                                     background: 'linear-gradient(135deg, var(--primary-color), var(--primary-dark))',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    color: 'white', fontSize: '1.2rem', fontWeight: 800,
-                                    boxShadow: '0 4px 10px rgba(0,0,0,0.15)'
+                                    color: 'white', fontSize: isSidebarCollapsed ? '1rem' : '1.2rem', fontWeight: 800,
+                                    boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
+                                    flexShrink: 0
                                 }}>
                                         {clinic?.name ? clinic.name.charAt(0).toUpperCase() : 'Z'}
                                 </div>
-                                <div style={{ overflow: 'hidden' }}>
-                                    <h2 style={{ color: 'var(--text-color)', fontSize: '1rem', fontWeight: 700, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        {clinic?.name || 'Zegna Nutrición'}
-                                    </h2>
-                                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-light)' }}>Panel de Control</p>
-                                </div>
+                                {!isSidebarCollapsed && (
+                                    <div style={{ overflow: 'hidden' }}>
+                                        <h2 style={{ color: 'var(--text-color)', fontSize: '1rem', fontWeight: 700, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            {clinic?.name || 'Zegna'}
+                                        </h2>
+                                        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-light)' }}>Panel</p>
+                                    </div>
+                                )}
                             </div>
+
+                            {/* Collapse Button (Desktop only) */}
+                            {!isMobile && (
+                                <button 
+                                    onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        color: 'var(--text-light)',
+                                        cursor: 'pointer',
+                                        padding: '4px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        marginTop: isSidebarCollapsed ? '0' : '0'
+                                    }}
+                                    className="nav-item-hover"
+                                    title={isSidebarCollapsed ? "Expandir" : "Contraer"}
+                                >
+                                    {isSidebarCollapsed ? <span>➜</span> : <span>←</span>}
+                                </button>
+                            )}
                         </div>
 
                         {/* Navigation Content */}
-                        <nav style={{flex: 1, overflowY: 'auto', paddingBottom: '1rem'}} className="hide-scrollbar">
+                        <nav style={{flex: 1, overflowY: 'auto', paddingBottom: '1rem', display: 'flex', flexDirection: 'column'}} className="hide-scrollbar">
                             <NavItem name="Dashboard" pageName="home" icon={ICONS.home} />
                             <NavItem name="Centro de Notificaciones" pageName="notifications-center" icon="🔔" />
                             
@@ -760,12 +858,13 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
             <main style={{
                 flex: 1,
                 padding: isMobile ? '1rem' : '2rem',
-                maxWidth: navigationLayout === 'header' ? '1400px' : '1600px',
-                margin: '0 auto',
+                maxWidth: '100%', // Changed from 1400px/1600px to 100% to fill screen
+                margin: 0, // Removed '0 auto' to let it fill
                 width: '100%',
                 overflowX: 'hidden',
-                marginLeft: (useSidebar && !isMobile) ? '260px' : 0,
-                transition: 'margin-left 0.3s ease',
+                // Dynamic margin calculation based on sidebar state and layout mode
+                marginLeft: isMobile ? 0 : (useSidebar ? (isSidebarCollapsed ? '80px' : '260px') : 0),
+                transition: 'margin-left 0.3s ease, width 0.3s ease',
                 marginTop: (navigationLayout === 'header' && !isMobile) ? 0 : 0
             }}>
                 {/* Minimal Header for Sidebar Mode (Notifications Only) */}

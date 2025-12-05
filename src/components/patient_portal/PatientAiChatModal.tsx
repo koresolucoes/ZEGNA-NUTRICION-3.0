@@ -130,8 +130,12 @@ const PatientAiChatModal: FC<PatientAiChatModalProps> = ({ isOpen, onClose, pers
                     },
                 });
             }
+            
+            const now = new Date();
+            const dateOptions: Intl.DateTimeFormatOptions = { timeZone: 'America/Mexico_City', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+            const todayString = now.toLocaleDateString('es-MX', dateOptions);
 
-            const systemInstruction = `${agentConfig.patient_system_prompt || 'Eres un asistente nutricional amigable.'}\n\nIMPORTANTE: Estás conversando directamente con el paciente ${person.full_name}. No necesitas pedirle su nombre o número de folio. Utiliza la herramienta 'get_my_data_for_ai' para obtener su información personal del plan.`;
+            const systemInstruction = `${agentConfig.patient_system_prompt || 'Eres un asistente nutricional amigable.'}\n\nCONTEXTO TEMPORAL:\n- HOY ES: ${todayString}.\n\nIMPORTANTE: Estás conversando directamente con el paciente ${person.full_name}. No necesitas pedirle su nombre o número de folio. Utiliza la herramienta 'get_my_data_for_ai' para obtener su información personal del plan.`;
 
             // --- Turn 1: User sends message, Model responds (maybe with tools) ---
             let apiResult = await callGeminiApi(newMessages, systemInstruction, functionDeclarations);
