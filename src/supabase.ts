@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 // This assumes you have generated types via `supabase gen types typescript > src/database.types.ts`
 import { Database as DB } from './database.types';
@@ -33,119 +34,55 @@ export const supabase = supabaseClient as ReturnType<typeof createClient<Databas
 
 /*
 -- =================================================================
--- V27.0 SCRIPT DE CORRECCIÓN (Enlaces de Afiliados para Aliados)
--- Actualiza create_user_affiliate_link para buscar nombres en 'allies' también.
--- POR FAVOR, EJECUTA ESTE SCRIPT EN TU EDITOR SQL DE SUPABASE.
+-- V28.1 SCRIPT: ACTUALIZACIÓN DE ALIMENTOS SMAE CON MACROS
 -- =================================================================
 BEGIN;
 
-CREATE OR REPLACE FUNCTION public.create_user_affiliate_link(p_program_id uuid)
-RETURNS json
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    new_code TEXT;
-    user_full_name TEXT;
-    new_link RECORD;
-BEGIN
-    -- Check if user already has a link for this program
-    PERFORM 1 FROM public.affiliate_links WHERE user_id = auth.uid() AND program_id = p_program_id;
-    IF FOUND THEN
-        RAISE EXCEPTION 'User already has a link for this program.';
-    END IF;
+-- 1. Asegurar que la tabla existe (si no corrió el V28.0)
+CREATE TABLE IF NOT EXISTS public.smae_foods (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    name text NOT NULL,
+    subgroup text NOT NULL,
+    amount numeric NOT NULL,
+    unit text NOT NULL,
+    gross_weight numeric,
+    net_weight numeric,
+    energy_kcal numeric,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
 
-    -- 1. Try to get name from nutritionist_profiles (Clinic Owners/Members)
-    SELECT full_name INTO user_full_name FROM public.nutritionist_profiles WHERE user_id = auth.uid();
-    
-    -- 2. If not found, try to get name from allies (Collaborators)
-    IF user_full_name IS NULL THEN
-        SELECT full_name INTO user_full_name FROM public.allies WHERE user_id = auth.uid();
-    END IF;
+-- 2. Añadir columnas de macronutrientes específicos
+ALTER TABLE public.smae_foods 
+ADD COLUMN IF NOT EXISTS carb_g numeric DEFAULT NULL,
+ALTER TABLE public.smae_foods 
+ADD COLUMN IF NOT EXISTS protein_g numeric DEFAULT NULL,
+ALTER TABLE public.smae_foods 
+ADD COLUMN IF NOT EXISTS lipid_g numeric DEFAULT NULL;
 
-    -- 3. If still not found, raise exception
-    IF user_full_name IS NULL THEN
-        RAISE EXCEPTION 'User profile not found or name is missing.';
-    END IF;
-    
-    -- Generate a unique code (e.g., JUANP-XYZ)
-    new_code := UPPER(REGEXP_REPLACE(user_full_name, '\s.*', '')) || '-' || UPPER(SUBSTRING(md5(random()::text) FOR 3));
+-- 3. Habilitar RLS si no está habilitado
+ALTER TABLE public.smae_foods ENABLE ROW LEVEL SECURITY;
 
-    WHILE EXISTS (SELECT 1 FROM public.affiliate_links WHERE code = new_code) LOOP
-        new_code := UPPER(REGEXP_REPLACE(user_full_name, '\s.*', '')) || '-' || UPPER(SUBSTRING(md5(random()::text) FOR 3));
-    END LOOP;
-    
-    -- Insert the new link and return it
-    INSERT INTO public.affiliate_links (user_id, program_id, code)
-    VALUES (auth.uid(), p_program_id, new_code)
-    RETURNING * INTO new_link;
-    
-    RETURN row_to_json(new_link);
-END;
-$$;
+DROP POLICY IF EXISTS "Todos pueden leer alimentos SMAE" ON public.smae_foods;
+CREATE POLICY "Todos pueden leer alimentos SMAE" 
+ON public.smae_foods FOR SELECT 
+USING (auth.role() = 'authenticated');
+
+-- 4. Actualizar datos de ejemplo con macros específicos (sobreescribir si existen)
+-- Frutas (Variaciones reales vs promedio de 15g)
+INSERT INTO public.smae_foods (name, subgroup, amount, unit, gross_weight, net_weight, energy_kcal, carb_g, protein_g, lipid_g) VALUES
+('Manzana con piel', 'Frutas', 1, 'pieza', 106, 100, 52, 14, 0.3, 0.2),
+('Plátano', 'Frutas', 0.5, 'pieza', 80, 80, 70, 18, 0.8, 0.3),
+('Fresa', 'Frutas', 1, 'taza', 144, 144, 49, 11, 1.0, 0.5),
+('Mango ataulfo', 'Frutas', 0.5, 'pieza', 90, 75, 48, 12, 0.5, 0.2),
+('Sandía', 'Frutas', 1, 'taza', 180, 160, 48, 11, 1.0, 0),
+('Jugo de naranja', 'Frutas', 0.5, 'taza', 125, 125, 56, 13, 0.9, 0.3)
+ON CONFLICT DO NOTHING;
+
+-- Si ya existían sin macros, se pueden actualizar manualmente o borrar y reinsertar.
+-- Para este script MVP, asumimos inserción limpia o que los nuevos registros conviven.
 
 COMMIT;
 -- =================================================================
--- Fin del Script de Corrección V27.0
--- =================================================================
-
-
--- =================================================================
--- V26.0 SCRIPT DE CORRECCIÓN (Registro de Aliados)
--- Corrige el trigger handle_new_user_setup para incluir el campo obligatorio 'specialty'.
--- POR FAVOR, EJECUTA ESTE SCRIPT EN TU EDITOR SQL DE SUPABASE.
--- =================================================================
-BEGIN;
-
-CREATE OR REPLACE FUNCTION public.handle_new_user_setup()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  meta_data jsonb := new.raw_user_meta_data;
-  ally_profile_id uuid;
-BEGIN
-  -- CASO 1: Inscripción de Aliado (Colaborador)
-  IF (meta_data->>'is_ally_signup')::boolean IS TRUE THEN
-    SELECT id INTO ally_profile_id
-    FROM public.allies
-    WHERE contact_email = new.email AND user_id IS NULL;
-
-    IF ally_profile_id IS NOT NULL THEN
-      -- Si el perfil ya existía (por invitación), lo actualizamos y vinculamos
-      UPDATE public.allies
-      SET user_id = new.id,
-          full_name = COALESCE((meta_data->>'full_name'), full_name),
-          -- Actualizamos especialidad si viene en metadatos
-          specialty = COALESCE((meta_data->>'specialty'), specialty)
-      WHERE id = ally_profile_id;
-    ELSE
-      -- Si es un registro nuevo directo
-      -- FIX: Incluimos 'specialty' que es NOT NULL en la tabla
-      INSERT INTO public.allies (user_id, contact_email, full_name, specialty)
-      VALUES (
-          new.id, 
-          new.email, 
-          COALESCE((meta_data->>'full_name'), 'Usuario'),
-          COALESCE((meta_data->>'specialty'), 'General') -- Valor por defecto para evitar errores
-      );
-    END IF;
-
-  -- CASO 2: Invitación de Miembro de la Clínica
-  ELSIF meta_data->>'role' IS NOT NULL AND meta_data->>'clinic_id' IS NOT NULL THEN
-    INSERT INTO public.clinic_members (user_id, clinic_id, role)
-    VALUES (new.id, (meta_data->>'clinic_id')::uuid, (meta_data->>'role')::text);
-  
-  END IF;
-
-  RETURN new;
-END;
-$$;
-
-COMMIT;
--- =================================================================
--- Fin del Script de Corrección V26.0
+-- Fin del Script V28.1
 -- =================================================================
 */

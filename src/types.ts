@@ -129,6 +129,22 @@ export type FoodEquivalent = Database['public']['Tables']['food_equivalents']['R
 // FIX: Add ReferralConsentRequest type
 export type ReferralConsentRequest = Database['public']['Tables']['referral_consent_requests']['Row'];
 
+// --- SMAE / Food Types ---
+export type SmaeFood = {
+    id: string;
+    name: string;
+    subgroup: string; // To link with FoodEquivalent
+    amount: number;
+    unit: string;
+    gross_weight: number | null;
+    net_weight: number | null;
+    energy_kcal?: number;
+    // New specific macros per portion
+    protein_g?: number | null;
+    lipid_g?: number | null;
+    carb_g?: number | null;
+};
+
 // --- AI Agent & WhatsApp Types ---
 export type AiAgent = Database['public']['Tables']['ai_agents']['Row'] & {
     tools?: Json | null; // Override Json type for easier access if needed

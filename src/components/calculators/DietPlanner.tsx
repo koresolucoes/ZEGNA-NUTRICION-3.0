@@ -7,6 +7,7 @@ import { ICONS } from '../../pages/AuthPage';
 import { supabase } from '../../supabase';
 import { useClinic } from '../../contexts/ClinicContext';
 import AiMealPlanGeneratorModal from './AiMealPlanGeneratorModal';
+import FoodExamplesModal from './FoodExamplesModal';
 
 // --- CONSTANTS & HELPERS ---
 
@@ -26,6 +27,7 @@ interface EquivalentRowProps {
     portion: string;
     isMobile: boolean;
     onPortionChange: (id: string, value: string) => void;
+    onShowExamples: (eq: FoodEquivalent, portion: number) => void;
 }
 
 interface EquivalentsPanelProps {
@@ -35,6 +37,7 @@ interface EquivalentsPanelProps {
     portions: Record<string, string>;
     isMobile: boolean;
     handlePortionChange: (id: string, value: string) => void;
+    onShowExamples: (eq: FoodEquivalent, portion: number) => void;
 }
 
 // --- SUB-COMPONENTS ---
@@ -92,7 +95,7 @@ const StepperInput: FC<{ value: string, onChange: (val: string) => void, isActiv
     );
 };
 
-const EquivalentCard: FC<EquivalentRowProps> = React.memo(({ eq, portion, isMobile, onPortionChange }) => {
+const EquivalentCard: FC<EquivalentRowProps> = React.memo(({ eq, portion, isMobile, onPortionChange, onShowExamples }) => {
     const numPortions = parseFloat(portion) || 0;
     const isActive = numPortions > 0;
 
@@ -122,12 +125,24 @@ const EquivalentCard: FC<EquivalentRowProps> = React.memo(({ eq, portion, isMobi
             boxShadow: isActive ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
             position: 'relative'
         }}>
-            {isActive && (
-                <div style={{position: 'absolute', top: '8px', right: '8px', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--primary-color)'}}></div>
-            )}
-            
-            <div style={{ fontWeight: 600, color: 'var(--text-color)', fontSize: '0.95rem', lineHeight: 1.3, minHeight: '2.6em' }}>
-                {eq.subgroup_name}
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+                <div style={{ fontWeight: 600, color: 'var(--text-color)', fontSize: '0.95rem', lineHeight: 1.3 }}>
+                    {eq.subgroup_name}
+                </div>
+                 {isActive && (
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onShowExamples(eq, numPortions); }}
+                        style={{
+                            border: 'none', background: 'var(--primary-color)', color: 'white',
+                            borderRadius: '50%', width: '24px', height: '24px', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                            fontSize: '0.8rem', padding: 0
+                        }}
+                        title="Ver alimentos equivalentes"
+                    >
+                        👁️
+                    </button>
+                )}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', fontSize: '0.75rem' }}>
@@ -156,7 +171,7 @@ const EquivalentCard: FC<EquivalentRowProps> = React.memo(({ eq, portion, isMobi
 
 const EquivalentsPanel: FC<EquivalentsPanelProps> = ({ 
     groupedEquivalents, collapsedGroups, toggleGroup, portions, isMobile, 
-    handlePortionChange 
+    handlePortionChange, onShowExamples
 }) => {
     const groupOrder = [
         'Verduras', 'Frutas', 'Cereales y Tubérculos', 'Leguminosas',
@@ -222,6 +237,7 @@ const EquivalentsPanel: FC<EquivalentsPanelProps> = ({
                                             portion={portions[eq.id] || ''}
                                             isMobile={isMobile}
                                             onPortionChange={handlePortionChange}
+                                            onShowExamples={onShowExamples}
                                         />
                                     ))}
                                 </div>
@@ -279,6 +295,10 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
     const [isPatientSelectModalOpen, setIsPatientSelectModalOpen] = useState(false);
     const [modalSearchTerm, setModalSearchTerm] = useState('');
 
+    // --- NEW STATE FOR FOOD EXAMPLES MODAL ---
+    const [foodExamplesState, setFoodExamplesState] = useState<{ isOpen: boolean; equivalent: FoodEquivalent | null; portions: number }>({ isOpen: false, equivalent: null, portions: 0 });
+
+
     const hasAiFeature = useMemo(() => {
         return subscription?.plans?.features ? (subscription.plans.features as any).ai_assistant === true : false;
     }, [subscription]);
@@ -334,6 +354,10 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
         if (/^\d*\.?\d*$/.test(value)) {
             setPortions(prev => ({ ...prev, [equivalentId]: value }));
         }
+    }, []);
+
+    const handleShowExamples = useCallback((eq: FoodEquivalent, portion: number) => {
+        setFoodExamplesState({ isOpen: true, equivalent: eq, portions: portion });
     }, []);
 
     const handleGoalChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -575,6 +599,15 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
                 />
             )}
             
+            {foodExamplesState.isOpen && foodExamplesState.equivalent && (
+                <FoodExamplesModal 
+                    isOpen={foodExamplesState.isOpen}
+                    onClose={() => setFoodExamplesState({ ...foodExamplesState, isOpen: false })}
+                    equivalent={foodExamplesState.equivalent}
+                    portions={foodExamplesState.portions}
+                />
+            )}
+            
             {/* NEW: Patient Selection Modal for Saving */}
             {isPatientSelectModalOpen && modalRoot && createPortal(
                 <div style={styles.modalOverlay}>
@@ -667,6 +700,7 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
                 portions={portions}
                 isMobile={isMobile}
                 handlePortionChange={handlePortionChange}
+                onShowExamples={handleShowExamples}
             />
             
             <StickyStatusFooter />
