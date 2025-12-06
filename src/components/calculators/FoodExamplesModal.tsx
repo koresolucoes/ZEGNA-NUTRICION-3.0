@@ -28,7 +28,7 @@ const FoodExamplesModal: FC<FoodExamplesModalProps> = ({ isOpen, onClose, equiva
             // Normalize subgroup name for matching
             const searchTerm = equivalent.subgroup_name;
 
-            const { data, error } = await supabase
+            const { data, error } = await (supabase as any)
                 .from('smae_foods')
                 .select('*')
                 .ilike('subgroup', `%${searchTerm}%`)
@@ -37,7 +37,7 @@ const FoodExamplesModal: FC<FoodExamplesModalProps> = ({ isOpen, onClose, equiva
             if (error) {
                 console.error("Error fetching foods:", error);
             } else {
-                setFoods(data || []);
+                setFoods((data as SmaeFood[]) || []);
             }
             setLoading(false);
         };

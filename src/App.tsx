@@ -4,7 +4,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { ClinicProvider } from './contexts/ClinicContext';
 import AuthPage from './pages/AuthPage';
-import DashboardLayout from './components/DashboardLayout';
+import DashboardLayout from './components/dashboard/DashboardLayout';
 import DisplayQueuePage from './pages/DisplayQueuePage';
 import SetPasswordPage from './pages/SetPasswordPage';
 import PatientPortalLayout from './components/patient_portal/PatientPortalLayout';

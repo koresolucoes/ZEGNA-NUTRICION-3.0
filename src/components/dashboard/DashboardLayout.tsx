@@ -32,16 +32,16 @@ import ClinicNetworkPage from '../../pages/ClinicNetworkPage';
 import ChatPage from '../../pages/ChatPage';
 import FinanzasPage from '../../pages/FinanzasPage'; 
 import ClinicSettingsPage from '../../pages/ClinicSettingsPage';
-import ServiceManagement from '../dashboard/ServiceManagement';
-import ServicePlansManagement from '../dashboard/ServicePlansManagement';
-import DisplayManagement from '../dashboard/DisplayManagement';
-import FiscalApiManagement from '../components/dashboard/FiscalApiManagement';
+import ServiceManagement from './ServiceManagement';
+import ServicePlansManagement from './ServicePlansManagement';
+import DisplayManagement from './DisplayManagement';
+import FiscalApiManagement from './FiscalApiManagement';
 import SubscriptionPage from '../../pages/SubscriptionPage';
 import AffiliatesPage from '../../pages/AffiliatesPage';
 import BetaFeedbackModal from '../shared/BetaFeedbackModal';
 import UserGuidePage from '../../pages/UserGuidePage';
 import NotificationsMenu from './NotificationsMenu';
-import NotificationsCenterPage from '../../pages/NotificationsCenterPage'; // Import new page
+import NotificationsCenterPage from '../../pages/NotificationsCenterPage';
 import { useThemeManager } from '../../contexts/ThemeContext';
 
 const PlanLockedView: FC<{ onGoToBilling: () => void }> = ({ onGoToBilling }) => (
@@ -84,11 +84,10 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
     const [view, setView] = useState({ page: 'home', context: {} as any });
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1100); 
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // State for collapsing sidebar
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [profile, setProfile] = useState<NutritionistProfile | null>(null);
     const { setTheme } = useThemeManager();
     
-    // UI Logic for Navbar layout
     const navigationLayout = clinic?.navigation_layout || 'sidebar'; 
 
     const [isQuickConsultModalOpen, setQuickConsultModalOpen] = useState(false);
@@ -96,7 +95,6 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
     const [clients, setClients] = useState<Pick<Person, 'id' | 'full_name' | 'avatar_url'>[]>([]);
     const [afiliados, setAfiliados] = useState<Pick<Person, 'id' | 'full_name' | 'avatar_url'>[]>([]);
 
-    // State for collapsible sidebar categories
     const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
         'gestion-clinica': true,
         'administracion': false,
@@ -105,15 +103,14 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
         'crecimiento': false,
         'mi-clinica': false
     });
-    // Dropdown state for horizontal menu
     const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
     const dropdownTimeoutRef = React.useRef<number | null>(null);
 
     const isSubscriptionActive = subscription?.status === 'active' || subscription?.status === 'trialing';
-    const unrestrictedPages = ['profile', 'profile-form', 'settings', 'clinic-settings', 'billing', 'displays', 'fiscal-settings'];
+    const unrestrictedPages = ['profile', 'profile-form', 'settings', 'clinic-settings', 'billing', 'displays', 'fiscal-settings', 'notifications-center'];
 
     const toggleCategory = (key: string) => {
-        if (isSidebarCollapsed) setIsSidebarCollapsed(false); // Auto expand if clicking a category
+        if (isSidebarCollapsed) setIsSidebarCollapsed(false);
         setOpenCategories(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
@@ -165,7 +162,6 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
             if (isMobile !== mobile) {
                 setIsMobile(mobile);
                 if (!mobile) setIsMobileMenuOpen(false);
-                // Auto expand on desktop if moving from mobile, but respect user choice otherwise
             }
         };
         window.addEventListener('resize', handleResize);
@@ -179,7 +175,6 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
         window.scrollTo(0, 0);
     };
 
-    // --- Dropdown Logic for Horizontal Menu ---
     const handleMouseEnter = (key: string) => {
         if (dropdownTimeoutRef.current) clearTimeout(dropdownTimeoutRef.current);
         setActiveDropdown(key);
@@ -270,8 +265,6 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
         }
     }
 
-    // --- Modern Nav Components ---
-
     const SectionLabel: FC<{ label: string }> = ({ label }) => (
         <div style={{
             padding: isSidebarCollapsed ? '1.5rem 0' : '1.5rem 1rem 0.5rem 1rem',
@@ -291,7 +284,6 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
         const isActive = (view.page === pageName) && (context?.initialTab ? view.context?.initialTab === context.initialTab : true);
         const isLocked = !isSubscriptionActive && !unrestrictedPages.includes(pageName);
         
-        // Check if sidebar mode
         const isSidebar = navigationLayout === 'sidebar' && !isMobile;
 
         if (isSidebar && isSidebarCollapsed) {
@@ -374,8 +366,6 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
         const isOpen = openCategories[categoryKey];
 
         if (isSidebarCollapsed) {
-            // In collapsed mode, clicking the category icon should just expand the sidebar or navigate to first item
-            // For UX, let's just show the icon and if clicked, it expands the sidebar
             return (
                  <div
                     onClick={() => setIsSidebarCollapsed(false)}
@@ -509,7 +499,6 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
         );
     };
     
-    // User Profile Widget for Sidebar
     const UserProfileWidget = () => (
         <div style={{
             padding: isSidebarCollapsed ? '1rem 0' : '1rem',
@@ -566,8 +555,6 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
 
     const isFabHidden = ['client-form', 'afiliado-form', 'aliado-form', 'consultation-form', 'log-form', 'profile-form', 'settings', 'calculators', 'agenda', 'queue', 'client-detail', 'afiliado-detail', 'chat', 'finanzas', 'clinic-settings', 'affiliates', 'user-guide'].includes(view.page);
     
-    // Logic to show sidebar. It shows if mobile (as drawer) OR if desktop AND navigation layout is 'sidebar'.
-    // BUT if desktop AND layout is 'header', we force hide it.
     const showSidebar = isMobile || navigationLayout === 'sidebar';
 
     return (
@@ -588,7 +575,6 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                 />
             )}
             
-            {/* --- HEADER NAVIGATION (Only if Header Mode and Desktop) --- */}
             {!showSidebar && !isMobile && (
                 <header style={{
                     height: '70px',
@@ -603,7 +589,6 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                     zIndex: 1000,
                     boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
                 }}>
-                    {/* Logo & Title */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <div style={{
                             width: '36px', height: '36px', borderRadius: '10px', 
@@ -619,7 +604,6 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                         </h2>
                     </div>
 
-                    {/* Center Navigation */}
                     <nav style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', height: '100%' }}>
                         <NavItem name="Dashboard" pageName="home" icon={ICONS.home} />
                         <NavItem name="Agenda" pageName="agenda" icon={ICONS.calendar} />
@@ -659,7 +643,6 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                         </NavDropdown>
                     </nav>
 
-                    {/* Right Actions */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                          <NotificationsMenu onNavigate={navigate} />
                          
@@ -687,10 +670,8 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                 </header>
             )}
 
-            {/* --- MOBILE HEADER & SIDEBAR (Or Desktop Sidebar Mode) --- */}
             {showSidebar && (
                 <>
-                    {/* Mobile Header (Always visible on mobile) */}
                     {isMobile && (
                         <header style={{
                             height: '64px',
@@ -731,7 +712,6 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                         </header>
                     )}
 
-                    {/* Sidebar Element (Visible if desktop or mobile menu open) */}
                     <aside style={{
                         ...styles.sidebar,
                         width: isMobile ? '280px' : (isSidebarCollapsed ? '80px' : '260px'),
@@ -746,7 +726,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                             boxShadow: '1px 0 0 var(--border-color)'
                         })
                     }}>
-                         {/* Sidebar Header */}
+                         {/* Sidebar Content */}
                          <div style={{ 
                              padding: isSidebarCollapsed ? '1.5rem 0.5rem' : '1.5rem 1rem', 
                              marginBottom: '0.5rem', 
@@ -756,15 +736,13 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                              alignItems: 'center',
                              justifyContent: 'space-between',
                              gap: isSidebarCollapsed ? '1rem' : '0.5rem'
-                        }}>
-                             {/* Mobile Close Button */}
+                         }}>
                              {isMobile && (
                                  <div style={{display: 'flex', justifyContent: 'flex-end', width: '100%', marginBottom: '0.5rem'}}>
                                      <button onClick={() => setIsMobileMenuOpen(false)} style={{...styles.iconButton}}>{ICONS.close}</button>
                                  </div>
                              )}
                              
-                             {/* Brand */}
                              <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start', width: isSidebarCollapsed ? '100%' : 'auto'}}>
                                 <div style={{
                                     width: isSidebarCollapsed ? '32px' : '40px', 
@@ -788,7 +766,6 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                                 )}
                             </div>
 
-                            {/* Collapse Button (Desktop only) */}
                             {!isMobile && (
                                 <button 
                                     onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -811,7 +788,6 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                             )}
                         </div>
 
-                        {/* Navigation Content */}
                         <nav style={{flex: 1, overflowY: 'auto', paddingBottom: '1rem', display: 'flex', flexDirection: 'column'}} className="hide-scrollbar">
                             <NavItem name="Dashboard" pageName="home" icon={ICONS.home} />
                             <NavItem name="Centro de Notificaciones" pageName="notifications-center" icon="🔔" />
@@ -865,21 +841,16 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                 </>
             )}
 
-            {/* --- MAIN CONTENT AREA --- */}
             <main style={{
                 flex: 1,
                 padding: isMobile ? '1rem' : '2rem',
-                maxWidth: navigationLayout === 'header' ? '1400px' : '100%',
-                margin: navigationLayout === 'header' ? '0 auto' : 0, // Center only if header mode
-                width: '100%',
+                maxWidth: '100%', 
+                margin: 0,
                 overflowX: 'hidden',
-                // IMPORTANT: If sidebar mode is active on desktop, adding margin to avoid overlap.
-                // If header mode is active, margin is 0.
-                marginLeft: isMobile ? 0 : (navigationLayout === 'header' ? 0 : (isSidebarCollapsed ? '80px' : '260px')),
+                marginLeft: isMobile ? 0 : (showSidebar ? (isSidebarCollapsed ? '80px' : '260px') : 0),
                 transition: 'margin-left 0.3s ease, width 0.3s ease',
                 marginTop: (navigationLayout === 'header' && !isMobile) ? 0 : 0
             }}>
-                {/* Minimal Header for Sidebar Mode (Notifications Only) */}
                 {showSidebar && !isMobile && (
                     <header style={{display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1rem', height: '50px'}}>
                         <NotificationsMenu onNavigate={navigate} />

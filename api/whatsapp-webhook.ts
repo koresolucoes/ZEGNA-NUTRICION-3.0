@@ -377,18 +377,30 @@ export default async function handler(req: any, res: any) {
 
     // --- TIME CONTEXT INJECTION ---
     const now = new Date();
-    const dateOptions: Intl.DateTimeFormatOptions = { timeZone: 'America/Mexico_City', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-    const todayString = now.toLocaleDateString('es-MX', dateOptions);
+    const dateOptions: Intl.DateTimeFormatOptions = { 
+        timeZone: 'America/Mexico_City', 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric', 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: false
+    };
+    const todayString = now.toLocaleString('es-MX', dateOptions);
     const todayISO = now.toISOString().split('T')[0];
+    const currentDayName = now.toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City', weekday: 'long' });
 
     let systemInstruction = agent.system_prompt + (knowledgeBaseContext ? `\n\n${knowledgeBaseContext}` : '');
     
     // Añadir instrucciones explícitas de memoria, multimodalidad y contexto temporal
-    systemInstruction += `\n\nCONTEXTO TEMPORAL:
-    - HOY ES: ${todayString}.
+    systemInstruction += `\n\n=== CONTEXTO TEMPORAL OBLIGATORIO ===
+    - FECHA Y HORA ACTUAL: ${todayString} (Zona Horaria: CDMX/México).
+    - DÍA DE LA SEMANA: ${currentDayName}.
     - FECHA ISO: ${todayISO}.
-    - Usa esta fecha para calcular días relativos (ayer, mañana) o verificar citas.
-
+    
+    INSTRUCCIÓN CRÍTICA: Si el usuario pregunta "¿qué día es hoy?", "¿qué hora es?" o hace referencia a "mañana/ayer", DEBES usar EXCLUSIVAMENTE la información de "FECHA Y HORA ACTUAL" proporcionada arriba. Ignora cualquier fecha interna de tu entrenamiento.
+    
     INSTRUCCIONES DE MEMORIA Y CONTEXTO:
     - Tienes acceso al historial de la conversación. ÚSALO.
     - Si el usuario dice "sí", "hazlo", "gracias" o hace referencias a mensajes anteriores, revisa el historial para entender el contexto.
