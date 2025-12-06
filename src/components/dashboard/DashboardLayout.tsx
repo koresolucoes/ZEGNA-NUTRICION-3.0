@@ -844,7 +844,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
             <main style={{
                 flex: 1,
                 padding: isMobile ? '1rem' : '2rem',
-                maxWidth: '100%', 
+                width: isMobile ? '100%' : (showSidebar ? (isSidebarCollapsed ? 'calc(100% - 80px)' : 'calc(100% - 260px)') : '100%'),
                 margin: 0,
                 overflowX: 'hidden',
                 marginLeft: isMobile ? 0 : (showSidebar ? (isSidebarCollapsed ? '80px' : '260px') : 0),
