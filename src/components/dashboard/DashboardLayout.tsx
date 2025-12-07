@@ -40,6 +40,7 @@ import SubscriptionPage from '../../pages/SubscriptionPage';
 import AffiliatesPage from '../../pages/AffiliatesPage';
 import BetaFeedbackModal from '../shared/BetaFeedbackModal';
 import UserGuidePage from '../../pages/UserGuidePage';
+import AuditPage from '../../pages/AuditPage';
 import NotificationsMenu from './NotificationsMenu';
 import NotificationsCenterPage from '../../pages/NotificationsCenterPage';
 import { useThemeManager } from '../../contexts/ThemeContext';
@@ -96,11 +97,11 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
     const [afiliados, setAfiliados] = useState<Pick<Person, 'id' | 'full_name' | 'avatar_url'>[]>([]);
 
     const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
-        'gestion-clinica': true,
+        'gestion-diaria': true,
         'administracion': false,
-        'red': false,
-        'recursos': false,
         'crecimiento': false,
+        'suscripcion': false,
+        'recursos': false,
         'mi-clinica': false
     });
     const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
@@ -260,6 +261,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
             case 'displays': return <DisplayManagement />;
             case 'billing': return <SubscriptionPage navigate={navigate} />;
             case 'user-guide': return <UserGuidePage />;
+            case 'audit': return <AuditPage isMobile={isMobile} />;
             case 'notifications-center': return <NotificationsCenterPage navigate={navigate} />;
             default: return <HomePage user={session.user} isMobile={isMobile} navigate={navigate} openQuickConsult={() => setQuickConsultModalOpen(true)} />;
         }
@@ -553,7 +555,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
         </div>
     );
 
-    const isFabHidden = ['client-form', 'afiliado-form', 'aliado-form', 'consultation-form', 'log-form', 'profile-form', 'settings', 'calculators', 'agenda', 'queue', 'client-detail', 'afiliado-detail', 'chat', 'finanzas', 'clinic-settings', 'affiliates', 'user-guide'].includes(view.page);
+    const isFabHidden = ['client-form', 'afiliado-form', 'aliado-form', 'consultation-form', 'log-form', 'profile-form', 'settings', 'calculators', 'agenda', 'queue', 'client-detail', 'afiliado-detail', 'chat', 'finanzas', 'clinic-settings', 'affiliates', 'user-guide', 'audit'].includes(view.page);
     
     const showSidebar = isMobile || navigationLayout === 'sidebar';
 
@@ -609,38 +611,45 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                         <NavItem name="Agenda" pageName="agenda" icon={ICONS.calendar} />
                         
                         <NavDropdown title="Pacientes" icon={ICONS.users} id="patients">
-                            <NavItem name="Lista de Pacientes" pageName="clients" />
+                            <NavItem name="Listado General" pageName="clients" />
                             <NavItem name="Afiliados" pageName="afiliados" />
+                        </NavDropdown>
+
+                        <NavDropdown title="Gestión Diaria" icon={ICONS.list} id="daily">
                             <NavItem name="Sala de Espera" pageName="queue" />
+                            <NavItem name="Conversaciones" pageName="chat" />
+                            <NavItem name="Herramientas" pageName="calculators" />
+                            <NavItem name="Referidos" pageName="afiliados" /> {/* Mapping to Afiliados page for now per spec description */}
+                        </NavDropdown>
+
+                        <NavDropdown title="Administración" icon={ICONS.briefcase} id="admin">
+                            <NavItem name="Facturación" pageName="fiscal-settings" />
+                            <NavItem name="Finanzas" pageName="finanzas" />
+                            <NavItem name="Pantallas" pageName="displays" />
+                            <NavItem name="Auditoría" pageName="audit" />
+                        </NavDropdown>
+
+                         <NavDropdown title="Crecimiento" icon={ICONS.sparkles} id="growth">
+                            <NavItem name="Red de Clínicas" pageName="clinic-network" />
+                            <NavItem name="Colaboradores" pageName="aliados" />
+                            <NavItem name="Programa Afiliados" pageName="affiliates" />
+                        </NavDropdown>
+
+                         <NavDropdown title="Suscripción Zegna" icon={ICONS.star} id="subscription">
+                            <NavItem name="Suscripción" pageName="billing" />
+                            <NavItem name="Planes" pageName="service-plans" />
+                            <NavItem name="Servicios" pageName="services" />
                         </NavDropdown>
 
                         <NavDropdown title="Recursos" icon={ICONS.book} id="resources">
                              <NavItem name="Biblioteca" pageName="knowledge-base" />
-                             <NavItem name="Calculadoras" pageName="calculators" />
                              <NavItem name="Guía de Uso" pageName="user-guide" />
                         </NavDropdown>
 
-                        <NavDropdown title="Red & Crecimiento" icon={ICONS.network} id="network">
-                            <NavItem name="Colaboradores" pageName="aliados" />
-                            <NavItem name="Red de Clínicas" pageName="clinic-network" />
-                            <NavItem name="Programa Afiliados" pageName="affiliates" />
+                         <NavDropdown title="Mi Clínica" icon={ICONS.settings} id="clinic-settings">
+                             <NavItem name="Configuración" pageName="clinic-settings" />
                         </NavDropdown>
 
-                        <NavDropdown title="Gestión" icon={ICONS.briefcase} id="admin">
-                            <NavItem name="Finanzas" pageName="finanzas" />
-                            <NavItem name="Chat" pageName="chat" />
-                            {role === 'admin' && (
-                                <>
-                                    <div style={{height: '1px', backgroundColor: 'var(--border-color)', margin: '0.5rem 0'}}></div>
-                                    <NavItem name="Mi Clínica" pageName="clinic-settings" />
-                                    <NavItem name="Facturación" pageName="fiscal-settings" />
-                                    <NavItem name="Servicios" pageName="services" />
-                                    <NavItem name="Planes" pageName="service-plans" />
-                                    <NavItem name="Pantallas" pageName="displays" />
-                                    <NavItem name="Suscripción" pageName="billing" />
-                                </>
-                            )}
-                        </NavDropdown>
                     </nav>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -789,47 +798,64 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                         </div>
 
                         <nav style={{flex: 1, overflowY: 'auto', paddingBottom: '1rem', display: 'flex', flexDirection: 'column'}} className="hide-scrollbar">
+                            <SectionLabel label="ACCESO INMEDIATO" />
                             <NavItem name="Dashboard" pageName="home" icon={ICONS.home} />
-                            <NavItem name="Centro de Notificaciones" pageName="notifications-center" icon="🔔" />
-                            
-                            <SectionLabel label="Clínica" />
                             <NavItem name="Agenda" pageName="agenda" icon={ICONS.calendar} />
-                            <NavItem name="Pacientes" pageName="clients" icon={ICONS.user} />
-                            <CollapsibleCategory name="Gestión Diaria" icon={ICONS.list} categoryKey="gestion-clinica" pageNames={['afiliados', 'queue']}>
+                            <CollapsibleCategory name="Pacientes" icon={ICONS.user} categoryKey="pacientes" pageNames={['clients', 'afiliados']}>
+                                <NavItem name="Listado General" pageName="clients" isSubItem />
                                 <NavItem name="Afiliados" pageName="afiliados" isSubItem />
+                            </CollapsibleCategory>
+                            <NavItem name="Notificaciones" pageName="notifications-center" icon={ICONS.bell} />
+                            
+                            <SectionLabel label="GESTION DIARIA" />
+                            <CollapsibleCategory name="Gestión Diaria" icon={ICONS.list} categoryKey="gestion-diaria" pageNames={['queue', 'chat', 'calculators', 'afiliados']}>
                                 <NavItem name="Sala de Espera" pageName="queue" isSubItem />
+                                <NavItem name="Conversaciones" pageName="chat" isSubItem />
+                                <NavItem name="Herramientas" pageName="calculators" isSubItem />
+                                <NavItem name="Referidos" pageName="afiliados" isSubItem />
                             </CollapsibleCategory>
                             
-                            <SectionLabel label="Administración" />
-                            <NavItem name="Finanzas" pageName="finanzas" icon={ICONS.dollar} />
-                            <NavItem name="Conversaciones" pageName="chat" icon={ICONS.phone} />
-
-                            <SectionLabel label="Recursos" />
-                             <CollapsibleCategory name="Herramientas" icon={ICONS.book} categoryKey="recursos" pageNames={['knowledge-base', 'calculators', 'user-guide']}>
-                                <NavItem name="Biblioteca" pageName="knowledge-base" isSubItem />
-                                <NavItem name="Calculadoras" pageName="calculators" isSubItem />
-                                <NavItem name="Guía de Uso" pageName="user-guide" isSubItem />
+                            <SectionLabel label="ADMINISTRACION" />
+                            <CollapsibleCategory name="Administración" icon={ICONS.briefcase} categoryKey="administracion" pageNames={['fiscal-settings', 'finanzas', 'displays', 'audit']}>
+                                <NavItem name="Facturación" pageName="fiscal-settings" isSubItem />
+                                <NavItem name="Finanzas" pageName="finanzas" isSubItem />
+                                <NavItem name="Pantallas" pageName="displays" isSubItem />
+                                <NavItem name="Auditoría" pageName="audit" isSubItem />
                             </CollapsibleCategory>
                             
-                            <CollapsibleCategory name="Crecimiento" icon={ICONS.sparkles} categoryKey="red" pageNames={['aliados', 'clinic-network', 'affiliates']}>
-                                <NavItem name="Colaboradores" pageName="aliados" isSubItem />
+                            <SectionLabel label="CRECIMIENTO" />
+                            <CollapsibleCategory name="Crecimiento" icon={ICONS.network} categoryKey="crecimiento" pageNames={['clinic-network', 'aliados', 'affiliates']}>
                                 <NavItem name="Red de Clínicas" pageName="clinic-network" isSubItem />
+                                <NavItem name="Colaboradores" pageName="aliados" isSubItem />
                                 <NavItem name="Programa Afiliados" pageName="affiliates" isSubItem />
                             </CollapsibleCategory>
 
                             {role === 'admin' && (
                                 <>
-                                    <SectionLabel label="Configuración" />
-                                    <CollapsibleCategory name="Mi Clínica" icon={ICONS.settings} categoryKey="mi-clinica" pageNames={['clinic-settings', 'fiscal-settings', 'services', 'service-plans', 'displays', 'billing']}>
-                                        <NavItem name="Datos Generales" pageName="clinic-settings" isSubItem />
-                                        <NavItem name="Facturación" pageName="fiscal-settings" isSubItem />
-                                        <NavItem name="Servicios" pageName="services" isSubItem />
-                                        <NavItem name="Planes" pageName="service-plans" isSubItem />
-                                        <NavItem name="Pantallas" pageName="displays" isSubItem />
+                                    <SectionLabel label="SUSCRIPCION ZEGNA" />
+                                    <CollapsibleCategory name="Suscripción Zegna" icon={ICONS.star} categoryKey="suscripcion" pageNames={['billing', 'service-plans', 'services']}>
                                         <NavItem name="Suscripción" pageName="billing" isSubItem />
+                                        <NavItem name="Planes" pageName="service-plans" isSubItem />
+                                        <NavItem name="Servicios" pageName="services" isSubItem />
                                     </CollapsibleCategory>
                                 </>
                             )}
+                            
+                            <SectionLabel label="RECURSOS" />
+                             <CollapsibleCategory name="Recursos" icon={ICONS.book} categoryKey="recursos" pageNames={['knowledge-base', 'user-guide']}>
+                                <NavItem name="Biblioteca" pageName="knowledge-base" isSubItem />
+                                <NavItem name="Guía de Uso" pageName="user-guide" isSubItem />
+                            </CollapsibleCategory>
+                            
+                            {role === 'admin' && (
+                                <>
+                                    <SectionLabel label="MI CLINICA" />
+                                    <CollapsibleCategory name="Mi Clínica" icon={ICONS.settings} categoryKey="mi-clinica" pageNames={['clinic-settings']}>
+                                        <NavItem name="Configuración" pageName="clinic-settings" isSubItem />
+                                    </CollapsibleCategory>
+                                </>
+                            )}
+
                         </nav>
                          
                          <UserProfileWidget />
