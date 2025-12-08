@@ -19,6 +19,7 @@ const AuditPage: FC<{ isMobile: boolean }> = ({ isMobile }) => {
     const [logs, setLogs] = useState<ExtendedLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [hasMore, setHasMore] = useState(true);
     const [page, setPage] = useState(0);
@@ -54,6 +55,36 @@ const AuditPage: FC<{ isMobile: boolean }> = ({ isMobile }) => {
         fetchTeamMembers();
     }, [fetchTeamMembers]);
 
+    const buildQuery = () => {
+        // Shared query builder for fetch and export
+        let query = supabase
+            .from('logs')
+            .select('*, persons!inner(clinic_id, full_name)')
+            .eq('persons.clinic_id', clinic!.id)
+            .order('created_at', { ascending: false });
+
+        if (startDate) query = query.gte('created_at', `${startDate}T00:00:00`);
+        if (endDate) query = query.lte('created_at', `${endDate}T23:59:59`);
+        
+        if (logType !== 'all') {
+            if (logType === 'General') {
+                 query = query.eq('log_type', 'General');
+            } else {
+                query = query.eq('log_type', logType);
+            }
+        }
+
+        if (professionalId !== 'all') {
+            query = query.eq('created_by_user_id', professionalId);
+        }
+        
+        if (debouncedSearchTerm) {
+            query = query.ilike('persons.full_name', `%${debouncedSearchTerm}%`);
+        }
+        
+        return query;
+    };
+
     const fetchLogs = useCallback(async (isLoadMore = false) => {
         if (!clinic) return;
         
@@ -66,36 +97,8 @@ const AuditPage: FC<{ isMobile: boolean }> = ({ isMobile }) => {
         setError(null);
 
         try {
-            // Join with persons to filter by clinic and get patient name
-            // Join logic: logs.person_id -> persons.id
-            let query = supabase
-                .from('logs')
-                .select('*, persons!inner(clinic_id, full_name)')
-                .eq('persons.clinic_id', clinic.id)
-                .order('created_at', { ascending: false })
-                .range(from, to);
-
-            if (startDate) query = query.gte('created_at', `${startDate}T00:00:00`);
-            if (endDate) query = query.lte('created_at', `${endDate}T23:59:59`);
-            
-            if (logType !== 'all') {
-                if (logType === 'General') {
-                    // Filter for types not in the specific list if needed, or just specific type
-                     query = query.eq('log_type', 'General');
-                } else {
-                    query = query.eq('log_type', logType);
-                }
-            }
-
-            if (professionalId !== 'all') {
-                query = query.eq('created_by_user_id', professionalId);
-            }
-            
-            if (debouncedSearchTerm) {
-                query = query.ilike('persons.full_name', `%${debouncedSearchTerm}%`);
-            }
-
-            const { data, error } = await query;
+            const query = buildQuery();
+            const { data, error } = await query.range(from, to);
 
             if (error) throw error;
 
@@ -129,10 +132,64 @@ const AuditPage: FC<{ isMobile: boolean }> = ({ isMobile }) => {
     useEffect(() => {
         fetchLogs(false);
     }, [startDate, endDate, logType, professionalId, debouncedSearchTerm]); 
-    // Note: Removed fetchLogs from dep array to avoid loops, only specific filter deps
 
     const handleLoadMore = () => {
         fetchLogs(true);
+    };
+
+    const handleExport = async () => {
+        if (!clinic) return;
+        setIsExporting(true);
+        try {
+            // Fetch ALL matching records without pagination for export
+            const query = buildQuery();
+            const { data, error } = await query;
+            
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                alert("No hay datos para exportar con los filtros actuales.");
+                return;
+            }
+
+            // Generate CSV
+            const headers = ['ID Registro', 'Fecha', 'Hora', 'Tipo de Actividad', 'Descripción', 'Paciente', 'Profesional Responsable'];
+            const csvRows = [headers.join(',')];
+
+            data.forEach((item: any) => {
+                const date = new Date(item.created_at);
+                const professionalName = teamMembers.find(t => t.user_id === item.created_by_user_id)?.full_name || 'Usuario del Sistema';
+                
+                // Escape quotes for CSV
+                const description = item.description ? `"${item.description.replace(/"/g, '""')}"` : '""';
+                
+                const row = [
+                    item.id,
+                    date.toLocaleDateString('es-MX'),
+                    date.toLocaleTimeString('es-MX'),
+                    item.log_type,
+                    description,
+                    item.persons?.full_name || 'Desconocido',
+                    professionalName
+                ];
+                csvRows.push(row.join(','));
+            });
+
+            const csvString = csvRows.join('\n');
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `auditoria_clinica_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+        } catch (err: any) {
+            console.error("Export error:", err);
+            setError("Error al exportar los datos.");
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     const inputStyle: React.CSSProperties = {
@@ -152,13 +209,21 @@ const AuditPage: FC<{ isMobile: boolean }> = ({ isMobile }) => {
 
     return (
         <div className="fade-in" style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '4rem' }}>
-            <div style={styles.pageHeader}>
+            <div style={{...styles.pageHeader, alignItems: 'flex-start'}}>
                 <div>
                     <h1 style={{ margin: '0 0 0.5rem 0', fontSize: '2rem', fontWeight: 800, letterSpacing: '-1px' }}>Auditoría de Actividad</h1>
                     <p style={{ margin: 0, color: 'var(--text-light)' }}>
-                        Registro histórico de todas las acciones realizadas en la clínica.
+                        Registro histórico de todas las acciones realizadas en la clínica (NOM-004).
                     </p>
                 </div>
+                <button 
+                    onClick={handleExport} 
+                    disabled={isExporting || loading}
+                    className="button-secondary"
+                    style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}
+                >
+                    {isExporting ? 'Exportando...' : <>{ICONS.download} Exportar CSV</>}
+                </button>
             </div>
 
             {/* Filters Bar */}
