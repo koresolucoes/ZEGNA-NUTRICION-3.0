@@ -1,5 +1,6 @@
 
 import React, { FC, useState, useEffect, useMemo, useRef, FormEvent, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../supabase';
 import { styles } from '../constants';
 import { ICONS } from './AuthPage';
@@ -49,8 +50,9 @@ const areDatesEqual = (d1: Date, d2: Date) =>
     d1.getDate() === d2.getDate();
 
 // Define Modal Component outside to prevent re-rendering flicker
+// Z-Index updated to 2100 to appear above the Consultation Mode (2000)
 const ToolsModal: FC<{ onClose: () => void; children: ReactNode; isMobile: boolean }> = ({ onClose, children, isMobile }) => (
-    <div style={{ ...styles.modalOverlay, zIndex: 1100, padding: isMobile ? '0.5rem' : '2rem', backdropFilter: 'blur(5px)' }}>
+    <div style={{ ...styles.modalOverlay, zIndex: 2100, padding: isMobile ? '0.5rem' : '2rem', backdropFilter: 'blur(5px)' }}>
         <div style={{ ...styles.modalContent, width: '95%', maxWidth: '1400px', height: isMobile ? '95vh' : '90vh' }} className="fade-in">
             <div style={styles.modalHeader}>
                 <h2 style={styles.modalTitle}>Herramientas y Calculadoras</h2>
@@ -495,8 +497,10 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
         }
     };
 
-    return (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'var(--background-color)', zIndex: 1000, display: 'flex', flexDirection: 'column' }}>
+    // Use createPortal to render the entire page at the body level
+    // This solves the z-index and layout stacking context issues with the sidebar
+    return createPortal(
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'var(--background-color)', zIndex: 2000, display: 'flex', flexDirection: 'column' }}>
             {/* Render Modal conditionally here to avoid flicker from unmounting/mounting */}
             {isToolsModalOpen && (
                 <ToolsModal onClose={() => setIsToolsModalOpen(false)} isMobile={isMobile}>
@@ -595,7 +599,8 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                     </>
                 )}
             </main>
-        </div>
+        </div>,
+        document.body
     );
 }
 
