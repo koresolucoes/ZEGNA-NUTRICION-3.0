@@ -7,15 +7,16 @@ import { DietLog } from '../../types';
 interface DietLogDetailModalProps {
     log: DietLog;
     onClose: () => void;
+    zIndex?: number;
 }
 
 const modalRoot = document.getElementById('modal-root');
 
-const DietLogDetailModal: FC<DietLogDetailModalProps> = ({ log, onClose }) => {
+const DietLogDetailModal: FC<DietLogDetailModalProps> = ({ log, onClose, zIndex = 1050 }) => {
     if (!modalRoot) return null;
 
     const modalContent = (
-         <div style={styles.modalOverlay}>
+         <div style={{...styles.modalOverlay, zIndex: zIndex}}>
             <div style={{...styles.modalContent, maxWidth: '600px'}} className="fade-in">
                 <div style={styles.modalHeader}>
                     <h2 style={styles.modalTitle}>

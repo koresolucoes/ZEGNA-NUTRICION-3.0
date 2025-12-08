@@ -7,17 +7,18 @@ import { ExerciseLog } from '../../types';
 interface ExerciseLogDetailModalProps {
     log: ExerciseLog;
     onClose: () => void;
+    zIndex?: number;
 }
 
 const modalRoot = document.getElementById('modal-root');
 
-const ExerciseLogDetailModal: FC<ExerciseLogDetailModalProps> = ({ log, onClose }) => {
+const ExerciseLogDetailModal: FC<ExerciseLogDetailModalProps> = ({ log, onClose, zIndex = 1050 }) => {
     if (!modalRoot) return null;
 
     const exercises = (log.ejercicios as any[] || []);
 
     const modalContent = (
-         <div style={styles.modalOverlay}>
+         <div style={{...styles.modalOverlay, zIndex: zIndex}}>
             <div style={{...styles.modalContent, maxWidth: '600px'}} className="fade-in">
                 <div style={styles.modalHeader}>
                     <h2 style={styles.modalTitle}>

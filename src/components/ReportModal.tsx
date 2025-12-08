@@ -19,11 +19,12 @@ interface ReportModalProps {
     onClose: () => void;
     nutritionistProfile: NutritionistProfile | null;
     clinic: Clinic | null;
+    zIndex?: number;
 }
 
 const modalRoot = document.getElementById('modal-root');
 
-const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, exerciseLogs, allergies, medicalHistory, medications, lifestyleHabits, isMobile, onClose, nutritionistProfile, clinic }) => {
+const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, exerciseLogs, allergies, medicalHistory, medications, lifestyleHabits, isMobile, onClose, nutritionistProfile, clinic, zIndex = 1200 }) => {
     const { subscription } = useClinic();
     const [view, setView] = useState<'config' | 'preview'>('config');
     const [options, setOptions] = useState({
@@ -249,15 +250,23 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
 
     const renderPreviewView = () => (
         <>
-            <style>{`
+            <style dangerouslySetInnerHTML={{__html: `
                 @media print {
                     .no-print { display: none !important; }
                     body { background-color: #fff !important; }
                     body > *:not(#modal-root) { display: none; }
-                    #modal-root, #modal-root > div {
+                    #modal-root {
                         position: static !important; display: block !important;
                         background: transparent !important; padding: 0 !important;
                         overflow: visible !important;
+                    }
+                    #modal-root > div {
+                        position: static !important; display: block !important;
+                        background: transparent !important; padding: 0 !important;
+                        overflow: visible !important;
+                        width: 100% !important; max-width: 100% !important;
+                        height: auto !important; max-height: none !important;
+                        box-shadow: none !important; border: none !important;
                     }
                     #modal-root > div > div {
                         width: 100% !important; max-width: 100% !important;
@@ -269,7 +278,7 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
                         page-break-after: always;
                     }
                 }
-            `}</style>
+            `}} />
             <div style={{...styles.modalHeader}} className="no-print">
                 <h2 style={styles.modalTitle}>Vista Previa del Reporte</h2>
                 <div style={{display: 'flex', gap: '1rem'}}>
@@ -428,8 +437,8 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
     );
 
     return createPortal(
-        <div style={styles.modalOverlay}>
-            <div style={{...styles.modalContent, width: '90%', maxWidth: '900px', maxHeight: '90vh'}} className="fade-in">
+        <div style={{...styles.modalOverlay, zIndex: zIndex}}>
+            <div style={{...styles.modalContent, width: '90%', maxWidth: '900px', height: '90vh', padding: 0}} className="fade-in">
                 {view === 'config' ? renderConfigView() : renderPreviewView()}
             </div>
         </div>,

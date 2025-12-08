@@ -1,4 +1,3 @@
-
 import React, { FC, useState, useEffect, useMemo, useRef, FormEvent, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../supabase';
@@ -14,6 +13,7 @@ import ConsultationDetailModal from '../components/modals/ConsultationDetailModa
 import LogDetailModal from '../components/modals/LogDetailModal';
 import DietLogDetailModal from '../components/modals/DietLogDetailModal';
 import ExerciseLogDetailModal from '../components/modals/ExerciseLogDetailModal';
+import ReportModal from '../components/ReportModal'; // Import ReportModal
 
 interface AiMessage {
     role: 'user' | 'model';
@@ -176,6 +176,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
 
     // New states for tools modal and timeline filters
     const [isToolsModalOpen, setIsToolsModalOpen] = useState(false);
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false); // New Report Modal State
     const [timelineFilters, setTimelineFilters] = useState({ search: '', start: '', end: '' });
     
     // Viewing States (Internal to this page to handle layering)
@@ -521,6 +522,25 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                 </ToolsModal>
             )}
             
+             {/* Report Modal - Layered above everything */}
+             {isReportModalOpen && (
+                 <ReportModal 
+                    person={person} 
+                    consultations={consultations} 
+                    dietLogs={dietLogs} 
+                    exerciseLogs={exerciseLogs} 
+                    allergies={allergies} 
+                    medicalHistory={medicalHistory} 
+                    medications={medications} 
+                    lifestyleHabits={lifestyleHabits} 
+                    isMobile={isMobile} 
+                    onClose={() => setIsReportModalOpen(false)} 
+                    nutritionistProfile={null} 
+                    clinic={clinic}
+                    zIndex={2200} 
+                />
+            )}
+            
             {/* Detailed Modals - Rendered here to sit on top of Consultation Mode */}
              {viewingFile && (
                 <AttachmentPreviewModal 
@@ -534,19 +554,16 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                 />
             )}
              {internalViewingConsultation && (
-                 // Use custom component or pass zIndex if updated
                  <ConsultationDetailModal consultation={internalViewingConsultation} onClose={() => setInternalViewingConsultation(null)} zIndex={2200} />
              )}
              {internalViewingLog && (
-                  <LogDetailModal log={internalViewingLog} onClose={() => setInternalViewingLog(null)} />
-                  // Note: LogDetailModal needs zIndex update or wrapper to sit at 2200, but usually has less conflict than consultations.
-                  // Ideally update LogDetailModal too or wrap it.
+                  <LogDetailModal log={internalViewingLog} onClose={() => setInternalViewingLog(null)} zIndex={2200} />
              )}
              {internalViewingDietLog && (
-                 <DietLogDetailModal log={internalViewingDietLog} onClose={() => setInternalViewingDietLog(null)} />
+                 <DietLogDetailModal log={internalViewingDietLog} onClose={() => setInternalViewingDietLog(null)} zIndex={2200} />
              )}
              {internalViewingExerciseLog && (
-                 <ExerciseLogDetailModal log={internalViewingExerciseLog} onClose={() => setInternalViewingExerciseLog(null)} />
+                 <ExerciseLogDetailModal log={internalViewingExerciseLog} onClose={() => setInternalViewingExerciseLog(null)} zIndex={2200} />
              )}
             
             {/* Global Header for Consultation Mode */}
@@ -562,6 +579,9 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                 
                 <div style={{display: 'flex', gap: '0.5rem'}}>
                      {/* Heuristic 7: Flexibility (Tools Shortcut) */}
+                     <button onClick={() => setIsReportModalOpen(true)} className="button-secondary" title="Generar Reporte">
+                         {isMobile ? ICONS.print : 'Reporte'}
+                    </button>
                     <button onClick={() => setIsToolsModalOpen(true)} className="button-secondary" title="Herramientas y Calculadoras">
                          {isMobile ? ICONS.calculator : 'Herramientas'}
                     </button>

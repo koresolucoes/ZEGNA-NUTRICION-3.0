@@ -14,11 +14,12 @@ interface Attachment {
 interface LogDetailModalProps {
     log: Log;
     onClose: () => void;
+    zIndex?: number;
 }
 
 const modalRoot = document.getElementById('modal-root');
 
-const LogDetailModal: FC<LogDetailModalProps> = ({ log, onClose }) => {
+const LogDetailModal: FC<LogDetailModalProps> = ({ log, onClose, zIndex = 1050 }) => {
     const [previewingAttachment, setPreviewingAttachment] = useState<Attachment | null>(null);
     if (!modalRoot) return null;
 
@@ -27,7 +28,7 @@ const LogDetailModal: FC<LogDetailModalProps> = ({ log, onClose }) => {
     const attachments = (log.attachments as unknown as Attachment[] | null) || [];
 
     const modalContent = (
-         <div style={styles.modalOverlay}>
+         <div style={{...styles.modalOverlay, zIndex: zIndex}}>
             <div style={{...styles.modalContent, maxWidth: '600px'}} className="fade-in">
                 <div style={styles.modalHeader}>
                     <h2 style={styles.modalTitle}>
@@ -67,6 +68,7 @@ const LogDetailModal: FC<LogDetailModalProps> = ({ log, onClose }) => {
                 <AttachmentPreviewModal 
                     attachment={previewingAttachment}
                     onClose={() => setPreviewingAttachment(null)}
+                    zIndex={zIndex + 10}
                 />
             )}
         </div>
