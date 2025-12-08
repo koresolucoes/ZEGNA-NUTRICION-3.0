@@ -261,9 +261,10 @@ interface DietPlannerProps {
     initialPlan: DietPlanHistoryItem | null;
     clearInitialPlan: () => void;
     knowledgeResources: KnowledgeResource[];
+    customModalZIndex?: number;
 }
 
-const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile, onPlanSaved, initialPlan, clearInitialPlan, knowledgeResources }) => {
+const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile, onPlanSaved, initialPlan, clearInitialPlan, knowledgeResources, customModalZIndex }) => {
     const { clinic, subscription } = useClinic();
     
     const initialPortions = useMemo(() => 
@@ -606,12 +607,13 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
                     onClose={() => setFoodExamplesState({ ...foodExamplesState, isOpen: false })}
                     equivalent={foodExamplesState.equivalent}
                     portions={foodExamplesState.portions}
+                    zIndex={customModalZIndex}
                 />
             )}
             
             {/* NEW: Patient Selection Modal for Saving */}
             {isPatientSelectModalOpen && modalRoot && createPortal(
-                <div style={styles.modalOverlay}>
+                <div style={{...styles.modalOverlay, zIndex: customModalZIndex || 1200}}>
                     <div style={{...styles.modalContent, maxWidth: '500px'}} className="fade-in">
                         <div style={styles.modalHeader}>
                             <h2 style={styles.modalTitle}>Guardar Plan</h2>

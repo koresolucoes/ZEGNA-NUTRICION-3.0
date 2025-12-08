@@ -1,3 +1,4 @@
+
 import React, { FC } from 'react';
 import { createPortal } from 'react-dom';
 import { styles } from '../../constants';
@@ -12,15 +13,16 @@ interface Attachment {
 interface AttachmentPreviewModalProps {
     attachment: Attachment | null;
     onClose: () => void;
+    zIndex?: number;
 }
 
 const modalRoot = document.getElementById('modal-root');
 
-const AttachmentPreviewModal: FC<AttachmentPreviewModalProps> = ({ attachment, onClose }) => {
+const AttachmentPreviewModal: FC<AttachmentPreviewModalProps> = ({ attachment, onClose, zIndex = 1010 }) => {
     if (!modalRoot || !attachment) return null;
 
     const modalContent = (
-         <div style={{...styles.modalOverlay, zIndex: 1010 }}>
+         <div style={{...styles.modalOverlay, zIndex: zIndex }}>
             <div style={{...styles.modalContent, width: '90%', maxWidth: '800px', height: '80vh' }} className="fade-in">
                 <div style={styles.modalHeader}>
                     <h2 style={styles.modalTitle}>

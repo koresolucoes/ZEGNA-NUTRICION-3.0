@@ -7,17 +7,18 @@ import { ConsultationWithLabs } from '../../types';
 interface ConsultationDetailModalProps {
     consultation: ConsultationWithLabs;
     onClose: () => void;
+    zIndex?: number;
 }
 
 const modalRoot = document.getElementById('modal-root');
 
-const ConsultationDetailModal: FC<ConsultationDetailModalProps> = ({ consultation, onClose }) => {
+const ConsultationDetailModal: FC<ConsultationDetailModalProps> = ({ consultation, onClose, zIndex = 1050 }) => {
     if (!modalRoot) return null;
 
     const labResults = consultation.lab_results;
 
     const modalContent = (
-         <div style={styles.modalOverlay}>
+         <div style={{...styles.modalOverlay, zIndex: zIndex}}>
             <div style={{...styles.modalContent, maxWidth: '600px'}} className="fade-in">
                 <div style={styles.modalHeader}>
                     <h2 style={styles.modalTitle}>

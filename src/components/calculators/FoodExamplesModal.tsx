@@ -11,11 +11,12 @@ interface FoodExamplesModalProps {
     onClose: () => void;
     equivalent: FoodEquivalent;
     portions: number;
+    zIndex?: number;
 }
 
 const modalRoot = document.getElementById('modal-root');
 
-const FoodExamplesModal: FC<FoodExamplesModalProps> = ({ isOpen, onClose, equivalent, portions }) => {
+const FoodExamplesModal: FC<FoodExamplesModalProps> = ({ isOpen, onClose, equivalent, portions, zIndex = 1050 }) => {
     const [foods, setFoods] = useState<SmaeFood[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -63,7 +64,7 @@ const FoodExamplesModal: FC<FoodExamplesModalProps> = ({ isOpen, onClose, equiva
     if (!isOpen || !modalRoot) return null;
 
     return createPortal(
-        <div style={styles.modalOverlay}>
+        <div style={{...styles.modalOverlay, zIndex: zIndex}}>
             <div style={{...styles.modalContent, maxWidth: '700px', height: '85vh', display: 'flex', flexDirection: 'column'}} className="fade-in">
                 <div style={styles.modalHeader}>
                     <div>
@@ -152,7 +153,7 @@ const FoodExamplesModal: FC<FoodExamplesModalProps> = ({ isOpen, onClose, equiva
                     )}
                 </div>
                 
-                <div style={styles.modalFooter}>
+                <div style={{styles: 'modalFooter'}}>
                     <button onClick={onClose} className="button-secondary">Cerrar</button>
                 </div>
             </div>

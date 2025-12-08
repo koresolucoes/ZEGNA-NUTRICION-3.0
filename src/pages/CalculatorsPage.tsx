@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../supabase';
 import { styles } from '../constants';
@@ -16,9 +17,10 @@ interface CalculatorsPageProps {
     isMobile: boolean;
     initialPlanToLoad?: DietPlanHistoryItem | null;
     initialPersonToLoad?: Person | null;
+    customModalZIndex?: number;
 }
 
-const CalculatorsPage: FC<CalculatorsPageProps> = ({ isMobile, initialPlanToLoad, initialPersonToLoad }) => {
+const CalculatorsPage: FC<CalculatorsPageProps> = ({ isMobile, initialPlanToLoad, initialPersonToLoad, customModalZIndex }) => {
     const { clinic } = useClinic();
     const [activeTab, setActiveTab] = useState(initialPlanToLoad ? 'planner' : 'references');
     const [activeToolSubTab, setActiveToolSubTab] = useState('energia');
@@ -193,6 +195,7 @@ const CalculatorsPage: FC<CalculatorsPageProps> = ({ isMobile, initialPlanToLoad
                         onPlanSaved={fetchData}
                         initialPlan={planToLoad}
                         clearInitialPlan={() => setPlanToLoad(null)}
+                        customModalZIndex={customModalZIndex}
                     />
                 )}
                 {activeTab === 'tools' && (
