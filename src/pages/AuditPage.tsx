@@ -201,10 +201,19 @@ const AuditPage: FC<{ isMobile: boolean }> = ({ isMobile }) => {
     };
     
     const getTypeColor = (type: string) => {
-        if (type.includes('IA')) return 'var(--primary-color)';
+        if (type.includes('Alimenticio')) return '#10B981'; // Green for Diet
+        if (type.includes('Ejercicio')) return '#F59E0B';   // Orange for Exercise
+        if (type.includes('IA')) return 'var(--primary-color)'; // Fallback for other AI
         if (type === 'AUDITORÍA') return 'var(--text-light)';
         if (type === 'Nota de Consulta') return '#10B981';
         return 'var(--text-color)';
+    };
+
+    const getTypeIcon = (type: string) => {
+        if (type.includes('Alimenticio')) return ICONS.healt;
+        if (type.includes('Ejercicio')) return ICONS.exercise;
+        if (type === 'AUDITORÍA') return ICONS.lock;
+        return ICONS.file;
     };
 
     return (
@@ -309,7 +318,7 @@ const AuditPage: FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 flexShrink: 0, fontSize: '1.2rem'
                             }}>
-                                {log.log_type.includes('IA') ? ICONS.sparkles : log.log_type === 'AUDITORÍA' ? ICONS.lock : ICONS.file}
+                                {getTypeIcon(log.log_type)}
                             </div>
                             
                             <div style={{flex: 1}}>

@@ -370,9 +370,9 @@ const CalculatorsPage: FC<CalculatorsPageProps> = ({ isMobile, initialPlanToLoad
                 {[
                     { id: 'references', label: 'Referencias', icon: ICONS.book },
                     { id: 'tools', label: 'Calculadoras', icon: ICONS.calculator },
-                    { id: 'planner', label: 'Planificador', icon: ICONS.sparkles },
+                    { id: 'planner', label: 'Planificador', icon: ICONS.idea },
                     { id: 'history', label: 'Historial', icon: ICONS.clock },
-                    { id: 'manage', label: 'Equivalentes', icon: ICONS.list }
+                    { id: 'manage', label: 'Equivalentes', icon: ICONS.healt }
                 ].map(tab => (
                     <button
                         key={tab.id}

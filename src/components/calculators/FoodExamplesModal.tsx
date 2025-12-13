@@ -153,7 +153,7 @@ const FoodExamplesModal: FC<FoodExamplesModalProps> = ({ isOpen, onClose, equiva
                     )}
                 </div>
                 
-                <div style={{styles: 'modalFooter'}}>
+                <div style={styles.modalFooter}>
                     <button onClick={onClose} className="button-secondary">Cerrar</button>
                 </div>
             </div>
