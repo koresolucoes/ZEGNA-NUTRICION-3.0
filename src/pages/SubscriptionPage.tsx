@@ -230,7 +230,7 @@ const SubscriptionPage: FC<{ navigate: (page: string, context?: any) => void; }>
                                     <FeatureItem label={plan.max_professionals > 1 ? `${plan.max_professionals} Profesionales` : '1 Profesional'} included={true} />
                                     <FeatureItem label={features.max_patients === -1 ? 'Pacientes Ilimitados' : `Hasta ${features.max_patients} Pacientes`} included={true} />
                                     <FeatureItem label="Asistente con IA (Gemini)" included={features.ai_assistant !== false} />
-                                    <FeatureItem label="Marca Blanca (Tu Logo)" included={!features.branding} />
+                                    <FeatureItem label="Personaliza tu marca" included={!features.branding} />
                                     <FeatureItem label="Portal de Paciente" included={true} />
                                     <FeatureItem label="Facturación CFDI 4.0" included={plan.name !== 'Gratis'} />
                                 </div>
