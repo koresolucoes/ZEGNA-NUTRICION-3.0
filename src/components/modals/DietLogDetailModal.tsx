@@ -1,3 +1,4 @@
+
 import React, { FC } from 'react';
 import { createPortal } from 'react-dom';
 import { styles } from '../../constants';
@@ -8,11 +9,13 @@ interface DietLogDetailModalProps {
     log: DietLog;
     onClose: () => void;
     zIndex?: number;
+    onMarkComplete?: () => void;
+    isMarking?: boolean;
 }
 
 const modalRoot = document.getElementById('modal-root');
 
-const DietLogDetailModal: FC<DietLogDetailModalProps> = ({ log, onClose, zIndex = 1050 }) => {
+const DietLogDetailModal: FC<DietLogDetailModalProps> = ({ log, onClose, zIndex = 1050, onMarkComplete, isMarking }) => {
     if (!modalRoot) return null;
 
     const modalContent = (
@@ -28,6 +31,11 @@ const DietLogDetailModal: FC<DietLogDetailModalProps> = ({ log, onClose, zIndex 
                     <h3 style={{...styles.detailCardTitle, color: 'var(--primary-dark)'}}>
                         {new Date(log.log_date).toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })}
                     </h3>
+                    {log.completed && (
+                        <div style={{marginBottom: '1rem', padding: '0.5rem 1rem', backgroundColor: '#DCFCE7', color: '#166534', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', fontWeight: 600}}>
+                            {ICONS.check} Plan Completado
+                        </div>
+                    )}
 
                     <div style={{marginTop: '1.5rem'}}>
                         <div style={styles.detailGroup}><h4 style={styles.detailGroupTitle}>Desayuno</h4><p style={{margin: 0}}>{log.desayuno || '-'}</p></div>
@@ -39,6 +47,15 @@ const DietLogDetailModal: FC<DietLogDetailModalProps> = ({ log, onClose, zIndex 
                 </div>
                  <div style={styles.modalFooter}>
                     <button onClick={onClose} className="button-secondary">Cerrar</button>
+                    {!log.completed && onMarkComplete && (
+                         <button 
+                            onClick={onMarkComplete} 
+                            className="button-primary"
+                            disabled={isMarking}
+                        >
+                            {isMarking ? 'Guardando...' : 'Marcar como Completado'}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

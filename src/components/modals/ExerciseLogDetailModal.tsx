@@ -1,3 +1,4 @@
+
 import React, { FC } from 'react';
 import { createPortal } from 'react-dom';
 import { styles } from '../../constants';
@@ -8,11 +9,13 @@ interface ExerciseLogDetailModalProps {
     log: ExerciseLog;
     onClose: () => void;
     zIndex?: number;
+    onMarkComplete?: () => void;
+    isMarking?: boolean;
 }
 
 const modalRoot = document.getElementById('modal-root');
 
-const ExerciseLogDetailModal: FC<ExerciseLogDetailModalProps> = ({ log, onClose, zIndex = 1050 }) => {
+const ExerciseLogDetailModal: FC<ExerciseLogDetailModalProps> = ({ log, onClose, zIndex = 1050, onMarkComplete, isMarking }) => {
     if (!modalRoot) return null;
 
     const exercises = (log.ejercicios as any[] || []);
@@ -33,6 +36,12 @@ const ExerciseLogDetailModal: FC<ExerciseLogDetailModalProps> = ({ log, onClose,
                     <p style={{margin: '0.25rem 0 1.5rem 0', fontWeight: 600}}>
                        Enfoque: {log.enfoque || 'General'}
                     </p>
+                    
+                    {log.completed && (
+                        <div style={{marginBottom: '1rem', padding: '0.5rem 1rem', backgroundColor: '#DCFCE7', color: '#166534', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', fontWeight: 600}}>
+                            {ICONS.check} Rutina Completada
+                        </div>
+                    )}
 
                     {exercises.length > 0 ? (
                         <ul style={{ margin: 0, paddingLeft: '20px', listStyleType: 'disc' }}>
@@ -51,6 +60,15 @@ const ExerciseLogDetailModal: FC<ExerciseLogDetailModalProps> = ({ log, onClose,
                 </div>
                  <div style={styles.modalFooter}>
                     <button onClick={onClose} className="button-secondary">Cerrar</button>
+                    {!log.completed && onMarkComplete && (
+                         <button 
+                            onClick={onMarkComplete} 
+                            className="button-primary"
+                            disabled={isMarking}
+                        >
+                            {isMarking ? 'Guardando...' : 'Marcar como Completada'}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>
