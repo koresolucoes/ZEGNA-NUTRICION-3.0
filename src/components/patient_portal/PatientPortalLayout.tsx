@@ -1,4 +1,3 @@
-
 import React, { FC, useState, useEffect, useCallback, useMemo } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../../supabase';
@@ -158,7 +157,7 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
                     {(() => {
                         switch (view) {
                             case 'home': return <PatientHomePage user={session.user} person={person} dietLogs={dietLogs} exerciseLogs={exerciseLogs} checkins={checkins} consultations={consultations} appointments={appointments} servicePlans={servicePlans} onDataRefresh={() => fetchData(person.id, person.clinic_id)} isMobile={isMobile} isAiEnabled={isPatientAiEnabled} />;
-                            case 'plans': return <MyPlansPage dietLogs={dietLogs} exerciseLogs={exerciseLogs} />;
+                            case 'plans': return <MyPlansPage dietLogs={dietLogs} exerciseLogs={exerciseLogs} onDataRefresh={() => fetchData(person.id, person.clinic_id)} />;
                             case 'progress': return <MyProgressPage consultations={consultations} gamificationLogs={gamificationLogs} checkins={checkins} onDataRefresh={() => fetchData(person.id, person.clinic_id)} />;
                             case 'files': return <MyFilesPage person={person} user={session.user} files={files} onDataRefresh={() => fetchData(person.id, person.clinic_id)} />;
                             case 'appointments': return <AppointmentsPage appointments={appointments} person={person} servicePlans={servicePlans} consultations={consultations} onDataRefresh={() => fetchData(person.id, person.clinic_id)} />;

@@ -1,4 +1,3 @@
-
 import React, { FC } from 'react';
 import { ExerciseLog } from '../types';
 import { styles } from '../constants';
@@ -9,7 +8,8 @@ const ExercisePlanViewer: FC<{
     onEdit?: (log: ExerciseLog) => void;
     onViewDetails?: (log: ExerciseLog) => void;
     onDelete?: (logId: string) => void;
-}> = ({ exerciseLogs, onEdit, onViewDetails, onDelete }) => {
+    onToggleComplete?: (log: ExerciseLog) => void;
+}> = ({ exerciseLogs, onEdit, onViewDetails, onDelete, onToggleComplete }) => {
     if (!exerciseLogs || exerciseLogs.length === 0) {
         return <p style={{textAlign: 'center', color: 'var(--text-light)', padding: '2rem'}}>No hay rutinas de ejercicio disponibles.</p>;
     }
@@ -44,11 +44,20 @@ const ExercisePlanViewer: FC<{
                                 </div>
                                 <div>
                                     <h4 style={{ margin: 0, color: 'var(--text-color)', fontSize: '1rem' }}>{log.enfoque || 'General'}</h4>
-                                    {log.completed && <span style={{fontSize: '0.75rem', color: 'var(--primary-color)', fontWeight: 600}}>{ICONS.check} Completado</span>}
+                                    {log.completed && <span style={{fontSize: '0.75rem', color: '#10B981', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px'}}>{ICONS.check} Completado</span>}
                                 </div>
                             </div>
 
                             <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                {onToggleComplete && !log.completed && (
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); onToggleComplete(log); }} 
+                                        style={{...styles.iconButton, backgroundColor: '#D1FAE5', color: '#047857', padding: '6px'}} 
+                                        title="Marcar como completado"
+                                    >
+                                        {ICONS.check}
+                                    </button>
+                                )}
                                 {onEdit && (
                                     <button onClick={(e) => { e.stopPropagation(); onEdit(log); }} style={{...styles.iconButton, padding: '6px'}} title="Editar">
                                         {ICONS.edit}

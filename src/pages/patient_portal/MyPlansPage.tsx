@@ -1,4 +1,3 @@
-
 import React, { FC, useMemo, useState } from 'react';
 import { DietLog, ExerciseLog } from '../../types';
 import DietPlanViewer from '../../components/DietPlanViewer';
@@ -7,10 +6,12 @@ import DietLogDetailModal from '../../components/modals/DietLogDetailModal';
 import ExerciseLogDetailModal from '../../components/modals/ExerciseLogDetailModal';
 import { styles } from '../../constants';
 import { ICONS } from '../AuthPage';
+import { supabase } from '../../supabase';
 
 interface MyPlansPageProps {
     dietLogs: DietLog[];
     exerciseLogs: ExerciseLog[];
+    onDataRefresh: () => void;
 }
 
 const groupLogsByWeek = (logs: (DietLog[] | ExerciseLog[])) => {
@@ -29,13 +30,44 @@ const groupLogsByWeek = (logs: (DietLog[] | ExerciseLog[])) => {
     }, {});
 };
 
-const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs }) => {
+const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs, onDataRefresh }) => {
     const [viewingDietLog, setViewingDietLog] = useState<DietLog | null>(null);
     const [viewingExerciseLog, setViewingExerciseLog] = useState<ExerciseLog | null>(null);
     const [activeTab, setActiveTab] = useState<'food' | 'exercise'>('food');
+    const [updatingLogId, setUpdatingLogId] = useState<string | null>(null);
 
     const groupedDietLogs = useMemo(() => groupLogsByWeek(dietLogs), [dietLogs]);
     const groupedExerciseLogs = useMemo(() => groupLogsByWeek(exerciseLogs), [exerciseLogs]);
+
+    const handleMarkComplete = async (log: DietLog | ExerciseLog) => {
+        if (log.completed) return; // Prevent double completion if UI doesn't catch it
+        
+        const isDietLog = 'desayuno' in log;
+        const logType = isDietLog ? 'diet' : 'exercise';
+        
+        setUpdatingLogId(log.id);
+    
+        try {
+            const { error } = await supabase.rpc('award_points_for_completed_plan', {
+                p_log_id: log.id,
+                p_log_type: logType
+            });
+    
+            if (error) {
+                if (!error.message.includes('already been marked')) {
+                    console.error(`Error marking ${logType} log complete:`, error);
+                    alert("Error al marcar como completado.");
+                }
+            }
+            // Refresh data regardless of specific error to sync UI
+            onDataRefresh();
+    
+        } catch (err: any) {
+            console.error(`Error marking ${logType} log complete:`, err);
+        } finally {
+            setUpdatingLogId(null);
+        }
+    };
 
     const renderEmptyState = (text: string, icon: React.ReactNode) => (
         <div style={{ 
@@ -69,7 +101,7 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs }) => {
 
             <div style={{...styles.pageHeader, flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '2rem'}}>
                 <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: 800 }}>Mis Planes</h1>
-                <p style={{ margin: 0, color: 'var(--text-light)' }}>Consulta tu historial de alimentación y rutinas.</p>
+                <p style={{ margin: 0, color: 'var(--text-light)' }}>Consulta y marca tu progreso en alimentación y rutinas.</p>
             </div>
 
             <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
@@ -120,7 +152,8 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs }) => {
                                 </div>
                                 <DietPlanViewer 
                                     dietLogs={groupedDietLogs[weekStart].sort((a,b) => new Date(a.log_date).getTime() - new Date(b.log_date).getTime())}
-                                    onViewDetails={setViewingDietLog} 
+                                    onViewDetails={setViewingDietLog}
+                                    onToggleComplete={handleMarkComplete}
                                 />
                             </div>
                         ))
@@ -142,6 +175,7 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs }) => {
                                 <ExercisePlanViewer 
                                     exerciseLogs={groupedExerciseLogs[weekStart].sort((a,b) => new Date(a.log_date).getTime() - new Date(b.log_date).getTime())} 
                                     onViewDetails={setViewingExerciseLog}
+                                    onToggleComplete={handleMarkComplete}
                                 />
                             </div>
                         ))
