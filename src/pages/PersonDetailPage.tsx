@@ -1,10 +1,9 @@
-
 import React, { FC, useState, useEffect, useCallback, useMemo, FormEvent } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
 import { styles } from '../constants';
 import { ICONS } from './AuthPage';
-import { Person, ConsultationWithLabs, Log, DietLog, ExerciseLog, Allergy, MedicalHistory, Medication, LifestyleHabits, DailyCheckin, File as PersonFile, NutritionistProfile, TeamMember, CareTeamMemberProfile, InternalNoteWithAuthor, DietPlanHistoryItem, Appointment, AppointmentWithPerson, Clinic, PatientServicePlan, PopulatedPartnership, KnowledgeResource, CareTeam } from '../types';
+import { Person, ConsultationWithLabs, Log, DietLog, ExerciseLog, Allergy, MedicalHistory, Medication, LifestyleHabits, DailyCheckin, File as PersonFile, NutritionistProfile, TeamMember, CareTeamMemberProfile, InternalNoteWithAuthor, DietPlanHistoryItem, AppointmentWithPerson, Clinic, PatientServicePlan, PopulatedPartnership, KnowledgeResource, CareTeam } from '../types';
 import { createPortal } from 'react-dom';
 
 // Shared Components
@@ -439,7 +438,7 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
                             ))}
                         </div>
                         <div style={styles.nestedFolderContent}>
-                            {activeSubTab === 'current_plans' && <PlansTab allDietLogs={allDietLogs} allExerciseLogs={allExerciseLogs} onGenerateMeal={() => setMealPlanModalOpen(true)} onGenerateExercise={() => setExercisePlanModalOpen(true)} onAddManualDiet={() => setIsCreatingManualLog('diet')} onAddManualExercise={() => setIsCreatingManualLog('exercise')} onEditDietLog={setEditingDietLog} onViewDietLog={setViewingDietLog} onEditExerciseLog={setEditingExerciseLog} onViewExerciseLog={setViewingExerciseLog} openModal={openModal} hasAiFeature={hasAiFeature} />}
+                            {activeSubTab === 'current_plans' && <PlansTab allDietLogs={allDietLogs} allExerciseLogs={allExerciseLogs} onGenerateMeal={() => setMealPlanModalOpen(true)} onGenerateExercise={() => setExercisePlanModalOpen(true)} onAddManualDiet={() => setIsCreatingManualLog('diet')} onAddManualExercise={() => setIsCreatingManualLog('exercise')} onEditDietLog={setEditingDietLog} onViewDietLog={setViewingDietLog} onEditExerciseLog={setEditingExerciseLog} onViewExerciseLog={setViewingExerciseLog} openModal={openModal} hasAiFeature={hasAiFeature} personName={person.full_name} />}
                             {activeSubTab === 'calculated_plans' && <CalculatedPlansTab planHistory={planHistory} navigate={navigate} openModal={openModal} />}
                             {activeSubTab === 'log_files' && (
                                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '2rem', alignItems: 'start' }}>
