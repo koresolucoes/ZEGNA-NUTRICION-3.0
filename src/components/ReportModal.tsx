@@ -61,8 +61,8 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
             return;
         }
 
-        // We wrap the content in a standardized HTML shell for the PDF generator
         try {
+            // Include global styles for consistent rendering in PDF
             const htmlContent = `
                 <!DOCTYPE html>
                 <html lang="es">
@@ -75,7 +75,7 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
                     </style>
                 </head>
                 <body>
-                    <div class="report-container">
+                    <div class="report-wrapper">
                         ${element.innerHTML}
                     </div>
                 </body>
@@ -134,7 +134,7 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
         const sortedConsults = [...filteredConsultations].sort((a, b) => new Date(b.consultation_date).getTime() - new Date(a.consultation_date).getTime());
         const current = sortedConsults[0];
         const previous = sortedConsults[1];
-        const initial = consultations[consultations.length - 1]; // Always compare against absolute initial
+        const initial = consultations[consultations.length - 1]; 
 
         const pesoActual = current?.weight_kg;
         const pesoInicial = initial?.weight_kg;
@@ -171,21 +171,23 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
 
     const HeaderSection = () => (
         <header className="report-header">
-            <div className="header-content">
-                <div className="logo-container">
+            <div className="header-top-row">
+                <div className="logo-area">
                     {clinic?.logo_url ? (
                         <img src={clinic.logo_url} alt="Logo" className="clinic-logo" />
                     ) : (
                         <div className="logo-placeholder">{clinic?.name?.charAt(0) || 'C'}</div>
                     )}
                 </div>
-                <div className="clinic-info">
+                <div className="clinic-details-area">
                     <h1 className="clinic-name">{clinic?.name}</h1>
-                    <div className="clinic-details">
-                        {nutritionistProfile?.full_name && <p>{nutritionistProfile.full_name}</p>}
-                        {nutritionistProfile?.professional_title && <p>{nutritionistProfile.professional_title} {nutritionistProfile.license_number ? `- Céd. ${nutritionistProfile.license_number}` : ''}</p>}
-                        {clinic?.address && <p>{clinic.address}</p>}
-                        {clinic?.phone_number && <p>Tel: {clinic.phone_number}</p>}
+                    <div className="clinic-meta">
+                        {nutritionistProfile?.full_name && <span>{nutritionistProfile.full_name}</span>}
+                        {nutritionistProfile?.license_number && <span> • Céd. {nutritionistProfile.license_number}</span>}
+                    </div>
+                    <div className="clinic-contact">
+                        {clinic?.address && <div>{clinic.address}</div>}
+                        {clinic?.phone_number && <div>Tel: {clinic.phone_number}</div>}
                     </div>
                 </div>
             </div>
@@ -194,45 +196,43 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
     );
 
     const PatientInfoSection = () => (
-        <section className="patient-info-section">
-            <div className="patient-grid">
-                <div className="patient-cell">
-                    <span className="label">PACIENTE</span>
-                    <span className="value bold">{person.full_name}</span>
+        <section className="patient-info-section no-break">
+            <div className="patient-data-row">
+                <div className="data-group">
+                    <span className="data-label">Paciente</span>
+                    <span className="data-value highlight">{person.full_name}</span>
                 </div>
-                <div className="patient-cell">
-                    <span className="label">EDAD</span>
-                    <span className="value">{calculateAge(person.birth_date)} Años</span>
+                <div className="data-group">
+                    <span className="data-label">Edad / Género</span>
+                    <span className="data-value">{calculateAge(person.birth_date)} años / {person.gender === 'male' ? 'H' : 'M'}</span>
                 </div>
-                <div className="patient-cell">
-                    <span className="label">GÉNERO</span>
-                    <span className="value">{person.gender === 'male' ? 'Masculino' : person.gender === 'female' ? 'Femenino' : 'N/A'}</span>
+                 <div className="data-group">
+                    <span className="data-label">Fecha</span>
+                    <span className="data-value">{new Date().toLocaleDateString('es-MX')}</span>
                 </div>
-                <div className="patient-cell">
-                    <span className="label">FECHA REPORTE</span>
-                    <span className="value">{new Date().toLocaleDateString('es-MX')}</span>
+            </div>
+            <div className="patient-data-row" style={{marginTop: '10px'}}>
+                <div className="data-group">
+                    <span className="data-label">Expediente</span>
+                    <span className="data-value">{person.folio || 'N/A'}</span>
                 </div>
-                <div className="patient-cell">
-                    <span className="label">EXPEDIENTE</span>
-                    <span className="value">{person.folio || 'N/A'}</span>
-                </div>
-                <div className="patient-cell">
-                    <span className="label">OBJETIVO</span>
-                    <span className="value">{person.health_goal || 'General'}</span>
+                <div className="data-group" style={{flex: 2}}>
+                    <span className="data-label">Objetivo</span>
+                    <span className="data-value">{person.health_goal || 'General'}</span>
                 </div>
             </div>
         </section>
     );
 
     const FooterSection = () => (
-        <footer className="report-footer">
-            <div className="signature-box">
+        <footer className="report-footer no-break">
+            <div className="signature-area">
                 <div className="signature-line"></div>
                 <p className="signature-name">{nutritionistProfile?.full_name}</p>
-                <p className="signature-title">{nutritionistProfile?.professional_title} {nutritionistProfile?.license_number ? `| Cédula: ${nutritionistProfile.license_number}` : ''}</p>
+                <p className="signature-cedula">{nutritionistProfile?.professional_title} | Cédula: {nutritionistProfile?.license_number}</p>
             </div>
-            <div className="footer-disclaimer">
-                <p>Este documento es un reporte de seguimiento nutricional y no sustituye una receta médica.</p>
+            <div className="footer-legal">
+                <p>Este documento es un reporte de progreso nutricional.</p>
                 <p>{clinic?.name} | {clinic?.website || clinic?.email}</p>
             </div>
         </footer>
@@ -253,66 +253,62 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
             </div>
             
             <div style={{...styles.modalBody, backgroundColor: '#525659', padding: '2rem', display: 'flex', justifyContent: 'center'}}>
-                {/* This ID 'printable-area' captures only the inner content */}
-                <div id="printable-area" className="report-document-preview">
+                {/* 
+                    The wrapper mimics the Letter size paper.
+                    Padding is applied here to simulate print margins.
+                */}
+                <div id="printable-area" className="paper-sheet">
                     <HeaderSection />
                     
-                    <div className="document-body">
+                    <div className="report-body">
                         <PatientInfoSection />
 
                         {options.page1_results && (
-                            <div className="report-section">
+                            <div className="report-section no-break">
                                 <h2 className="section-title">RESUMEN DE PROGRESO</h2>
-                                <div className="metrics-grid">
-                                    <div className="metric-card">
-                                        <span className="metric-label">Peso Actual</span>
-                                        <span className="metric-value">{reportData.pesoActual ?? '-'} <small>kg</small></span>
-                                        <span className="metric-diff">{reportData.pesoInicial ? `Inicio: ${reportData.pesoInicial} kg` : ''}</span>
+                                <div className="metrics-container">
+                                    <div className="metric-box">
+                                        <span className="m-label">Peso Actual</span>
+                                        <span className="m-value">{reportData.pesoActual ?? '-'} <small>kg</small></span>
                                     </div>
-                                    <div className="metric-card">
-                                        <span className="metric-label">IMC</span>
-                                        <span className="metric-value">{reportData.imcActual ?? '-'}</span>
-                                        <span className="metric-diff">{reportData.imcAnterior ? `Previo: ${reportData.imcAnterior}` : ''}</span>
+                                    <div className="metric-box">
+                                        <span className="m-label">IMC</span>
+                                        <span className="m-value">{reportData.imcActual ?? '-'}</span>
                                     </div>
-                                    <div className="metric-card highlight">
-                                        <span className="metric-label">Cambio Total</span>
-                                        <span className="metric-value">{reportData.perdidaPeso ?? '-'}</span>
-                                        <span className="metric-diff">Peso Corporal</span>
+                                    <div className="metric-box highlight-box">
+                                        <span className="m-label">Cambio Total</span>
+                                        <span className="m-value">{reportData.perdidaPeso ?? '-'}</span>
                                     </div>
-                                    <div className="metric-card">
-                                        <span className="metric-label">Glucosa</span>
-                                        <span className="metric-value">{reportData.glucosaCapilar ?? '-'} <small>mg/dl</small></span>
+                                    <div className="metric-box">
+                                        <span className="m-label">Glucosa</span>
+                                        <span className="m-value">{reportData.glucosaCapilar ?? '-'} <small>mg/dl</small></span>
                                     </div>
                                 </div>
                                 
-                                <div className="two-column-layout">
-                                    <div className="data-list">
-                                        <h3>Antropometría</h3>
-                                        <div className="data-row"><span>Talla:</span> <strong>{reportData.talla} cm</strong></div>
-                                        <div className="data-row"><span>Peso Inicial:</span> <strong>{reportData.pesoInicial} kg</strong></div>
-                                        <div className="data-row"><span>Peso Actual:</span> <strong>{reportData.pesoActual} kg</strong></div>
-                                        <div className="data-row"><span>IMC Actual:</span> <strong>{reportData.imcActual}</strong></div>
+                                <div className="details-columns">
+                                    <div className="detail-col">
+                                        <div className="detail-row"><span>Talla:</span> <strong>{reportData.talla} cm</strong></div>
+                                        <div className="detail-row"><span>Peso Inicial:</span> <strong>{reportData.pesoInicial} kg</strong></div>
+                                        <div className="detail-row"><span>Peso Actual:</span> <strong>{reportData.pesoActual} kg</strong></div>
                                     </div>
-                                    <div className="data-list">
-                                        <h3>Laboratorios Recientes</h3>
-                                        <div className="data-row"><span>Glucosa:</span> <strong>{reportData.glucosaCapilar ?? '-'} mg/dL</strong></div>
-                                        <div className="data-row"><span>HbA1c:</span> <strong>{reportData.hba1c ?? '-'} %</strong></div>
-                                        <div className="data-row"><span>Colesterol:</span> <strong>{reportData.colesterolActual ?? '-'} mg/dL</strong></div>
-                                        <div className="data-row"><span>Triglicéridos:</span> <strong>{reportData.trigliceridosActual ?? '-'} mg/dL</strong></div>
+                                    <div className="detail-col">
+                                        <div className="detail-row"><span>Colesterol:</span> <strong>{reportData.colesterolActual ?? '-'} mg/dL</strong></div>
+                                        <div className="detail-row"><span>Triglicéridos:</span> <strong>{reportData.trigliceridosActual ?? '-'} mg/dL</strong></div>
+                                        <div className="detail-row"><span>HbA1c:</span> <strong>{reportData.hba1c ?? '-'} %</strong></div>
                                     </div>
                                 </div>
                             </div>
                         )}
 
                         {options.page2_charts && (
-                            <div className="report-section page-break-inside-avoid">
+                            <div className="report-section no-break">
                                 <h2 className="section-title">GRÁFICAS DE EVOLUCIÓN</h2>
-                                <div className="charts-container">
-                                    <div className="chart-wrapper">
-                                        <ProgressChart title="Evolución de Peso" data={filteredConsultations.filter(c => c.weight_kg != null).map(c => ({ date: c.consultation_date, value: c.weight_kg! }))} unit="kg" isPrinting={true} />
+                                <div className="charts-wrapper">
+                                    <div className="single-chart">
+                                        <ProgressChart title="Peso (kg)" data={filteredConsultations.filter(c => c.weight_kg != null).map(c => ({ date: c.consultation_date, value: c.weight_kg! }))} unit="kg" isPrinting={true} />
                                     </div>
-                                    <div className="chart-wrapper">
-                                        <ProgressChart title="Evolución de IMC" data={filteredConsultations.filter(c => c.imc != null).map(c => ({ date: c.consultation_date, value: c.imc! }))} unit="pts" isPrinting={true} color="#8B5CF6" />
+                                    <div className="single-chart">
+                                        <ProgressChart title="IMC" data={filteredConsultations.filter(c => c.imc != null).map(c => ({ date: c.consultation_date, value: c.imc! }))} unit="pts" isPrinting={true} color="#8B5CF6" />
                                     </div>
                                 </div>
                             </div>
@@ -321,19 +317,19 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
                         {options.page3_tables && (
                             <div className="report-section">
                                 <h2 className="section-title">HISTORIAL DE CONSULTAS</h2>
-                                <table className="data-table">
+                                <table className="history-table">
                                     <thead>
                                         <tr>
                                             <th>Fecha</th>
                                             <th>Peso (kg)</th>
                                             <th>IMC</th>
-                                            <th>TA</th>
+                                            <th>Tensión A.</th>
                                             <th>Glucosa</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {filteredConsultations.slice(0, 12).map(c => (
-                                            <tr key={c.id}>
+                                        {filteredConsultations.slice(0, 10).map(c => (
+                                            <tr key={c.id} className="no-break">
                                                 <td>{new Date(c.consultation_date).toLocaleDateString('es-MX', {timeZone: 'UTC'})}</td>
                                                 <td>{c.weight_kg}</td>
                                                 <td>{c.imc}</td>
@@ -347,19 +343,18 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
                         )}
 
                         {options.page4_welcome && (
-                            <div className="report-section disclaimer-section">
+                            <div className="report-section disclaimer-box no-break">
                                 <h3>Notas Importantes</h3>
-                                <p>Este reporte refleja el progreso obtenido durante el periodo de tratamiento nutricional. Los resultados pueden variar según la adherencia al plan y factores metabólicos individuales.</p>
+                                <p>Este reporte refleja el progreso obtenido durante el periodo de tratamiento. Los resultados pueden variar según la adherencia al plan.</p>
                                 <ul>
-                                    <li>Recuerda seguir las recomendaciones de hidratación.</li>
-                                    <li>Mantén tu actividad física según lo acordado.</li>
-                                    <li>Cualquier duda sobre este reporte, contacta a tu especialista.</li>
+                                    <li>Mantén tu hidratación adecuada.</li>
+                                    <li>Sigue las indicaciones de actividad física.</li>
                                 </ul>
                             </div>
                         )}
+                        
+                        <FooterSection />
                     </div>
-
-                    <FooterSection />
                 </div>
             </div>
         </>
@@ -421,292 +416,260 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
     );
 };
 
-// CSS Injection for PDF generation. This string is injected into the <style> tag of the HTML passed to Puppeteer.
+// CSS Injection for PDF generation.
 const printCss = `
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
     
-    body {
-        font-family: 'Roboto', sans-serif;
-        margin: 0;
-        padding: 0;
-        background: #fff;
-        color: #333;
-        font-size: 10pt;
-        line-height: 1.3;
-    }
+    /* Global Resets */
+    body { font-family: 'Roboto', sans-serif; margin: 0; padding: 0; background: #fff; color: #111; line-height: 1.3; font-size: 10pt; }
+    * { box-sizing: border-box; }
 
-    /* Page Setup */
+    /* Page Configuration - CRITICAL for PDF Generation */
     @page {
         size: Letter;
-        margin: 0; /* Important: CSS controls margin via container padding */
+        margin: 0; /* We handle margins via padding in .paper-sheet */
     }
 
-    .report-container {
-        width: 100%;
-        max-width: 21.59cm;
+    /* Container simulating the paper sheet */
+    .paper-sheet {
+        width: 215.9mm; /* Exact Letter Width */
+        min-height: 279.4mm;
         margin: 0 auto;
-        padding: 1.5cm; /* Physical print margins */
-        box-sizing: border-box;
+        padding: 15mm; /* Physical printable margins */
         background: white;
-    }
-    
-    /* Used for preview on screen to simulate paper */
-    .report-document-preview {
-        width: 21.59cm;
-        min-height: 27.94cm;
-        background-color: white;
-        padding: 1.5cm;
-        box-sizing: border-box;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        position: relative;
     }
 
-    /* Header */
+    /* --- Header --- */
     .report-header {
-        display: flex;
-        flex-direction: column;
         margin-bottom: 20px;
     }
-    .header-content {
+    .header-top-row {
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        margin-bottom: 10px;
+        align-items: flex-start;
+        margin-bottom: 12px;
     }
     .clinic-logo {
-        max-height: 60px;
+        max-height: 50px;
         max-width: 150px;
         object-fit: contain;
     }
     .logo-placeholder {
-        width: 50px; height: 50px; background: #eee; color: #999; 
-        display: flex; align-items: center; justify-content: center; 
+        width: 50px; height: 50px; background: #eee; color: #999;
+        display: flex; align-items: center; justify-content: center;
         font-weight: bold; border-radius: 4px;
     }
-    .clinic-info {
+    .clinic-details-area {
         text-align: right;
     }
     .clinic-name {
         font-size: 16pt;
         font-weight: 700;
-        color: #1a365d;
+        color: #0284C7;
         margin: 0 0 4px 0;
     }
-    .clinic-details p {
-        margin: 2px 0;
+    .clinic-meta {
+        font-size: 9pt;
+        font-weight: 500;
+        margin-bottom: 2px;
+    }
+    .clinic-contact {
         font-size: 8pt;
         color: #666;
     }
     .header-divider {
         height: 3px;
-        background: linear-gradient(90deg, #38BDF8 0%, #0284C7 100%);
+        background: #0284C7;
         width: 100%;
-        border-radius: 2px;
     }
 
-    /* Patient Info */
+    /* --- Patient Info Grid --- */
     .patient-info-section {
-        margin-bottom: 25px;
-        padding: 12px;
         background-color: #f8fafc;
         border: 1px solid #e2e8f0;
-        border-radius: 8px;
+        border-radius: 6px;
+        padding: 10px 15px;
+        margin-bottom: 25px;
     }
-    .patient-grid {
-        display: grid;
-        grid-template-columns: 2fr 1fr 1fr;
-        gap: 10px 20px;
+    .patient-data-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 15px;
     }
-    .patient-cell {
+    .data-group {
         display: flex;
         flex-direction: column;
+        flex: 1;
     }
-    .label {
+    .data-label {
         font-size: 7pt;
         text-transform: uppercase;
         color: #64748b;
         font-weight: 700;
         letter-spacing: 0.5px;
-        margin-bottom: 2px;
     }
-    .value {
+    .data-value {
         font-size: 10pt;
         color: #0f172a;
         font-weight: 500;
     }
-    .value.bold {
+    .data-value.highlight {
         font-weight: 700;
         font-size: 11pt;
     }
 
-    /* Sections */
+    /* --- General Section Styles --- */
     .section-title {
-        font-size: 12pt;
+        font-size: 11pt;
         font-weight: 700;
         color: #0284C7;
         text-transform: uppercase;
         border-bottom: 1px solid #e0e7ff;
-        padding-bottom: 5px;
-        margin: 20px 0 15px 0;
+        padding-bottom: 4px;
+        margin: 0 0 15px 0;
     }
-    
-    .metrics-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 15px;
-        margin-bottom: 20px;
+    .report-section {
+        margin-bottom: 25px;
     }
-    .metric-card {
+
+    /* --- Metrics (Cards) --- */
+    .metrics-container {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 15px;
+    }
+    .metric-box {
+        flex: 1;
         border: 1px solid #e2e8f0;
-        border-radius: 8px;
+        border-radius: 6px;
         padding: 10px;
         text-align: center;
         background: #fff;
     }
-    .metric-card.highlight {
+    .metric-box.highlight-box {
         background-color: #f0f9ff;
         border-color: #bae6fd;
     }
-    .metric-label {
+    .m-label {
         display: block;
-        font-size: 8pt;
+        font-size: 7pt;
+        text-transform: uppercase;
         color: #64748b;
-        margin-bottom: 5px;
+        margin-bottom: 4px;
     }
-    .metric-value {
+    .m-value {
         display: block;
-        font-size: 14pt;
+        font-size: 13pt;
         font-weight: 700;
         color: #0f172a;
     }
-    .metric-diff {
-        display: block;
-        font-size: 7pt;
-        color: #0ea5e9;
-        margin-top: 2px;
-    }
 
-    .two-column-layout {
+    /* --- Detailed Columns --- */
+    .details-columns {
         display: flex;
         gap: 30px;
+        margin-bottom: 10px;
     }
-    .data-list {
+    .detail-col {
         flex: 1;
     }
-    .data-list h3 {
-        font-size: 10pt;
-        margin: 0 0 10px 0;
-        color: #334155;
-    }
-    .data-row {
+    .detail-row {
         display: flex;
         justify-content: space-between;
-        padding: 6px 0;
-        border-bottom: 1px dotted #cbd5e1;
+        padding: 5px 0;
+        border-bottom: 1px dashed #e2e8f0;
         font-size: 9pt;
     }
 
-    /* Tables */
-    .data-table {
+    /* --- Charts --- */
+    .charts-wrapper {
+        display: flex;
+        gap: 15px;
+    }
+    .single-chart {
+        flex: 1;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 8px;
+        background: #fff;
+        height: 180px; /* Fixed height for charts */
+    }
+
+    /* --- Tables --- */
+    .history-table {
         width: 100%;
         border-collapse: collapse;
         font-size: 9pt;
-        margin-bottom: 20px;
     }
-    .data-table th {
+    .history-table th {
+        text-align: left;
+        padding: 6px;
         background-color: #f1f5f9;
         color: #475569;
         font-weight: 600;
-        text-align: left;
-        padding: 8px;
         border-bottom: 2px solid #cbd5e1;
     }
-    .data-table td {
-        padding: 8px;
+    .history-table td {
+        padding: 6px;
         border-bottom: 1px solid #e2e8f0;
-        color: #333;
     }
-    .data-table tr:nth-child(even) {
+    .history-table tr:nth-child(even) {
         background-color: #f8fafc;
     }
 
-    /* Charts */
-    .charts-container {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-        margin-bottom: 20px;
-    }
-    .chart-wrapper {
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        padding: 10px;
-        background: #fff;
-    }
-    
-    /* Disclaimer */
-    .disclaimer-section {
+    /* --- Disclaimer --- */
+    .disclaimer-box {
         background-color: #fffbeb;
         border: 1px solid #fcd34d;
-        padding: 12px;
+        padding: 10px;
         border-radius: 6px;
         font-size: 8pt;
         color: #92400e;
-        margin-top: 20px;
-        page-break-inside: avoid;
     }
-    .disclaimer-section h3 {
-        margin: 0 0 5px 0;
-        font-size: 9pt;
-    }
-    .disclaimer-section ul {
-        margin: 5px 0 0 0;
-        padding-left: 20px;
-    }
+    .disclaimer-box h3 { margin: 0 0 5px 0; font-size: 9pt; }
+    .disclaimer-box ul { margin: 0; padding-left: 20px; }
 
-    /* Footer */
+    /* --- Footer --- */
     .report-footer {
-        margin-top: 40px;
-        position: relative;
-        break-inside: avoid;
-    }
-    .signature-box {
-        width: 250px;
-        margin: 0 auto 30px auto;
+        margin-top: 30px;
         text-align: center;
+    }
+    .signature-area {
+        width: 220px;
+        margin: 0 auto 20px auto;
     }
     .signature-line {
         border-top: 1px solid #000;
         margin-bottom: 5px;
     }
     .signature-name {
-        font-weight: 700;
-        font-size: 10pt;
-        margin: 0;
+        font-weight: 700; margin: 0; font-size: 10pt;
     }
-    .signature-title {
-        font-size: 8pt;
-        color: #666;
-        margin: 0;
+    .signature-cedula {
+        margin: 0; font-size: 8pt; color: #666;
     }
-    .footer-disclaimer {
+    .footer-legal {
         font-size: 7pt;
         color: #94a3b8;
-        text-align: center;
         border-top: 1px solid #e2e8f0;
         padding-top: 10px;
     }
 
-    /* Print Specifics */
+    /* --- Print Utilities --- */
+    .no-break {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
     @media print {
         .no-print { display: none !important; }
-        body { background: none; }
-        /* The container handles margins, so we reset document margins */
-        .report-document-preview {
-            width: 100%;
-            border: none;
-            box-shadow: none;
+        body { background-color: white; }
+        .report-wrapper {
             margin: 0;
             padding: 0;
+            box-shadow: none;
+            width: 100%;
         }
         .page-break-inside-avoid {
             page-break-inside: avoid;
