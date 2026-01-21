@@ -39,10 +39,12 @@ export default async function handler(req: any, res: any) {
     
     await page.setContent(html, { waitUntil: 'networkidle0' });
 
+    // Changes: Removed default large margins. Margin is now controlled by CSS @page or body style.
+    // Set to Letter size (common in Mexico).
     const pdfBuffer = await page.pdf({
-      format: 'A4',
+      format: 'Letter',
       printBackground: true,
-      margin: { top: '20mm', bottom: '20mm', left: '20mm', right: '20mm' },
+      margin: { top: '0', bottom: '0', left: '0', right: '0' }, 
     });
 
     await browser.close();
