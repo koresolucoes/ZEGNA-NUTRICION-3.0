@@ -37,21 +37,12 @@ export default async function handler(req: any, res: any) {
 
     const page = await browser.newPage();
     
-    // Set viewport to roughly Letter ratio to help with rendering logic before print
-    await page.setViewport({ width: 816, height: 1056 }); 
-
     await page.setContent(html, { waitUntil: 'networkidle0' });
 
-    // Changes: 
-    // 1. Removed explicit margin numbers to let CSS @page handle it fully.
-    // 2. Added scale: 0.98 to ensure tight fits don't overflow unexpectedly due to rendering engine differences.
-    // 3. preferCSSPageSize: true is critical for honoring the @page rules in the CSS.
     const pdfBuffer = await page.pdf({
-      format: 'Letter',
+      format: 'A4',
       printBackground: true,
-      preferCSSPageSize: true,
-      scale: 0.98, // Slight scaling to prevent edge cutoffs
-      margin: { top: '0', bottom: '0', left: '0', right: '0' }, 
+      margin: { top: '20mm', bottom: '20mm', left: '20mm', right: '20mm' },
     });
 
     await browser.close();
