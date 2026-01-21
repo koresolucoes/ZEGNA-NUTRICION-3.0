@@ -1,29 +1,11 @@
-import React, { FC, useState, useMemo } from 'react';
+
+import React, { FC, useState, useMemo, useEffect } from 'react';
 import { DietLog, ExerciseLog } from '../../../types';
 import { styles } from '../../../constants';
 import { ICONS } from '../../../pages/AuthPage';
 import DietPlanViewer from '../../DietPlanViewer';
 import ExercisePlanViewer from '../../ExercisePlanViewer';
 import PdfPreviewModal from '../../shared/PdfPreviewModal';
-
-// Helper to group logs by week
-const groupLogsByWeek = (logs: (DietLog[] | ExerciseLog[])) => {
-    if (!logs || logs.length === 0) return {};
-    return logs.reduce((acc: { [key: string]: any[] }, log: any) => {
-        const d = new Date(log.log_date);
-        d.setUTCHours(12,0,0,0);
-        const day = d.getUTCDay();
-        const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
-        const weekStart = new Date(d.setUTCDate(diff));
-        const weekStartStr = weekStart.toISOString().split('T')[0];
-
-        if (!acc[weekStartStr]) {
-            acc[weekStartStr] = [];
-        }
-        acc[weekStartStr].push(log);
-        return acc;
-    }, {});
-};
 
 interface PlansTabProps {
     allDietLogs: DietLog[];
@@ -41,22 +23,80 @@ interface PlansTabProps {
     personName?: string;
 }
 
+interface PlanBatch<T> {
+    id: string;
+    createdAt: Date;
+    logs: T[];
+    startDate: Date;
+    endDate: Date;
+    daysCount: number;
+    isNewest: boolean;
+}
+
+// Helper to group logs by creation time (Batching)
+const groupLogsByBatch = <T extends { log_date: string; created_at: string }>(logs: T[]): PlanBatch<T>[] => {
+    if (!logs || logs.length === 0) return [];
+
+    // Sort by creation date descending (newest first)
+    const sortedByCreation = [...logs].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    const batches: PlanBatch<T>[] = [];
+
+    sortedByCreation.forEach(log => {
+        const logCreatedTime = new Date(log.created_at).getTime();
+        
+        // Find an existing batch created within +/- 5 minutes of this log
+        let batch = batches.find(b => Math.abs(b.createdAt.getTime() - logCreatedTime) < 300000); // 300,000ms = 5 minutes
+
+        if (!batch) {
+            batch = {
+                id: log.created_at, // Use the first log's timestamp as ID
+                createdAt: new Date(log.created_at),
+                logs: [],
+                startDate: new Date(log.log_date),
+                endDate: new Date(log.log_date),
+                daysCount: 0,
+                isNewest: false
+            };
+            batches.push(batch);
+        }
+
+        batch.logs.push(log);
+
+        // Update Batch Metadata
+        const logDate = new Date(log.log_date);
+        if (logDate < batch.startDate) batch.startDate = logDate;
+        if (logDate > batch.endDate) batch.endDate = logDate;
+    });
+
+    // Finalize batches
+    batches.forEach(b => {
+        b.daysCount = b.logs.length;
+        // Sort logs inside the batch by log_date (Chronological order of the plan)
+        b.logs.sort((a, b) => new Date(a.log_date).getTime() - new Date(b.log_date).getTime());
+    });
+
+    // Mark the very first batch as the newest
+    if (batches.length > 0) batches[0].isNewest = true;
+
+    return batches;
+};
+
 export const PlansTab: FC<PlansTabProps> = ({
     allDietLogs, allExerciseLogs, onGenerateMeal, onGenerateExercise, onAddManualDiet, onAddManualExercise,
     onEditDietLog, onViewDietLog, onEditExerciseLog, onViewExerciseLog, openModal, hasAiFeature, personName
 }) => {
     const [activePlanTab, setActivePlanTab] = useState<'food' | 'exercise'>('food');
-    const [isGrouped, setIsGrouped] = useState(false);
+    const [expandedBatches, setExpandedBatches] = useState<Set<string>>(new Set());
     
     // Filters & Sorting
     const [searchTerm, setSearchTerm] = useState('');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
-    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
     const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
-    // Consolidated filtering and sorting logic
-    const filteredAndSortedLogs = useMemo(() => {
+    // Filter logs first
+    const filteredLogs = useMemo(() => {
         const sourceLogs = activePlanTab === 'food' ? allDietLogs : allExerciseLogs;
         
         return sourceLogs.filter((log: any) => {
@@ -83,20 +123,35 @@ export const PlansTab: FC<PlansTabProps> = ({
             }
             
             return true;
-        }).sort((a: any, b: any) => {
-            const dateA = new Date(a.log_date).getTime();
-            const dateB = new Date(b.log_date).getTime();
-            return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
         });
-    }, [allDietLogs, allExerciseLogs, activePlanTab, startDate, endDate, searchTerm, sortOrder]);
+    }, [allDietLogs, allExerciseLogs, activePlanTab, startDate, endDate, searchTerm]);
 
-    const groupedLogs = useMemo(() => {
-        return isGrouped ? groupLogsByWeek(filteredAndSortedLogs) : {};
-    }, [isGrouped, filteredAndSortedLogs]);
+    // Compute batches from filtered logs
+    const batches = useMemo(() => groupLogsByBatch(filteredLogs), [filteredLogs]);
+
+    // Auto-expand newest batch on load or tab change if valid
+    useEffect(() => {
+        if (batches.length > 0) {
+            setExpandedBatches(prev => {
+                // Only auto-expand if it's the very first load of this tab or empty
+                if (prev.size === 0) return new Set([batches[0].id]);
+                return prev;
+            });
+        }
+    }, [activePlanTab, batches.length]); // Depend on tab change and data availability
+
+    const toggleBatch = (id: string) => {
+        setExpandedBatches(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
 
     const getPrintHtml = () => {
         const title = activePlanTab === 'food' ? 'Plan de Alimentación' : 'Rutina de Ejercicio';
-        const rows = filteredAndSortedLogs.map((log: any) => {
+        const rows = filteredLogs.sort((a: any, b: any) => new Date(a.log_date).getTime() - new Date(b.log_date).getTime()).map((log: any) => {
             const date = new Date(log.log_date).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
             
             if (activePlanTab === 'food') {
@@ -145,6 +200,88 @@ export const PlansTab: FC<PlansTabProps> = ({
             </body>
             </html>
         `;
+    };
+
+    const PlanBatchCard: FC<{ batch: PlanBatch<any> }> = ({ batch }) => {
+        const isExpanded = expandedBatches.has(batch.id);
+        const dateOptions: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', timeZone: 'UTC' };
+        
+        const borderColor = batch.isNewest ? 'var(--primary-color)' : 'var(--border-color)';
+        const bgColor = batch.isNewest ? 'var(--surface-color)' : 'var(--surface-hover-color)';
+
+        return (
+            <div style={{ 
+                marginBottom: '1.5rem', 
+                borderRadius: '16px', 
+                border: `1px solid ${borderColor}`,
+                backgroundColor: bgColor,
+                overflow: 'hidden',
+                boxShadow: batch.isNewest ? '0 4px 20px rgba(0,0,0,0.08)' : 'none',
+                opacity: batch.isNewest ? 1 : 0.9,
+                transition: 'all 0.2s'
+            }} className="fade-in">
+                {/* Header */}
+                <div 
+                    onClick={() => toggleBatch(batch.id)}
+                    style={{
+                        padding: '1rem 1.5rem',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                        borderBottom: isExpanded ? '1px solid var(--border-color)' : 'none',
+                        transition: 'background 0.2s'
+                    }}
+                    className="nav-item-hover"
+                >
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '0.25rem'}}>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+                             <h4 style={{margin: 0, fontSize: '1.1rem', color: 'var(--text-color)', fontWeight: 700}}>
+                                {batch.isNewest ? '✨ Plan Actual' : 'Plan Anterior'}
+                            </h4>
+                            <span style={{fontSize: '0.75rem', color: 'var(--text-light)', fontWeight: 400}}>
+                                Generado el {batch.createdAt.toLocaleDateString('es-MX')}
+                            </span>
+                        </div>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: 'var(--text-light)'}}>
+                            <span>📅 {batch.startDate.toLocaleDateString('es-MX', dateOptions)} - {batch.endDate.toLocaleDateString('es-MX', dateOptions)}</span>
+                            <span>•</span>
+                            <span>{batch.daysCount} días</span>
+                        </div>
+                    </div>
+                    
+                    <span style={{
+                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.3s ease',
+                        color: 'var(--primary-color)',
+                        fontSize: '1.5rem'
+                    }}>
+                        {ICONS.chevronDown}
+                    </span>
+                </div>
+
+                {/* Content */}
+                {isExpanded && (
+                    <div style={{padding: '0', backgroundColor: 'var(--background-color)'}}>
+                        {activePlanTab === 'food' ? (
+                             <DietPlanViewer 
+                                dietLogs={batch.logs} 
+                                onEdit={onEditDietLog} 
+                                onViewDetails={onViewDietLog} 
+                                onDelete={(id) => openModal('deleteDietLog', id, '¿Eliminar este día?')} 
+                            />
+                        ) : (
+                            <ExercisePlanViewer 
+                                exerciseLogs={batch.logs} 
+                                onEdit={onEditExerciseLog} 
+                                onViewDetails={onViewExerciseLog} 
+                                onDelete={(id) => openModal('deleteExerciseLog', id, '¿Eliminar este día?')} 
+                            />
+                        )}
+                    </div>
+                )}
+            </div>
+        );
     };
 
     return (
@@ -271,19 +408,6 @@ export const PlansTab: FC<PlansTabProps> = ({
 
                 <div style={{display: 'flex', gap: '0.5rem'}}>
                     <button 
-                        onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
-                        style={{
-                            display: 'flex', alignItems: 'center', gap: '0.5rem',
-                            padding: '0.5rem 1rem', borderRadius: '8px',
-                            border: '1px solid var(--border-color)', backgroundColor: 'var(--surface-hover-color)',
-                            cursor: 'pointer', color: 'var(--text-color)', fontSize: '0.9rem'
-                        }}
-                        title={sortOrder === 'desc' ? "Más recientes primero" : "Más antiguos primero"}
-                    >
-                        {sortOrder === 'desc' ? '↓ Recientes' : '↑ Antiguos'}
-                    </button>
-                    
-                    <button 
                          onClick={() => setIsPrintModalOpen(true)}
                          className="button-secondary"
                          style={{padding: '0.5rem 1rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem'}}
@@ -293,75 +417,18 @@ export const PlansTab: FC<PlansTabProps> = ({
                 </div>
             </div>
 
-            {/* List Header & Grouping Toggle */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', padding: '0 0.5rem' }}>
-                <h4 style={{margin: 0, fontSize: '0.9rem', color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '1px'}}>
-                    {filteredAndSortedLogs.length} Registros Encontrados
-                </h4>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{fontSize: '0.85rem', color: 'var(--text-light)'}}>Agrupar por semana</span>
-                    <label className="switch">
-                        <input type="checkbox" checked={isGrouped} onChange={() => setIsGrouped(!isGrouped)} />
-                        <span className="slider round"></span>
-                    </label>
-                </div>
+            {/* List */}
+            <div className="fade-in">
+                {batches.length > 0 ? (
+                    batches.map(batch => (
+                        <PlanBatchCard key={batch.id} batch={batch} />
+                    ))
+                ) : (
+                    <div style={{textAlign: 'center', padding: '3rem', color: 'var(--text-light)', border: '2px dashed var(--border-color)', borderRadius: '12px'}}>
+                        <p>No hay planes con los filtros aplicados.</p>
+                    </div>
+                )}
             </div>
-
-            {activePlanTab === 'food' && (
-                <div className="fade-in">
-                    {isGrouped ? (
-                        Object.keys(groupedLogs).length > 0 ? 
-                        // Note: Sorting of groups keys follows the same sortOrder logic roughly
-                        Object.keys(groupedLogs).sort((a,b) => sortOrder === 'asc' ? new Date(a).getTime() - new Date(b).getTime() : new Date(b).getTime() - new Date(a).getTime()).map(weekStart => (
-                            <div key={weekStart} style={{marginBottom: '2rem'}}>
-                                <h4 style={{color: 'var(--primary-color)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem'}}>
-                                    Semana del {new Date(weekStart).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', timeZone: 'UTC' })}
-                                </h4>
-                                <DietPlanViewer 
-                                    dietLogs={groupedLogs[weekStart]} 
-                                    onEdit={onEditDietLog} 
-                                    onViewDetails={onViewDietLog} 
-                                    onDelete={(id) => openModal('deleteDietLog', id, '¿Eliminar este día?')} 
-                                />
-                            </div>
-                        )) : <p style={{textAlign: 'center', padding: '3rem', color: 'var(--text-light)', border: '2px dashed var(--border-color)', borderRadius: '12px'}}>No hay planes con los filtros aplicados.</p>
-                    ) : (
-                        <DietPlanViewer 
-                            dietLogs={filteredAndSortedLogs as DietLog[]} 
-                            onEdit={onEditDietLog} 
-                            onViewDetails={onViewDietLog} 
-                            onDelete={(id) => openModal('deleteDietLog', id, '¿Eliminar este día?')} 
-                        />
-                    )}
-                </div>
-            )}
-
-            {activePlanTab === 'exercise' && (
-                <div className="fade-in">
-                     {isGrouped ? (
-                        Object.keys(groupedLogs).length > 0 ? Object.keys(groupedLogs).sort((a,b) => sortOrder === 'asc' ? new Date(a).getTime() - new Date(b).getTime() : new Date(b).getTime() - new Date(a).getTime()).map(weekStart => (
-                            <div key={weekStart} style={{marginBottom: '2rem'}}>
-                                <h4 style={{color: 'var(--primary-color)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem'}}>
-                                    Semana del {new Date(weekStart).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', timeZone: 'UTC' })}
-                                </h4>
-                                <ExercisePlanViewer 
-                                    exerciseLogs={groupedLogs[weekStart]} 
-                                    onEdit={onEditExerciseLog} 
-                                    onViewDetails={onViewExerciseLog} 
-                                    onDelete={(id) => openModal('deleteExerciseLog', id, '¿Eliminar este día?')} 
-                                />
-                            </div>
-                        )) : <p style={{textAlign: 'center', padding: '3rem', color: 'var(--text-light)', border: '2px dashed var(--border-color)', borderRadius: '12px'}}>No hay rutinas con los filtros aplicados.</p>
-                    ) : (
-                        <ExercisePlanViewer 
-                            exerciseLogs={filteredAndSortedLogs as ExerciseLog[]} 
-                            onEdit={onEditExerciseLog} 
-                            onViewDetails={onViewExerciseLog} 
-                            onDelete={(id) => openModal('deleteExerciseLog', id, '¿Eliminar este día?')} 
-                        />
-                    )}
-                </div>
-            )}
         </section>
     );
 };

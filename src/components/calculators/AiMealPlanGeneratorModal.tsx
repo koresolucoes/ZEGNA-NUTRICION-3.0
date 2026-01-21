@@ -15,7 +15,7 @@ interface AiMealPlanGeneratorModalProps {
     equivalentsData: FoodEquivalent[];
     planPortions: Record<string, string>;
     personId: string | null;
-    persons?: Person[]; // Added to support selection inside modal
+    persons?: Person[];
 }
 
 const modalRoot = document.getElementById('modal-root');
@@ -23,7 +23,6 @@ const modalRoot = document.getElementById('modal-root');
 const AiMealPlanGeneratorModal: FC<AiMealPlanGeneratorModalProps> = ({ isOpen, onClose, onPlanSaved, equivalentsData, planPortions, personId, persons = [] }) => {
     const { clinic } = useClinic();
     
-    // State to manage the selected patient locally within the modal
     const [localPersonId, setLocalPersonId] = useState<string | null>(personId);
     
     const [numDays, setNumDays] = useState('3');
@@ -32,6 +31,10 @@ const AiMealPlanGeneratorModal: FC<AiMealPlanGeneratorModalProps> = ({ isOpen, o
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [thinkingMessage, setThinkingMessage] = useState('');
+    
+    // Conflict Handling State
+    const [conflictDates, setConflictDates] = useState<string[]>([]);
+    const [isOverwriting, setIsOverwriting] = useState(false);
     
     // Clinical Context State
     const [clinicalContext, setClinicalContext] = useState<{ allergies: string[], conditions: string[] }>({ allergies: [], conditions: [] });
@@ -57,12 +60,10 @@ const AiMealPlanGeneratorModal: FC<AiMealPlanGeneratorModalProps> = ({ isOpen, o
             });
     }, [planPortions, equivalentsData]);
 
-    // Update local person ID if prop changes (e.g., selected outside)
     useEffect(() => {
         setLocalPersonId(personId);
     }, [personId, isOpen]);
 
-    // Fetch clinical data whenever localPersonId changes
     useEffect(() => {
         const fetchClinicalData = async () => {
             if (!localPersonId) {
@@ -96,6 +97,7 @@ const AiMealPlanGeneratorModal: FC<AiMealPlanGeneratorModalProps> = ({ isOpen, o
         setError(null);
         setLoading(true);
         setGeneratedPlan(null);
+        setConflictDates([]); // Reset conflicts on new generation
         
         let messageIndex = 0;
         setThinkingMessage(thinkingMessages[messageIndex]);
@@ -196,17 +198,73 @@ La respuesta DEBE ser únicamente un objeto JSON válido.`;
         }
     };
     
-    const handleSavePlanToPatient = async () => {
-        // Use localPersonId instead of just prop personId
+    const handleInitiateSave = async () => {
         if (!generatedPlan || !generatedPlan.plan_semanal || !localPersonId) {
             setError("No hay un plan generado o no se ha seleccionado un paciente para asignarlo.");
             return;
         }
+
         setLoading(true);
         setError(null);
+        
+        try {
+            // Calculate dates
+            const today = new Date();
+            const tomorrowUTC = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + 1));
+            
+            const datesToCheck: string[] = [];
+            for (let i = 0; i < generatedPlan.plan_semanal.length; i++) {
+                const planDate = new Date(tomorrowUTC);
+                planDate.setUTCDate(tomorrowUTC.getUTCDate() + i);
+                datesToCheck.push(planDate.toISOString().split('T')[0]);
+            }
+
+            // Check for existing logs
+            const { data: existingLogs, error: checkError } = await supabase
+                .from('diet_logs')
+                .select('log_date')
+                .eq('person_id', localPersonId)
+                .in('log_date', datesToCheck);
+
+            if (checkError) throw checkError;
+
+            if (existingLogs && existingLogs.length > 0) {
+                // Conflicts found
+                const conflicts = existingLogs.map(l => l.log_date);
+                setConflictDates(conflicts);
+                setLoading(false);
+                return;
+            }
+
+            // No conflicts, proceed to save
+            await executeSave(false);
+
+        } catch (err: any) {
+            setError(err.message);
+            setLoading(false);
+        }
+    };
+
+    const executeSave = async (overwrite: boolean) => {
+        if (!localPersonId || !generatedPlan) return;
+        
+        setIsOverwriting(true);
+        setLoading(true);
+        
         try {
             const today = new Date();
             const tomorrowUTC = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + 1));
+
+            // If overwriting, delete existing logs first
+            if (overwrite && conflictDates.length > 0) {
+                const { error: deleteError } = await supabase
+                    .from('diet_logs')
+                    .delete()
+                    .eq('person_id', localPersonId)
+                    .in('log_date', conflictDates);
+                
+                if (deleteError) throw new Error(`Error eliminando planes anteriores: ${deleteError.message}`);
+            }
 
             const dietLogPayloads = generatedPlan.plan_semanal.map((day: any, index: number) => {
                 const planDate = new Date(tomorrowUTC);
@@ -228,7 +286,7 @@ La respuesta DEBE ser únicamente un objeto JSON válido.`;
             await supabase.from('logs').insert({
                 person_id: localPersonId,
                 log_type: 'Plan Alimenticio (IA)',
-                description: `Se generó y guardó un nuevo plan alimenticio de ${numDays} días basado en equivalentes exactos.`,
+                description: `Se generó y guardó un nuevo plan alimenticio de ${numDays} días.${overwrite ? ' (Sobreescribió planes existentes)' : ''}`,
             });
             
             const { data: person } = await supabase.from('persons').select('user_id').eq('id', localPersonId).single();
@@ -236,7 +294,7 @@ La respuesta DEBE ser únicamente un objeto JSON válido.`;
                 fetch('/api/send-notification', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: person.user_id, title: '¡Nuevo Plan Alimenticio!', body: 'Tu nutriólogo ha creado un nuevo plan calculado para ti.' })
+                    body: JSON.stringify({ userId: person.user_id, title: '¡Nuevo Plan Alimenticio!', body: 'Tu nutriólogo ha actualizado tu plan de alimentación.' })
                 }).catch(err => console.error("Failed to send notification:", err));
             }
 
@@ -246,6 +304,8 @@ La respuesta DEBE ser únicamente un objeto JSON válido.`;
             setError(err.message);
         } finally {
             setLoading(false);
+            setIsOverwriting(false);
+            setConflictDates([]);
         }
     };
 
@@ -261,8 +321,45 @@ La respuesta DEBE ser únicamente un objeto JSON válido.`;
                 
                 <div style={{...styles.modalBody, flex: 1, overflowY: 'auto'}}>
                     {error && <p style={styles.error}>{error}</p>}
+
+                    {/* Conflict Resolution View */}
+                    {conflictDates.length > 0 && (
+                        <div style={{
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)', 
+                            border: '1px solid #F59E0B', 
+                            borderRadius: '12px', 
+                            padding: '1.5rem', 
+                            marginBottom: '1.5rem',
+                            textAlign: 'center'
+                        }}>
+                            <div style={{fontSize: '3rem', marginBottom: '0.5rem'}}>⚠️</div>
+                            <h3 style={{margin: '0 0 0.5rem 0', color: '#B45309'}}>Conflicto de Fechas Detectado</h3>
+                            <p style={{marginBottom: '1rem', color: '#92400E'}}>
+                                Ya existen planes registrados para <strong>{conflictDates.length}</strong> de los días seleccionados.
+                                <br />
+                                <span style={{fontSize: '0.9rem'}}>Fechas afectadas: {conflictDates.map(d => new Date(d).toLocaleDateString('es-MX', {day: 'numeric', month: 'short'})).join(', ')}.</span>
+                            </p>
+                            <div style={{display: 'flex', justifyContent: 'center', gap: '1rem'}}>
+                                <button 
+                                    onClick={() => setConflictDates([])} 
+                                    className="button-secondary"
+                                    style={{backgroundColor: 'white'}}
+                                >
+                                    Cancelar y Revisar
+                                </button>
+                                <button 
+                                    onClick={() => executeSave(true)} 
+                                    className="button-primary"
+                                    style={{backgroundColor: '#F59E0B', border: 'none'}}
+                                    disabled={isOverwriting}
+                                >
+                                    {isOverwriting ? 'Sobreescribiendo...' : 'Sobreescribir Existentes'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
                     
-                    {!generatedPlan && !loading && (
+                    {!generatedPlan && !loading && conflictDates.length === 0 && (
                         <div style={{display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '2rem'}}>
                             <div>
                                 <h3 style={{fontSize: '1rem', color: 'var(--primary-color)', marginTop: 0}}>Configuración</h3>
@@ -359,7 +456,7 @@ La respuesta DEBE ser únicamente un objeto JSON válido.`;
                         </div>
                     )}
                     
-                    {generatedPlan && generatedPlan.plan_semanal && !loading && (
+                    {generatedPlan && generatedPlan.plan_semanal && !loading && conflictDates.length === 0 && (
                         <div style={{display: 'flex', flexDirection: 'column', gap: '1.5rem'}}>
                              <div style={{backgroundColor: 'rgba(16, 185, 129, 0.1)', border: '1px solid #10B981', color: '#065F46', padding: '1rem', borderRadius: '8px', fontSize: '0.9rem'}}>
                                 <strong>¡Plan Generado!</strong> Verifica que las porciones y medidas sean correctas antes de guardar.
@@ -385,19 +482,19 @@ La respuesta DEBE ser únicamente un objeto JSON válido.`;
                 </div>
                 <div style={styles.modalFooter}>
                     <button onClick={onClose} className="button-secondary">Cerrar</button>
-                    {generatedPlan ? (
+                    {generatedPlan && conflictDates.length === 0 ? (
                          <button 
-                            onClick={handleSavePlanToPatient} 
+                            onClick={handleInitiateSave} 
                             disabled={loading || !localPersonId} 
                             title={!localPersonId ? "Debes asociar un paciente al plan para guardarlo" : "Guardar el plan generado en el expediente del paciente"}
                          >
                             {loading ? 'Guardando...' : 'Guardar Plan al Paciente'}
                          </button>
-                    ) : (
+                    ) : !generatedPlan ? (
                          <button onClick={handleGenerate} disabled={loading || activeEquivalents.length === 0}>
                              {loading ? 'Generando...' : 'Generar Plan'}
                          </button>
-                    )}
+                    ) : null}
                 </div>
             </div>
         </div>,
