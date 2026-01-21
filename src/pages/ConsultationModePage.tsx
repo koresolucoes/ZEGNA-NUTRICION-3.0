@@ -55,6 +55,25 @@ const areDatesEqual = (d1: Date, d2: Date) =>
     d1.getMonth() === d2.getMonth() && 
     d1.getDate() === d2.getDate();
 
+// Helper to parse YYYY-MM-DD as local date to avoid timezone shifts
+const parseLocalDate = (dateStr: string) => {
+    if (!dateStr) return new Date();
+    
+    // Check if it's a simple date string (YYYY-MM-DD)
+    // This manual parsing forces the date to be interpreted in the local timezone at 00:00:00
+    // preventing any UTC offsets from shifting the day displayed (e.g. 27th instead of 28th).
+    const parts = dateStr.split('-');
+    if (parts.length === 3 && !dateStr.includes('T')) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
+        const day = parseInt(parts[2], 10);
+        return new Date(year, month, day);
+    }
+    
+    // Fallback for full ISO strings or other formats (which new Date handles appropriately usually)
+    return new Date(dateStr);
+};
+
 // Define Modal Component outside to prevent re-rendering flicker
 // Z-Index updated to 2100 to appear above the Consultation Mode (2000)
 const ToolsModal: FC<{ onClose: () => void; children: ReactNode; isMobile: boolean }> = ({ onClose, children, isMobile }) => (
@@ -114,88 +133,56 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
 
     useEffect(() => {
         const startConsultation = async () => {
-            if (sessionAppointment && (sessionAppointment.status === 'checked-in' || sessionAppointment.status === 'called')) {
-                const { error } = await supabase
-                    .from('appointments')
-                    .update({ status: 'in-consultation' })
-                    .eq('id', sessionAppointment.id);
-
-                if (error) {
-                    console.error("Failed to update appointment status to 'in-consultation'", error);
-                } else {
-                    onDataRefresh(true);
-                }
+            if (sessionAppointment && sessionAppointment.status === 'checked-in') {
+                await supabase.from('appointments').update({ status: 'in-consultation' }).eq('id', sessionAppointment.id);
+                onDataRefresh(true);
             }
         };
         startConsultation();
-    }, [sessionAppointment?.id, onDataRefresh]);
+    }, [sessionAppointment, onDataRefresh]);
 
+    // Data for Summary Panel
     const latestMetrics = useMemo(() => {
-        if (!consultations || consultations.length === 0) return { hasAnyData: false };
-
-        const findFirstValue = (key: 'weight_kg' | 'height_cm') => {
-            return consultations.find(c => c[key] != null)?.[key] ?? null;
+        const sortedConsults = [...consultations].sort((a, b) => new Date(a.consultation_date).getTime() - new Date(b.consultation_date).getTime());
+        const latest = sortedConsults[sortedConsults.length - 1];
+        
+        const latestWeight = latest?.weight_kg;
+        const latestHeight = latest?.height_cm;
+        const latestLab = latest?.lab_results?.[0];
+        
+        return {
+            hasAnyData: !!latest,
+            latestWeight,
+            latestHeight,
+            latestGlucose: latestLab?.glucose_mg_dl,
+            latestCholesterol: latestLab?.cholesterol_mg_dl,
+            latestTriglycerides: latestLab?.triglycerides_mg_dl,
+            latestHba1c: latestLab?.hba1c
         };
-
-        const findFirstLabValue = (key: 'glucose_mg_dl' | 'cholesterol_mg_dl' | 'triglycerides_mg_dl' | 'hba1c') => {
-            for (const c of consultations) {
-                const lab_results = c.lab_results;
-                if (lab_results && lab_results.length > 0 && (lab_results[0] as any)[key] != null) {
-                    return (lab_results[0] as any)[key];
-                }
-            }
-            return null;
-        };
-
-        const latestWeight = findFirstValue('weight_kg');
-        const latestHeight = findFirstValue('height_cm');
-        const latestGlucose = findFirstLabValue('glucose_mg_dl');
-        const latestCholesterol = findFirstLabValue('cholesterol_mg_dl');
-        const latestTriglycerides = findFirstLabValue('triglycerides_mg_dl');
-        const latestHba1c = findFirstLabValue('hba1c');
-        const hasAnyData = !!(latestWeight || latestHeight || latestGlucose || latestCholesterol || latestTriglycerides || latestHba1c);
-
-        return { latestWeight, latestHeight, latestGlucose, latestCholesterol, latestTriglycerides, latestHba1c, hasAnyData };
     }, [consultations]);
-
-    const [activeMobileTab, setActiveMobileTab] = useState('summary');
-
-    // Quick Add Form States
+    
+    // Quick Forms State
     const [quickConsult, setQuickConsult] = useState({ weight_kg: '', height_cm: '' });
     const [quickLog, setQuickLog] = useState('');
     const [formLoading, setFormLoading] = useState<'consult' | 'log' | null>(null);
-    const [appointmentUpdateLoading, setAppointmentUpdateLoading] = useState(false);
     const [quickSuccess, setQuickSuccess] = useState<string | null>(null);
+    const [isToolsOpen, setIsToolsOpen] = useState(false);
+    const [appointmentUpdateLoading, setAppointmentUpdateLoading] = useState(false);
 
-    // AI Assistant States
-    const [messages, setMessages] = useState<AiMessage[]>([]);
-    const [userInput, setUserInput] = useState('');
-    const [aiContext, setAiContext] = useState<{ displayText: string; fullText: string; file_url?: string; } | null>(null);
+    // AI Assistant State
+    const [aiMessages, setAiMessages] = useState<AiMessage[]>([]);
+    const [aiInput, setAiInput] = useState('');
     const [aiLoading, setAiLoading] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
     const aiInputRef = useRef<HTMLInputElement>(null);
-
-    // New states for tools modal and timeline filters
-    const [isToolsModalOpen, setIsToolsModalOpen] = useState(false);
-    const [isReportModalOpen, setIsReportModalOpen] = useState(false); // New Report Modal State
-    const [timelineFilters, setTimelineFilters] = useState({ search: '', start: '', end: '' });
     
-    // Viewing States (Internal to this page to handle layering)
-    const [viewingFile, setViewingFile] = useState<PersonFile | null>(null);
-    const [internalViewingConsultation, setInternalViewingConsultation] = useState<ConsultationWithLabs | null>(null);
-    const [internalViewingLog, setInternalViewingLog] = useState<Log | null>(null);
-    const [internalViewingDietLog, setInternalViewingDietLog] = useState<DietLog | null>(null);
-    const [internalViewingExerciseLog, setInternalViewingExerciseLog] = useState<ExerciseLog | null>(null);
+    // Context Selection State (For RAG)
+    const [selectedContext, setSelectedContext] = useState<{ displayText: string; fullText: string; file_url?: string; } | null>(null);
 
-
-    useEffect(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
-
-    const calculateAge = (birthDate: string | null | undefined) => {
+    const calculateAge = (birthDate: string | null | undefined): string => {
         if (!birthDate) return 'N/A';
+        const birth = new Date(birthDate.replace(/-/g, '/'));
         const today = new Date();
-        const birth = new Date(birthDate);
         let age = today.getFullYear() - birth.getFullYear();
         const m = today.getMonth() - birth.getMonth();
         if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
@@ -203,469 +190,309 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
         }
         return `${age}`;
     };
-
+    
     const handleQuickConsultSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setFormLoading('consult');
         setQuickSuccess(null);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) throw new Error("User not authenticated.");
-
-            const weight = quickConsult.weight_kg ? parseFloat(quickConsult.weight_kg) : null;
-            const height = quickConsult.height_cm ? parseFloat(quickConsult.height_cm) : null;
-            let imc: number | null = null;
-            if (weight && height) imc = parseFloat((weight / ((height / 100) ** 2)).toFixed(2));
+            const w = quickConsult.weight_kg ? parseFloat(quickConsult.weight_kg) : null;
+            const h = quickConsult.height_cm ? parseFloat(quickConsult.height_cm) : null;
+            let imc = null;
+            if (w && h) imc = parseFloat((w / ((h / 100) ** 2)).toFixed(2));
 
             await supabase.from('consultations').insert({
                 person_id: person.id,
                 consultation_date: new Date().toISOString().split('T')[0],
-                weight_kg: weight, height_cm: height, imc,
-                nutritionist_id: session.user.id,
+                weight_kg: w,
+                height_cm: h,
+                imc: imc,
+                notes: 'Registro rápido desde Modo Consulta',
+                nutritionist_id: (await supabase.auth.getUser()).data.user?.id
             });
+            
             setQuickConsult({ weight_kg: '', height_cm: '' });
-            
-            // Show success message locally without triggering full loading spinner
-            setQuickSuccess("Mediciones registradas con éxito.");
+            onDataRefresh(true);
+            setQuickSuccess('Medición registrada');
             setTimeout(() => setQuickSuccess(null), 3000);
-            
-            // Refresh data silently (without skeleton loader)
-            onDataRefresh(true); 
-        } catch (error) { console.error("Error saving quick consult:", error); }
-        finally { setFormLoading(null); }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setFormLoading(null);
+        }
     };
 
     const handleQuickLogSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        if (!quickLog.trim()) return;
         setFormLoading('log');
-        setQuickSuccess(null);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) throw new Error("User not authenticated.");
-            
-            const payload = {
+            await supabase.from('logs').insert({
                 person_id: person.id,
-                log_type: 'Nota de Consulta',
+                log_type: 'Nota Rápida',
                 description: quickLog,
-                created_by_user_id: session.user.id,
-                log_time: new Date().toISOString(),
-            };
-
-            await supabase.from('logs').insert(payload);
+                created_by_user_id: (await supabase.auth.getUser()).data.user?.id
+            });
             setQuickLog('');
-            
-            // Show success message locally without triggering full loading spinner
-            setQuickSuccess("Nota guardada con éxito.");
-            setTimeout(() => setQuickSuccess(null), 3000);
-
-            // Refresh data silently (without skeleton loader)
             onDataRefresh(true);
-        } catch (error) { console.error("Error saving quick log:", error); }
-        finally { setFormLoading(null); }
-    };
-
-    const timeline = useMemo(() => {
-        const combined = [
-            ...consultations.map(c => ({ ...c, type: 'consultation', date: new Date(c.consultation_date) })),
-            ...logs.map(l => ({ ...l, type: 'log', date: new Date(l.log_time! || l.created_at) })),
-            ...dietLogs.map(d => ({ ...d, type: 'diet', date: new Date(d.log_date) })),
-            ...exerciseLogs.map(e => ({ ...e, type: 'exercise', date: new Date(e.log_date) })),
-            ...planHistory.map(p => ({ ...p, type: 'diet_plan_history', date: new Date(p.created_at) })),
-            ...files.map(f => ({ ...f, type: 'file', date: new Date(f.created_at || new Date()) })),
-        ];
-        const sorted = combined.sort((a, b) => b.date.getTime() - a.date.getTime());
-        
-        if (!timelineFilters.search && !timelineFilters.start && !timelineFilters.end) {
-            return sorted;
-        }
-
-        const searchLower = timelineFilters.search.toLowerCase();
-        const startDate = timelineFilters.start ? new Date(timelineFilters.start + 'T00:00:00') : null;
-        const endDate = timelineFilters.end ? new Date(timelineFilters.end + 'T23:59:59') : null;
-
-        return sorted.filter(item => {
-            const itemDate = new Date(item.date);
-            itemDate.setUTCHours(12,0,0,0);
-
-            if (startDate && itemDate < startDate) return false;
-            if (endDate && itemDate > endDate) return false;
-
-            if (searchLower) {
-                let contentToSearch = '';
-                switch (item.type) {
-                    case 'consultation': {
-                        const c = item as unknown as ConsultationWithLabs;
-                        contentToSearch = `consulta ${c.notes || ''} ${c.weight_kg || ''}`; 
-                        break;
-                    }
-                    case 'log': {
-                         const l = item as unknown as Log;
-                         contentToSearch = `${l.log_type || ''} ${l.description || ''}`; 
-                         break;
-                    }
-                    case 'diet': {
-                        const d = item as unknown as DietLog;
-                        contentToSearch = `plan alimenticio ${d.desayuno || ''} ${d.comida || ''} ${d.cena || ''} ${d.colacion_1 || ''} ${d.colacion_2 || ''}`; 
-                        break;
-                    }
-                    case 'exercise': {
-                        const e = item as unknown as ExerciseLog;
-                        const exercises = (e.ejercicios as any[] || []).map(ex => ex.nombre).join(' ');
-                        contentToSearch = `rutina ${e.enfoque || ''} ${exercises}`; 
-                        break;
-                    }
-                    case 'diet_plan_history': {
-                        const p = item as unknown as DietPlanHistoryItem;
-                        contentToSearch = `plan calculado ${p.person_name || ''}`; 
-                        break;
-                    }
-                    case 'file': {
-                        const f = item as unknown as PersonFile;
-                        contentToSearch = `archivo ${f.file_name || ''} ${f.description || ''}`;
-                        break;
-                    }
-                }
-                if (!contentToSearch.toLowerCase().includes(searchLower)) {
-                    return false;
-                }
-            }
-            return true;
-        });
-    }, [consultations, logs, dietLogs, exerciseLogs, planHistory, files, timelineFilters]);
-
-    const handleTimelineItemClick = (item: any) => {
-        // Use internal state setters instead of parent props to control Z-Index layering here
-        switch (item.type) {
-            case 'consultation':
-                setInternalViewingConsultation(item);
-                break;
-            case 'log':
-                setInternalViewingLog(item);
-                break;
-            case 'diet':
-                setInternalViewingDietLog(item as DietLog);
-                break;
-            case 'exercise':
-                setInternalViewingExerciseLog(item as ExerciseLog);
-                break;
-            case 'file':
-                setViewingFile(item as PersonFile);
-                break;
-            default:
-                console.warn("Unknown timeline item type:", item.type);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setFormLoading(null);
         }
     };
     
-    const relevantAppointment = useMemo(() => {
-        if (!appointments || appointments.length === 0) return null;
-        const now = new Date();
-        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-
-        const todaysScheduledAppointment = appointments
-            .filter(a => {
-                const startTime = new Date(a.start_time);
-                return a.status === 'scheduled' && startTime >= todayStart && startTime < todayEnd;
-            })
-            .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())[0];
-
-        return todaysScheduledAppointment || null;
-    }, [appointments]);
-
-    const updateAppointmentStatus = async (appointmentId: string, status: 'completed' | 'no-show' | 'cancelled') => {
+    const updateAppointmentStatus = async (id: string, status: 'completed' | 'no-show' | 'cancelled') => {
         setAppointmentUpdateLoading(true);
-        const { error } = await supabase
-            .from('appointments')
-            .update({ status: status })
-            .eq('id', appointmentId);
-        
-        if (error) {
-            console.error("Error updating appointment status:", error);
-        } else {
-            onDataRefresh(true); // Silent update
+        try {
+             await supabase.from('appointments').update({ status }).eq('id', id);
+             if (status === 'completed') {
+                await supabase.rpc('award_points_for_consultation_attendance', {
+                    p_person_id: person.id,
+                    p_appointment_id: id
+                });
+             }
+             onDataRefresh(true);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setAppointmentUpdateLoading(false);
         }
-        setAppointmentUpdateLoading(false);
+    };
+    
+    // --- TIMELINE LOGIC ---
+    // Filters for Timeline
+    const [timelineFilters, setTimelineFilters] = useState({ search: '', start: '', end: '' });
+
+    const timeline = useMemo(() => {
+        const combined = [
+            ...consultations.map(c => ({ ...c, type: 'consultation', date: parseLocalDate(c.consultation_date) })),
+            ...logs.map(l => ({ ...l, type: 'log', date: new Date(l.log_time || l.created_at) })),
+            ...dietLogs.map(d => ({ ...d, type: 'diet', date: parseLocalDate(d.log_date) })), 
+            ...exerciseLogs.map(e => ({ ...e, type: 'exercise', date: parseLocalDate(e.log_date) })),
+            ...planHistory.map(p => ({ ...p, type: 'diet_plan_history', date: new Date(p.created_at) })), 
+        ];
+        
+        return combined
+            .filter(item => {
+                if (timelineFilters.search) {
+                    const searchLower = timelineFilters.search.toLowerCase();
+                    const desc = (item as any).description || (item as any).notes || (item as any).log_type || '';
+                    if (!desc.toLowerCase().includes(searchLower)) return false;
+                }
+                return true;
+            })
+            .sort((a, b) => b.date.getTime() - a.date.getTime());
+    }, [consultations, logs, dietLogs, exerciseLogs, planHistory, timelineFilters]);
+
+    const handleTimelineItemClick = (item: any) => {
+        if (item.type === 'consultation') setViewingConsultation(item);
+        else if (item.type === 'log') setViewingLog(item);
+        else if (item.type === 'diet') setViewingDietLog(item);
+        else if (item.type === 'exercise') setViewingExerciseLog(item);
     };
 
-    const formatDate = (date: Date) => date.toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' });
-
-    const sendContextToAi = (context: { displayText: string; fullText: string; file_url?: string; }) => {
-        setAiContext(context);
-        setUserInput('');
+    // --- AI Logic ---
+    const handleContextSelection = (context: { displayText: string; fullText: string; file_url?: string; }) => {
+        setSelectedContext(context);
         aiInputRef.current?.focus();
     };
 
     const formatSummaryForAI = () => {
-        let summary = `Resumen del Paciente: ${personName}, ${calculateAge(personBirthDate)} años. Objetivo: ${person.health_goal || 'N/A'}.`;
-        if (allergies.length > 0) summary += ` Alergias: ${allergies.map(a => a.substance).join(', ')}.`;
-        if (medicalHistory.length > 0) summary += ` Condiciones: ${medicalHistory.map(h => h.condition).join(', ')}.`;
+        let summary = `Paciente: ${person.full_name}\nEdad: ${calculateAge(person.birth_date)}\nObjetivo: ${person.health_goal || 'No definido'}\n\n`;
         if (latestMetrics.hasAnyData) {
-            summary += ` Últimos datos registrados:`;
-            if (latestMetrics.latestWeight) summary += ` Peso ${latestMetrics.latestWeight}kg.`;
-            if (latestMetrics.latestHeight) summary += ` Altura ${latestMetrics.latestHeight}cm.`;
-            if (latestMetrics.latestGlucose) summary += ` Glucosa ${latestMetrics.latestGlucose}mg/dl.`;
+            summary += `Últimas Mediciones:\nPeso: ${latestMetrics.latestWeight || 'N/A'} kg\nIMC: ${latestMetrics.latestWeight && latestMetrics.latestHeight ? (latestMetrics.latestWeight / ((latestMetrics.latestHeight/100)**2)).toFixed(1) : 'N/A'}\n`;
+            if (latestMetrics.latestGlucose) summary += `Glucosa: ${latestMetrics.latestGlucose} mg/dL\n`;
         }
-        return {
-            displayText: 'Resumen del Paciente',
-            fullText: summary
-        };
+        if (allergies.length > 0) summary += `\nAlergias: ${allergies.map(a => a.substance).join(', ')}`;
+        return { displayText: `Resumen General de ${person.full_name}`, fullText: summary };
     };
-
+    
     const formatItemForAI = (item: any) => {
-        let displayText = '';
-        let fullText = '';
-        let file_url: string | undefined = undefined;
-
-        switch (item.type) {
-            case 'consultation':
-                displayText = `Consulta ${formatDate(item.date)}`;
-                fullText = `Consulta (${formatDate(item.date)}): Peso ${item.weight_kg ?? '-'}kg, IMC ${item.imc ?? '-'}. Notas: ${item.notes || 'N/A'}`;
-                break;
-            case 'log':
-                 displayText = `Bitácora ${formatDate(item.date)}`;
-                fullText = `Bitácora (${formatDate(item.date)}): Tipo: ${item.log_type}. Desc: "${item.description}"`;
-                break;
-            case 'diet':
-                 displayText = `Dieta ${formatDate(item.date)}`;
-                 const dietLog = item as DietLog;
-                fullText = `Plan Alimenticio (${formatDate(item.date)}): ${['desayuno', 'comida', 'cena'].map(m => (dietLog as any)[m] ? `${m.charAt(0).toUpperCase()}${m.slice(1)}: ${(dietLog as any)[m]}` : '').filter(Boolean).join('. ')}`;
-                break;
-            case 'exercise':
-                displayText = `Rutina ${formatDate(item.date)}`;
-                const exercises = item.ejercicios as any[];
-                fullText = `Rutina (${formatDate(item.date)}): Enfoque: ${item.enfoque}. Ejercicios: ${exercises.length > 0 ? exercises.map(ex => ex.nombre).join(', ') : 'Descanso'}`;
-                break;
-            case 'file':
-                const file = item as PersonFile;
-                displayText = `Archivo: ${file.file_name}`;
-                fullText = `Archivo adjunto: ${file.file_name} (Tipo: ${file.file_type}). Descripción: ${file.description || 'Sin descripción'}.`;
-                file_url = supabase.storage.from('files').getPublicUrl(file.file_path).data.publicUrl;
-                break;
+        let text = '';
+        let display = '';
+        if (item.type === 'consultation') {
+            display = `Consulta ${item.date.toLocaleDateString()}`;
+            text = `Consulta del ${item.date.toLocaleDateString()}:\nPeso: ${item.weight_kg}kg, IMC: ${item.imc}\nNotas: ${item.notes || 'Sin notas'}\n`;
+            if (item.lab_results && item.lab_results.length > 0) {
+                text += `Laboratorios: Glucosa ${item.lab_results[0].glucose_mg_dl || '-'}, Colesterol ${item.lab_results[0].cholesterol_mg_dl || '-'}`;
+            }
+        } else if (item.type === 'log') {
+             display = `Nota ${item.date.toLocaleDateString()}`;
+             text = `Nota (${item.log_type}) del ${item.date.toLocaleDateString()}:\n${item.description}`;
+        } else if (item.type === 'diet') {
+             display = `Dieta ${item.date.toLocaleDateString()}`;
+             text = `Plan Alimenticio del ${item.date.toLocaleDateString()}:\nDesayuno: ${item.desayuno}\nComida: ${item.comida}\nCena: ${item.cena}`;
         }
-        return { displayText, fullText, file_url };
+        return { displayText: display, fullText: text };
     };
 
     const handleAiSubmit = async (e: FormEvent | string) => {
-        if (typeof e !== 'string') {
-             e.preventDefault();
+        if (typeof e !== 'string') e.preventDefault();
+        const text = typeof e === 'string' ? e : aiInput;
+        if (!text.trim()) return;
+
+        if (!hasAiFeature) {
+            setAiMessages(prev => [...prev, { role: 'user', content: text }, { role: 'model', content: "La función de Asistente IA no está disponible en tu plan actual. Actualiza a Pro o Business para desbloquearla." }]);
+            setAiInput('');
+            setSelectedContext(null);
+            return;
         }
-        
-        const textInput = typeof e === 'string' ? e : userInput;
 
-        if (!textInput.trim() || aiLoading) return;
-        
-        const userMessage: AiMessage = {
-            role: 'user',
-            content: textInput,
-            context: aiContext,
-        };
-
-        setMessages(prev => [...prev, userMessage]);
-        setUserInput('');
-        setAiContext(null);
+        const newUserMessage: AiMessage = { role: 'user', content: text, context: selectedContext };
+        setAiMessages(prev => [...prev, newUserMessage]);
+        setAiInput('');
+        setSelectedContext(null);
         setAiLoading(true);
 
         try {
-            const lastConsultationAI = consultations[0];
-            const contextForPrompt = userMessage.context ? userMessage.context.fullText : 'No se proporcionó contexto específico para esta pregunta.';
+            // Construct context-aware prompt
+            const contextText = selectedContext ? `\n\nCONTEXTO ADJUNTO:\n${selectedContext.fullText}\n\n` : '';
             
-            let systemInstruction = `Eres un asistente experto en nutrición. Analiza el siguiente contexto clínico de un paciente y responde la pregunta del nutriólogo. Sé conciso y profesional.
-            ---
-            CONTEXTO GENERAL DEL PACIENTE:
-            - Nombre: ${personName}
-            - Edad: ${calculateAge(personBirthDate)} años
-            - Objetivo Principal: ${person.health_goal || 'No especificado'}
-            - Alergias: ${allergies.length > 0 ? allergies.map(a => a.substance).join(', ') : 'Ninguna registrada'}
-            - Condiciones Médicas: ${medicalHistory.length > 0 ? medicalHistory.map(h => h.condition).join(', ') : 'Ninguna registrada'}
-            - Medicamentos: ${medications.length > 0 ? medications.map(m => m.name).join(', ') : 'Ninguno registrado'}
-            ${lastConsultationAI ? `- Última Consulta (${new Date(lastConsultationAI.consultation_date).toLocaleDateString()}): Peso ${lastConsultationAI.weight_kg}kg, IMC ${lastConsultationAI.imc}` : ''}
-            ---
-            CONTEXTO ESPECÍFICO PARA ESTA PREGUNTA:
-            ${contextForPrompt}
-            ---`;
+            const historyForModel = aiMessages.map(msg => ({
+                role: msg.role === 'user' ? 'user' : 'model',
+                parts: [{ text: msg.context ? `[Contexto: ${msg.context.fullText}]\n${msg.content}` : msg.content }]
+            }));
             
-            const apiResponse = await fetch('/api/gemini', {
+            const currentMessagePart: any = {
+                role: 'user',
+                parts: [{ text: `${contextText}${text}` }]
+            };
+            
+            const payload: any = {
+                 clinic_id: clinic?.id,
+                 contents: [...historyForModel, currentMessagePart],
+                 config: {
+                     systemInstruction: `Eres un asistente clínico experto ayudando a un nutriólogo. Sé conciso, profesional y usa terminología médica adecuada. Basa tus respuestas en el contexto proporcionado sobre el paciente ${person.full_name}.`,
+                 }
+            };
+
+            // RAG Support: Pass file URL if context has one
+            if (selectedContext?.file_url) {
+                payload.file_url = selectedContext.file_url;
+            }
+
+            const response = await fetch('/api/gemini', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    clinic_id: clinic?.id,
-                    contents: `PREGUNTA DEL NUTRIÓLOGO: ${userMessage.content}`,
-                    config: { systemInstruction: systemInstruction },
-                    // Pass file_url to backend if present in context for RAG
-                    file_url: userMessage.context?.file_url
-                })
+                body: JSON.stringify(payload)
             });
 
-            if (!apiResponse.ok) {
-                const errorData = await apiResponse.json();
-                throw new Error(errorData.error || `Error from server: ${apiResponse.statusText}`);
-            }
-            const data = await apiResponse.json();
-            setMessages(prev => [...prev, { role: 'model', content: data.text }]);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Error contacting AI');
 
-        } catch (err) {
-            console.error("AI Error:", err);
-            setMessages(prev => [...prev, { role: 'model', content: "Lo siento, no pude procesar tu solicitud. Inténtalo de nuevo." }]);
+            setAiMessages(prev => [...prev, { role: 'model', content: data.text }]);
+        } catch (error: any) {
+            setAiMessages(prev => [...prev, { role: 'model', content: `Error: ${error.message}` }]);
         } finally {
             setAiLoading(false);
+            chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }
     };
+    
+    // --- Render ---
 
-    // Use createPortal to render the entire page at the body level
-    // This solves the z-index and layout stacking context issues with the sidebar
-    return createPortal(
-        <div style={{ position: 'fixed', inset: 0, height: '100%', width: '100%', backgroundColor: 'var(--background-color)', zIndex: 2000, display: 'flex', flexDirection: 'column' }}>
-            {/* Render Modal conditionally here to avoid flicker from unmounting/mounting */}
-            {isToolsModalOpen && (
-                <ToolsModal onClose={() => setIsToolsModalOpen(false)} isMobile={isMobile}>
-                    <CalculatorsPage isMobile={isMobile} initialPersonToLoad={person} customModalZIndex={2200} />
+    return (
+        <div className="fade-in" style={{ 
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+            backgroundColor: 'var(--background-color)', zIndex: 2000, 
+            display: 'flex', flexDirection: 'column' 
+        }}>
+            {isToolsOpen && (
+                <ToolsModal onClose={() => setIsToolsOpen(false)} isMobile={isMobile}>
+                    <CalculatorsPage 
+                        isMobile={isMobile} 
+                        initialPersonToLoad={person} 
+                        customModalZIndex={2200}
+                    />
                 </ToolsModal>
             )}
-            
-             {/* Report Modal - Layered above everything */}
-             {isReportModalOpen && (
-                 <ReportModal 
-                    person={person} 
-                    consultations={consultations} 
-                    dietLogs={dietLogs} 
-                    exerciseLogs={exerciseLogs} 
-                    allergies={allergies} 
-                    medicalHistory={medicalHistory} 
-                    medications={medications} 
-                    lifestyleHabits={lifestyleHabits} 
-                    isMobile={isMobile} 
-                    onClose={() => setIsReportModalOpen(false)} 
-                    nutritionistProfile={null} 
-                    clinic={clinic}
-                    zIndex={2200} 
-                />
-            )}
-            
-            {/* Detailed Modals - Rendered here to sit on top of Consultation Mode */}
-             {viewingFile && (
-                <AttachmentPreviewModal 
-                    attachment={{
-                        name: viewingFile.file_name,
-                        url: supabase.storage.from('files').getPublicUrl(viewingFile.file_path).data.publicUrl,
-                        type: viewingFile.file_type || 'application/octet-stream'
-                    }}
-                    onClose={() => setViewingFile(null)}
-                    zIndex={2200} 
-                />
-            )}
-             {internalViewingConsultation && (
-                 <ConsultationDetailModal consultation={internalViewingConsultation} onClose={() => setInternalViewingConsultation(null)} zIndex={2200} />
-             )}
-             {internalViewingLog && (
-                  <LogDetailModal log={internalViewingLog} onClose={() => setInternalViewingLog(null)} zIndex={2200} />
-             )}
-             {internalViewingDietLog && (
-                 <DietLogDetailModal log={internalViewingDietLog} onClose={() => setInternalViewingDietLog(null)} zIndex={2200} />
-             )}
-             {internalViewingExerciseLog && (
-                 <ExerciseLogDetailModal log={internalViewingExerciseLog} onClose={() => setInternalViewingExerciseLog(null)} zIndex={2200} />
-             )}
-            
-            {/* Global Header for Consultation Mode */}
-            <header style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', flexShrink: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    {/* Heuristic 1: Visibility of System Status (Timer) */}
-                    <div style={{ backgroundColor: 'var(--primary-light)', color: 'var(--primary-dark)', padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: 700, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span className="pulse-dot" style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--error-color)', display: 'block' }}></span>
-                        {formatTime(elapsedTime)}
-                    </div>
-                    {!isMobile && <h2 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color)' }}>{personName}</h2>}
+
+            {/* Header */}
+            <div style={{ 
+                height: '60px', backgroundColor: 'var(--surface-color)', borderBottom: '1px solid var(--border-color)', 
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1.5rem',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+            }}>
+                <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+                    <div style={{backgroundColor: 'var(--primary-color)', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', fontWeight: 700, fontSize: '0.8rem'}}>EN CONSULTA</div>
+                    <h2 style={{margin: 0, fontSize: '1.1rem', color: 'var(--text-color)'}}>{personName}</h2>
+                    <span style={{fontSize: '0.9rem', fontFamily: 'monospace', color: 'var(--text-light)'}}>{formatTime(elapsedTime)}</span>
                 </div>
+                <div style={{display: 'flex', gap: '1rem'}}>
+                    <button onClick={() => setIsToolsOpen(true)} className="button-secondary" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                        {ICONS.calculator} Herramientas
+                    </button>
+                    <button onClick={onExit} style={{backgroundColor: 'var(--error-bg)', color: 'var(--error-color)', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: 600}}>
+                        Finalizar Consulta
+                    </button>
+                </div>
+            </div>
+
+            {/* Main Layout - 3 Columns */}
+            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '280px 1fr 350px', overflow: 'hidden' }}>
                 
-                <div style={{display: 'flex', gap: '0.5rem'}}>
-                     {/* Heuristic 7: Flexibility (Tools Shortcut) */}
-                     <button onClick={() => setIsReportModalOpen(true)} className="button-secondary" title="Generar Reporte">
-                         {isMobile ? ICONS.print : 'Reporte'}
-                    </button>
-                    <button onClick={() => setIsToolsModalOpen(true)} className="button-secondary" title="Herramientas y Calculadoras">
-                         {isMobile ? ICONS.calculator : 'Herramientas'}
-                    </button>
-                    <button onClick={onExit} className="button-danger">
-                         {isMobile ? ICONS.check : 'Finalizar Consulta'}
-                    </button>
-                </div>
-            </header>
-
-            <style>{`
-                @keyframes pulse-red {
-                    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-                    70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-                    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-                }
-                .pulse-dot {
-                    animation: pulse-red 2s infinite;
-                }
-            `}</style>
-
-            <main style={isMobile 
-                ? { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' } 
-                : { flex: 1, display: 'flex', gap: '1rem', padding: '1rem', overflow: 'hidden', alignItems: 'stretch' }}
-            >
-                {isMobile ? (
-                    <>
-                        <nav className="tabs" style={{ padding: '0 0.5rem', flexShrink: 0 }}>
-                            <button className={`tab-button ${activeMobileTab === 'summary' ? 'active' : ''}`} onClick={() => setActiveMobileTab('summary')}>Resumen</button>
-                            <button className={`tab-button ${activeMobileTab === 'timeline' ? 'active' : ''}`} onClick={() => setActiveMobileTab('timeline')}>Expediente</button>
-                            <button className={`tab-button ${activeMobileTab === 'ai' ? 'active' : ''}`} onClick={() => setActiveMobileTab('ai')}>Asistente</button>
-                        </nav>
-                        <div style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
-                            {activeMobileTab === 'summary' && <SummaryPanel person={person} latestMetrics={latestMetrics} relevantAppointment={relevantAppointment} updateAppointmentStatus={updateAppointmentStatus} appointmentUpdateLoading={appointmentUpdateLoading} quickConsult={quickConsult} setQuickConsult={setQuickConsult} handleQuickConsultSubmit={handleQuickConsultSubmit} formLoading={formLoading} quickLog={quickLog} setQuickLog={setQuickLog} handleQuickLogSubmit={handleQuickLogSubmit} sendContextToAi={sendContextToAi} formatSummaryForAI={formatSummaryForAI} calculateAge={calculateAge} quickSuccess={quickSuccess} />}
-                            {activeMobileTab === 'timeline' && <TimelinePanel timeline={timeline} timelineFilters={timelineFilters} setTimelineFilters={setTimelineFilters} handleTimelineItemClick={handleTimelineItemClick} sendContextToAi={sendContextToAi} formatItemForAI={formatItemForAI} />}
-                            {activeMobileTab === 'ai' && (
-                                hasAiFeature ? (
-                                    <div style={{height: '100%', display: 'flex', flexDirection: 'column'}}>
-                                        <AiAssistantPanel messages={messages} aiLoading={aiLoading} chatEndRef={chatEndRef} handleAiSubmit={handleAiSubmit} aiContext={aiContext} setAiContext={setAiContext} userInput={userInput} setUserInput={setUserInput} aiInputRef={aiInputRef} />
-                                    </div>
-                                ) : (
-                                    <div style={{ ...styles.detailCard, margin: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-                                        <div style={{...styles.detailCardBody, padding: '2rem'}}>
-                                            <span style={{ fontSize: '2rem' }}>{ICONS.sparkles}</span>
-                                            <h3 style={{ ...styles.detailCardTitle, marginTop: '1rem' }}>Asistente IA no disponible</h3>
-                                            <p style={{ color: 'var(--text-light)', fontSize: '0.9rem' }}>Actualiza tu plan para usar esta función.</p>
-                                        </div>
-                                    </div>
-                                )
-                            )}
-                        </div>
-                    </>
-                ) : (
-                    <>
-                        {/* Left Panel: Quick Actions & Vitals */}
-                        <aside style={{ width: '25%', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto' }}>
-                            <SummaryPanel person={person} latestMetrics={latestMetrics} relevantAppointment={relevantAppointment} updateAppointmentStatus={updateAppointmentStatus} appointmentUpdateLoading={appointmentUpdateLoading} quickConsult={quickConsult} setQuickConsult={setQuickConsult} handleQuickConsultSubmit={handleQuickConsultSubmit} formLoading={formLoading} quickLog={quickLog} setQuickLog={setQuickLog} handleQuickLogSubmit={handleQuickLogSubmit} sendContextToAi={sendContextToAi} formatSummaryForAI={formatSummaryForAI} calculateAge={calculateAge} quickSuccess={quickSuccess} />
-                        </aside>
-
-                        {/* Center Panel: Timeline (The "Source of Truth") */}
-                        <section style={{ flex: 1.5, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                           <TimelinePanel timeline={timeline} timelineFilters={timelineFilters} setTimelineFilters={setTimelineFilters} handleTimelineItemClick={handleTimelineItemClick} sendContextToAi={sendContextToAi} formatItemForAI={formatItemForAI} />
-                        </section>
-
-                        {/* Right Panel: AI Assistant (The "Copilot") */}
-                        <aside style={{ width: '30%', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                            {hasAiFeature ? (
-                                <AiAssistantPanel messages={messages} aiLoading={aiLoading} chatEndRef={chatEndRef} handleAiSubmit={handleAiSubmit} aiContext={aiContext} setAiContext={setAiContext} userInput={userInput} setUserInput={setUserInput} aiInputRef={aiInputRef} />
-                            ) : (
-                                <div style={{ ...styles.detailCard, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-                                    <div style={styles.detailCardBody}>
-                                        <span style={{ fontSize: '2rem' }}>{ICONS.sparkles}</span>
-                                        <h3 style={{ ...styles.detailCardTitle, marginTop: '1rem' }}>Asistente con IA</h3>
-                                        <p style={{ color: 'var(--text-light)', fontSize: '0.9rem' }}>Esta funcionalidad no está incluida en tu plan actual. Actualiza para usar el asistente IA durante tus consultas.</p>
-                                    </div>
-                                </div>
-                            )}
-                        </aside>
-                    </>
+                {/* 1. Left: Summary & Quick Actions */}
+                {!isMobile && (
+                    <div style={{ padding: '1rem', borderRight: '1px solid var(--border-color)', overflowY: 'auto', backgroundColor: 'var(--background-color)' }}>
+                        <SummaryPanel 
+                            person={person}
+                            latestMetrics={latestMetrics}
+                            relevantAppointment={sessionAppointment}
+                            updateAppointmentStatus={updateAppointmentStatus}
+                            appointmentUpdateLoading={appointmentUpdateLoading}
+                            quickConsult={quickConsult}
+                            setQuickConsult={setQuickConsult}
+                            handleQuickConsultSubmit={handleQuickConsultSubmit}
+                            formLoading={formLoading}
+                            quickLog={quickLog}
+                            setQuickLog={setQuickLog}
+                            handleQuickLogSubmit={handleQuickLogSubmit}
+                            sendContextToAi={handleContextSelection}
+                            formatSummaryForAI={formatSummaryForAI}
+                            calculateAge={calculateAge}
+                            quickSuccess={quickSuccess}
+                        />
+                    </div>
                 )}
-            </main>
-        </div>,
-        document.body
+
+                {/* 2. Center: Unified Timeline */}
+                <div style={{ padding: '1rem', overflowY: 'auto', backgroundColor: 'var(--surface-active)', display: 'flex', flexDirection: 'column' }}>
+                     <TimelinePanel 
+                        timeline={timeline} 
+                        timelineFilters={timelineFilters} 
+                        setTimelineFilters={setTimelineFilters}
+                        handleTimelineItemClick={handleTimelineItemClick}
+                        sendContextToAi={handleContextSelection}
+                        formatItemForAI={formatItemForAI}
+                    />
+                </div>
+
+                {/* 3. Right: AI Assistant */}
+                {!isMobile && (
+                    <div style={{ borderLeft: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', display: 'flex', flexDirection: 'column' }}>
+                         <AiAssistantPanel 
+                            messages={aiMessages}
+                            aiLoading={aiLoading}
+                            chatEndRef={chatEndRef}
+                            handleAiSubmit={handleAiSubmit}
+                            aiContext={selectedContext}
+                            setAiContext={setSelectedContext}
+                            userInput={aiInput}
+                            setUserInput={setAiInput}
+                            aiInputRef={aiInputRef}
+                         />
+                    </div>
+                )}
+            </div>
+            
+            {/* Mobile Tabs if needed, or just hide AI/Left panel on mobile for MVP simplification */}
+            {isMobile && (
+                <div style={{padding: '1rem', textAlign: 'center', backgroundColor: 'var(--surface-color)', borderTop: '1px solid var(--border-color)'}}>
+                    <p style={{fontSize: '0.8rem', color: 'var(--text-light)'}}>Vista móvil simplificada. Usa una tablet o escritorio para la experiencia completa.</p>
+                </div>
+            )}
+        </div>
     );
-}
+};
 
 export default ConsultationModePage;

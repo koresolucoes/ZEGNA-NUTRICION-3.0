@@ -503,10 +503,10 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
             {isLifestyleModalOpen && <LifestyleFormModal isOpen={isLifestyleModalOpen} onClose={()=>{handleClinicalHistorySave();fetchData()}} personId={personId} habitsToEdit={lifestyleHabits} />}
             {isFileUploadModalOpen && <FileUploadModal isOpen={isFileUploadModalOpen} onClose={()=>{handleFileUploadSuccess();fetchData()}} personId={personId} />}
             {isReportModalOpen && <ReportModal person={person} consultations={consultations} dietLogs={allDietLogs} exerciseLogs={allExerciseLogs} allergies={allergies} medicalHistory={medicalHistory} medications={medications} lifestyleHabits={lifestyleHabits} onClose={() => setReportModalOpen(false)} isMobile={isMobile} nutritionistProfile={nutritionistProfile} clinic={clinic} />}
-            {viewingConsultation && <ConsultationDetailModal consultation={viewingConsultation} onClose={() => setViewingConsultation(null)} />}
-            {viewingLog && <LogDetailModal log={viewingLog} onClose={() => setViewingLog(null)} />}
-            {viewingDietLog && <DietLogDetailModal log={viewingDietLog} onClose={() => setViewingDietLog(null)} />}
-            {viewingExerciseLog && <ExerciseLogDetailModal log={viewingExerciseLog} onClose={() => setViewingExerciseLog(null)} />}
+            {viewingConsultation && <ConsultationDetailModal consultation={viewingConsultation} onClose={() => setViewingConsultation(null)} zIndex={isConsultationMode ? 2200 : 1050} />}
+            {viewingLog && <LogDetailModal log={viewingLog} onClose={() => setViewingLog(null)} zIndex={isConsultationMode ? 2200 : 1050} />}
+            {viewingDietLog && <DietLogDetailModal log={viewingDietLog} onClose={() => setViewingDietLog(null)} zIndex={isConsultationMode ? 2200 : 1050} />}
+            {viewingExerciseLog && <ExerciseLogDetailModal log={viewingExerciseLog} onClose={() => setViewingExerciseLog(null)} zIndex={isConsultationMode ? 2200 : 1050} />}
             {isRoomModalOpen && appointmentToCall && <ConsultingRoomModal isOpen={isRoomModalOpen} onClose={() => { setIsRoomModalOpen(false); setAppointmentToCall(null); }} onConfirm={handleConfirmRoom} patientName={appointmentToCall.persons?.full_name || appointmentToCall.title} /> }
 
             {isConsultationMode ? (
