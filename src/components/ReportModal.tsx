@@ -61,10 +61,7 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
             return;
         }
 
-        // Get the SVG charts and convert them to base64 images for reliable PDF rendering
-        // This is a simplified approach; usually handled by the chart library or server-side rendering
-        // For this implementation, we rely on Puppeteer's ability to render SVGs.
-    
+        // We wrap the content in a standardized HTML shell for the PDF generator
         try {
             const htmlContent = `
                 <!DOCTYPE html>
@@ -78,7 +75,9 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
                     </style>
                 </head>
                 <body>
-                    ${element.innerHTML}
+                    <div class="report-container">
+                        ${element.innerHTML}
+                    </div>
                 </body>
                 </html>
             `;
@@ -184,7 +183,7 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
                     <h1 className="clinic-name">{clinic?.name}</h1>
                     <div className="clinic-details">
                         {nutritionistProfile?.full_name && <p>{nutritionistProfile.full_name}</p>}
-                        {nutritionistProfile?.professional_title && <p>{nutritionistProfile.professional_title} - Céd. {nutritionistProfile.license_number}</p>}
+                        {nutritionistProfile?.professional_title && <p>{nutritionistProfile.professional_title} {nutritionistProfile.license_number ? `- Céd. ${nutritionistProfile.license_number}` : ''}</p>}
                         {clinic?.address && <p>{clinic.address}</p>}
                         {clinic?.phone_number && <p>Tel: {clinic.phone_number}</p>}
                     </div>
@@ -207,10 +206,10 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
                 </div>
                 <div className="patient-cell">
                     <span className="label">GÉNERO</span>
-                    <span className="value">{person.gender === 'male' ? 'Masculino' : 'Femenino'}</span>
+                    <span className="value">{person.gender === 'male' ? 'Masculino' : person.gender === 'female' ? 'Femenino' : 'N/A'}</span>
                 </div>
                 <div className="patient-cell">
-                    <span className="label">FECHA</span>
+                    <span className="label">FECHA REPORTE</span>
                     <span className="value">{new Date().toLocaleDateString('es-MX')}</span>
                 </div>
                 <div className="patient-cell">
@@ -230,7 +229,7 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
             <div className="signature-box">
                 <div className="signature-line"></div>
                 <p className="signature-name">{nutritionistProfile?.full_name}</p>
-                <p className="signature-title">{nutritionistProfile?.professional_title} | Cédula: {nutritionistProfile?.license_number}</p>
+                <p className="signature-title">{nutritionistProfile?.professional_title} {nutritionistProfile?.license_number ? `| Cédula: ${nutritionistProfile.license_number}` : ''}</p>
             </div>
             <div className="footer-disclaimer">
                 <p>Este documento es un reporte de seguimiento nutricional y no sustituye una receta médica.</p>
@@ -254,8 +253,8 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
             </div>
             
             <div style={{...styles.modalBody, backgroundColor: '#525659', padding: '2rem', display: 'flex', justifyContent: 'center'}}>
-                <div id="printable-area" className="report-document">
-                    {/* Only one Header for the document flow, CSS handles paging */}
+                {/* This ID 'printable-area' captures only the inner content */}
+                <div id="printable-area" className="report-document-preview">
                     <HeaderSection />
                     
                     <div className="document-body">
@@ -328,17 +327,17 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
                                             <th>Fecha</th>
                                             <th>Peso (kg)</th>
                                             <th>IMC</th>
-                                            <th>Cintura (cm)</th>
+                                            <th>TA</th>
                                             <th>Glucosa</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {filteredConsultations.slice(0, 10).map(c => (
+                                        {filteredConsultations.slice(0, 12).map(c => (
                                             <tr key={c.id}>
-                                                <td>{new Date(c.consultation_date).toLocaleDateString('es-MX')}</td>
+                                                <td>{new Date(c.consultation_date).toLocaleDateString('es-MX', {timeZone: 'UTC'})}</td>
                                                 <td>{c.weight_kg}</td>
                                                 <td>{c.imc}</td>
-                                                <td>-</td>
+                                                <td>{c.ta || '-'}</td>
                                                 <td>{c.lab_results?.[0]?.glucose_mg_dl || '-'}</td>
                                             </tr>
                                         ))}
@@ -422,20 +421,43 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
     );
 };
 
+// CSS Injection for PDF generation. This string is injected into the <style> tag of the HTML passed to Puppeteer.
 const printCss = `
-    body { font-family: 'Roboto', sans-serif; font-size: 10pt; color: #333; margin: 0; padding: 0; background-color: #fff; }
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
     
-    @page { margin: 0; size: Letter; }
-    
-    .report-document {
+    body {
+        font-family: 'Roboto', sans-serif;
+        margin: 0;
+        padding: 0;
+        background: #fff;
+        color: #333;
+        font-size: 10pt;
+        line-height: 1.3;
+    }
+
+    /* Page Setup */
+    @page {
+        size: Letter;
+        margin: 0; /* Important: CSS controls margin via container padding */
+    }
+
+    .report-container {
         width: 100%;
-        max-width: 21.59cm; /* Letter Width */
-        min-height: 27.94cm; /* Letter Height */
+        max-width: 21.59cm;
         margin: 0 auto;
+        padding: 1.5cm; /* Physical print margins */
+        box-sizing: border-box;
+        background: white;
+    }
+    
+    /* Used for preview on screen to simulate paper */
+    .report-document-preview {
+        width: 21.59cm;
+        min-height: 27.94cm;
         background-color: white;
         padding: 1.5cm;
         box-sizing: border-box;
-        position: relative;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
 
     /* Header */
@@ -448,7 +470,7 @@ const printCss = `
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 15px;
+        margin-bottom: 10px;
     }
     .clinic-logo {
         max-height: 60px;
@@ -467,7 +489,7 @@ const printCss = `
         font-size: 16pt;
         font-weight: 700;
         color: #1a365d;
-        margin: 0 0 5px 0;
+        margin: 0 0 4px 0;
     }
     .clinic-details p {
         margin: 2px 0;
@@ -625,15 +647,16 @@ const printCss = `
     .disclaimer-section {
         background-color: #fffbeb;
         border: 1px solid #fcd34d;
-        padding: 15px;
+        padding: 12px;
         border-radius: 6px;
-        font-size: 9pt;
+        font-size: 8pt;
         color: #92400e;
         margin-top: 20px;
+        page-break-inside: avoid;
     }
     .disclaimer-section h3 {
         margin: 0 0 5px 0;
-        font-size: 10pt;
+        font-size: 9pt;
     }
     .disclaimer-section ul {
         margin: 5px 0 0 0;
@@ -677,12 +700,13 @@ const printCss = `
     @media print {
         .no-print { display: none !important; }
         body { background: none; }
-        .report-document {
+        /* The container handles margins, so we reset document margins */
+        .report-document-preview {
+            width: 100%;
+            border: none;
             box-shadow: none;
             margin: 0;
             padding: 0;
-            width: 100%;
-            max-width: none;
         }
         .page-break-inside-avoid {
             page-break-inside: avoid;
