@@ -1,3 +1,4 @@
+
 import React, { FC } from 'react';
 import { Person, ConsultationWithLabs, Allergy, MedicalHistory, DietLog, ExerciseLog, AppointmentWithPerson } from '../../../types';
 import { styles } from '../../../constants';
@@ -54,7 +55,7 @@ export const SummaryTab: FC<SummaryTabProps> = ({ person, consultations, allergi
                 <ProgressChart title="Evolución del IMC" data={imcData} unit="pts" />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
                 <Widget title="Próxima Cita" icon={ICONS.calendar}>
                     {upcomingAppointment ? (
                         <>

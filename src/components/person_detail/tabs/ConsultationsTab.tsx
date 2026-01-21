@@ -30,13 +30,13 @@ export const ConsultationsTab: FC<ConsultationsTabProps> = ({ consultations, mem
 
     return (
         <section className="fade-in">
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem'}}>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem'}}>
                 <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color)' }}>Historial de Consultas</h3>
                 <button onClick={onAdd} style={{padding: '0.5rem 1rem', fontSize: '0.9rem'}}>{ICONS.add} Nueva Consulta</button>
             </div>
 
-             <div style={{...styles.filterBar, marginBottom: '1.5rem', padding: '0.75rem', borderRadius: '8px'}}>
-                <div style={{flex: 1, display: 'flex', gap: '1rem', alignItems: 'center'}}>
+             <div style={{...styles.filterBar, marginBottom: '1.5rem', padding: '0.75rem', borderRadius: '8px', flexWrap: 'wrap'}}>
+                <div style={{flex: 1, display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap'}}>
                     <span style={{fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-light)'}}>Filtrar:</span>
                     <input type="date" value={filters.startDate} onChange={e => setFilters(prev => ({...prev, startDate: e.target.value}))} style={{margin:0, minWidth: '130px', fontSize: '0.85rem', padding: '0.4rem'}} />
                     <span style={{color: 'var(--text-light)'}}>-</span>
@@ -45,7 +45,7 @@ export const ConsultationsTab: FC<ConsultationsTabProps> = ({ consultations, mem
             </div>
 
             {filteredConsultations.length > 0 ? (
-                <div className="info-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                <div className="info-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
                     {filteredConsultations.map(c => {
                         const nutritionist = c.nutritionist_id ? memberMap.get(c.nutritionist_id) : null;
                         return (

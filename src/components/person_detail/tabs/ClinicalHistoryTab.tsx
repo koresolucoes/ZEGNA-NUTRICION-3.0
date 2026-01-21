@@ -29,7 +29,7 @@ export const ClinicalHistoryTab: FC<ClinicalHistoryTabProps> = ({
     return (
         <section className="fade-in" style={{ overflow: 'visible' }}>
             {/* Sub-navigation using Folder Tabs metaphor */}
-            <div style={{...styles.tabContainer, paddingLeft: 0, marginBottom: '-1px'}}>
+            <div style={{...styles.tabContainer, paddingLeft: 0, marginBottom: '-1px'}} className="hide-scrollbar">
                 {[
                     { key: 'allergies', label: 'Alergias' },
                     { key: 'medical', label: 'Historial Médico' },

@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useEffect, useCallback, useMemo, FormEvent } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
@@ -516,10 +517,14 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
                     <div style={{display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem'}}>
                          <button onClick={onBack} className="button-secondary">{ICONS.back} Volver</button>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2.5fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
-                        {isMobile && <Sidebar />}
-                        <MainContent />
-                        {!isMobile && <Sidebar />}
+                    {/* UPDATED GRID LAYOUT FOR MOBILE RESPONSIVENESS */}
+                    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '1.5rem', alignItems: 'start' }}>
+                        <div style={{ flex: isMobile ? 'none' : '2.5', width: '100%', minWidth: 0 }}>
+                            <MainContent />
+                        </div>
+                        <div style={{ flex: isMobile ? 'none' : '1', width: '100%', minWidth: 0, order: isMobile ? -1 : 0 }}>
+                             <Sidebar />
+                        </div>
                     </div>
                 </div>
             )}

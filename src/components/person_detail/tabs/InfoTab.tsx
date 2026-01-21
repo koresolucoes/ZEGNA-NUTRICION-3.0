@@ -1,3 +1,4 @@
+
 import React, { FC, useRef } from 'react';
 import { Person, ConsultationWithLabs, Allergy, MedicalHistory, PatientServicePlan } from '../../../types';
 import { styles } from '../../../constants';
@@ -57,7 +58,7 @@ export const InfoTab: FC<InfoTabProps> = ({
     };
 
     const InfoCard: FC<{ title: string; icon?: React.ReactNode; children: React.ReactNode }> = ({ title, icon, children }) => (
-        <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: '12px', padding: '1.5rem', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: '12px', padding: '1.5rem', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem', marginBottom: '0.5rem' }}>
                 {icon && <span style={{ color: 'var(--primary-color)', fontSize: '1.2rem' }}>{icon}</span>}
                 <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-color)' }}>{title}</h3>
@@ -77,7 +78,7 @@ export const InfoTab: FC<InfoTabProps> = ({
         <div className="fade-in">
             <input type="file" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} accept=".pdf,.jpg,.jpeg,.png"/>
             
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
                 
                 {/* 1. Identidad y Contacto */}
                 <InfoCard title="Identidad y Contacto" icon={ICONS.user}>

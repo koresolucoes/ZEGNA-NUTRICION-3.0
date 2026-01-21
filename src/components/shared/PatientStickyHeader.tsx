@@ -1,3 +1,4 @@
+
 import React, { FC, useMemo } from 'react';
 import { Person, Allergy, MedicalHistory, Log, ConsultationWithLabs } from '../../types';
 import { ICONS } from '../../pages/AuthPage';
@@ -57,7 +58,7 @@ const PatientStickyHeader: FC<PatientStickyHeaderProps> = ({ person, allergies, 
         transition: 'all 0.3s ease'
     };
     
-    const infoBlockStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', minWidth: '150px' };
+    const infoBlockStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', minWidth: '120px' }; // Reduced minWidth
     const valueWithChartStyle: React.CSSProperties = { display: 'flex', alignItems: 'flex-end', gap: '0.75rem' };
     const labelStyle: React.CSSProperties = { fontSize: '0.8rem', color: 'var(--text-light)', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.25rem' };
     const valueStyle: React.CSSProperties = { fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-color)' };
@@ -79,6 +80,7 @@ const PatientStickyHeader: FC<PatientStickyHeaderProps> = ({ person, allergies, 
                         padding: 1rem !important;
                         margin-bottom: 1rem !important;
                         z-index: 1;
+                        gap: 1rem !important;
                     }
                     
                     /* Hide detailed metrics and bottom alerts on mobile to save vertical space */
@@ -101,15 +103,15 @@ const PatientStickyHeader: FC<PatientStickyHeaderProps> = ({ person, allergies, 
             
             <div className="patient-sticky-header" style={headerStyle}>
                 {/* Left Block: Patient Info */}
-                <div style={{ flex: '2 1 300px', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ flex: '2 1 300px', display: 'flex', alignItems: 'center', gap: '1rem', minWidth: 0 }}>
                     <img 
                         src={person.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${person.full_name || '?'}&radius=50`}
                         alt="Avatar del paciente"
                         className="header-avatar"
                         style={{width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0}}
                     />
-                    <div>
-                        <h1 className="header-name" style={{ margin: 0, fontSize: '1.5rem', color: 'var(--primary-color)' }}>{person.full_name}</h1>
+                    <div style={{minWidth: 0, overflow: 'hidden'}}>
+                        <h1 className="header-name" style={{ margin: 0, fontSize: '1.5rem', color: 'var(--primary-color)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{person.full_name}</h1>
                         <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap'}}>
                             <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-light)', fontSize: '1rem' }}>{calculateAge(person.birth_date)}</p>
                             {/* Show a small plan indicator next to name on mobile since we hide the big block */}

@@ -388,7 +388,7 @@ export const PlansTab: FC<PlansTabProps> = ({
                     </div>
                 </div>
                 
-                <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap'}}>
                      <input 
                         type="date" 
                         value={startDate} 

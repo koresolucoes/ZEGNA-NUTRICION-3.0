@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useEffect, useMemo, useRef, FormEvent, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../supabase';
@@ -574,7 +575,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                         <span className="pulse-dot" style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: 'var(--error-color)', display: 'block' }}></span>
                         {formatTime(elapsedTime)}
                     </div>
-                    <h2 style={{ margin: 0, fontSize: isMobile ? '1rem' : '1.1rem', color: 'var(--text-color)' }}>{personName}</h2>
+                    {!isMobile && <h2 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color)' }}>{personName}</h2>}
                 </div>
                 
                 <div style={{display: 'flex', gap: '0.5rem'}}>
@@ -618,7 +619,9 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                             {activeMobileTab === 'timeline' && <TimelinePanel timeline={timeline} timelineFilters={timelineFilters} setTimelineFilters={setTimelineFilters} handleTimelineItemClick={handleTimelineItemClick} sendContextToAi={sendContextToAi} formatItemForAI={formatItemForAI} />}
                             {activeMobileTab === 'ai' && (
                                 hasAiFeature ? (
-                                    <AiAssistantPanel messages={messages} aiLoading={aiLoading} chatEndRef={chatEndRef} handleAiSubmit={handleAiSubmit} aiContext={aiContext} setAiContext={setAiContext} userInput={userInput} setUserInput={setUserInput} aiInputRef={aiInputRef} />
+                                    <div style={{height: '100%', display: 'flex', flexDirection: 'column'}}>
+                                        <AiAssistantPanel messages={messages} aiLoading={aiLoading} chatEndRef={chatEndRef} handleAiSubmit={handleAiSubmit} aiContext={aiContext} setAiContext={setAiContext} userInput={userInput} setUserInput={setUserInput} aiInputRef={aiInputRef} />
+                                    </div>
                                 ) : (
                                     <div style={{ ...styles.detailCard, margin: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
                                         <div style={styles.detailCardBody}>
