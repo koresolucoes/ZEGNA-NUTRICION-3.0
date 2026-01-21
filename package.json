@@ -1,3 +1,4 @@
+
 {
   "name": "ecosistema-zegna",
   "private": true,
@@ -21,7 +22,8 @@
     "fiscalapi": "^4.0.270",
     "module": "^1.2.5",
     "crypto": "^1.0.1",
-    "styled-components": "^6.1.12"
+    "styled-components": "^6.1.12",
+    "@react-pdf/renderer": "^3.3.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
