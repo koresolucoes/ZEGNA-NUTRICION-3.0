@@ -259,12 +259,12 @@ const AiAgentManagement: FC = () => {
                                 <label style={labelStyle}>Versión del Modelo</label>
                                 <div className="select-wrapper">
                                     <select name="model_name" value={agent.model_name || 'gemini-2.5-flash'} onChange={e => setAgent({...agent, model_name: e.target.value})} style={inputStyle}>
-                                        <option value="gemini-2.5-flash">Gemini 2.5 Flash (Rápido y Eficiente)</option>
-                                        <option value="gemini-3-pro-preview">Gemini 3.0 Pro (Razonamiento Complejo)</option>
+                                        <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recomendado)</option>
+                                        <option value="gemini-1.5-flash">Gemini 1.5 Flash (Legacy)</option>
                                     </select>
                                 </div>
                                 <p style={{fontSize: '0.8rem', color: 'var(--text-light)', marginTop: '0.5rem'}}>
-                                    Se recomienda <strong>Flash</strong> para respuestas rápidas en chat y <strong>Pro</strong> si necesitas análisis muy detallados.
+                                    Recomendamos <strong>Gemini 2.5 Flash</strong> por su rapidez y eficiencia en la capa gratuita.
                                 </p>
                             </div>
                         </div>

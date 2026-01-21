@@ -43,8 +43,10 @@ export default async function handler(req: any, res: any) {
       return res.status(500).json({ error: 'API key not configured on the server.' });
     }
     
-    // Default to Gemini 2.5 Flash if not specified
-    const model = agent?.model_name || 'gemini-2.5-flash';
+    // Force usage of gemini-2.5-flash to prevent 429 Resource Exhausted errors on Free Tier
+    // This overrides the database setting temporarily to ensure reliability
+    const model = 'gemini-2.5-flash';
+    
     const ai = new GoogleGenAI({ apiKey: apiKey });
 
     let finalContents = contents;
@@ -128,6 +130,13 @@ export default async function handler(req: any, res: any) {
 
   } catch (error: any) {
     console.error('Error calling AI API:', error);
-    res.status(500).json({ error: `An error occurred while communicating with the AI service: ${error.message}` });
+    
+    // Improve error message for client
+    let errorMessage = error.message;
+    if (errorMessage.includes('429')) {
+        errorMessage = 'El servicio de IA está saturado (Cuota excedida). Por favor intenta de nuevo en unos minutos.';
+    }
+
+    res.status(500).json({ error: errorMessage });
   }
 }
