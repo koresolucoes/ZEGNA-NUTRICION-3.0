@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI, FunctionDeclaration, Type, Content } from "@google/genai";
 
@@ -81,8 +82,9 @@ export default async function handler(req: any, res: any) {
     console.error('Server configuration error: SUPABASE_SERVICE_ROLE is not set.');
     return res.status(500).json({ error: 'Internal server configuration error.' });
   }
-  if (!process.env.API_KEY) {
-    console.error('Server configuration error: Gemini API key (API_KEY) is not set.');
+  // UPDATED: Check for GEMINI_API_KEY
+  if (!process.env.GEMINI_API_KEY) {
+    console.error('Server configuration error: Gemini API key (GEMINI_API_KEY) is not set.');
     return res.status(500).json({ error: 'Internal server configuration error.' });
   }
 
@@ -462,7 +464,8 @@ export default async function handler(req: any, res: any) {
     }
     
     // 8. First call to Gemini API (Using updated 2.5 Flash model)
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // UPDATED: Use GEMINI_API_KEY
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const modelName = 'gemini-2.5-flash';
 
     // Construct user message with optional media

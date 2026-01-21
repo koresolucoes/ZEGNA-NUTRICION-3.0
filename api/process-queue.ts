@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI, FunctionDeclaration, Type, Content } from "@google/genai";
 
@@ -89,7 +90,8 @@ export default async function handler(req: any, res: any) {
         }
 
         // --- Inicio de la Lógica de IA (Gemini 2.5 Flash) ---
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+        // UPDATED: Use GEMINI_API_KEY
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
         const modelName = 'gemini-2.5-flash';
         
         // INCREASED HISTORY LIMIT FOR MEMORY

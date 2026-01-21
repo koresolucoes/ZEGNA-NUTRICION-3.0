@@ -35,10 +35,11 @@ export default async function handler(req: any, res: any) {
     if (agentError && agentError.code !== 'PGRST116') throw new Error(`Could not fetch AI agent configuration: ${agentError.message}`);
     
     // Default to system key if not provided by the user
-    const apiKey = (agent?.provider_api_key || process.env.API_KEY)?.trim();
+    // UPDATED: Use GEMINI_API_KEY environment variable
+    const apiKey = (agent?.provider_api_key || process.env.GEMINI_API_KEY)?.trim();
     
     if (!apiKey) {
-      console.error('Gemini API key (API_KEY) is not configured in environment variables or database.');
+      console.error('Gemini API key (GEMINI_API_KEY) is not configured in environment variables or database.');
       return res.status(500).json({ error: 'API key not configured on the server.' });
     }
     
