@@ -306,7 +306,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                     }
                     case 'diet': {
                         const d = item as unknown as DietLog;
-                        contentToSearch = `plan alimenticio ${d.desayuno || ''} ${d.comida || ''} ${d.cena || ''}`; 
+                        contentToSearch = `plan alimenticio ${d.desayuno || ''} ${d.comida || ''} ${d.cena || ''} ${d.colacion_1 || ''} ${d.colacion_2 || ''}`; 
                         break;
                     }
                     case 'exercise': {
@@ -515,7 +515,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
     // Use createPortal to render the entire page at the body level
     // This solves the z-index and layout stacking context issues with the sidebar
     return createPortal(
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'var(--background-color)', zIndex: 2000, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ position: 'fixed', inset: 0, height: '100%', width: '100%', backgroundColor: 'var(--background-color)', zIndex: 2000, display: 'flex', flexDirection: 'column' }}>
             {/* Render Modal conditionally here to avoid flicker from unmounting/mounting */}
             {isToolsModalOpen && (
                 <ToolsModal onClose={() => setIsToolsModalOpen(false)} isMobile={isMobile}>
@@ -605,7 +605,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
 
             <main style={isMobile 
                 ? { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' } 
-                : { flex: 1, display: 'flex', gap: '1rem', padding: '1rem', overflow: 'hidden' }}
+                : { flex: 1, display: 'flex', gap: '1rem', padding: '1rem', overflow: 'hidden', alignItems: 'stretch' }}
             >
                 {isMobile ? (
                     <>
@@ -624,7 +624,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                                     </div>
                                 ) : (
                                     <div style={{ ...styles.detailCard, margin: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-                                        <div style={styles.detailCardBody}>
+                                        <div style={{...styles.detailCardBody, padding: '2rem'}}>
                                             <span style={{ fontSize: '2rem' }}>{ICONS.sparkles}</span>
                                             <h3 style={{ ...styles.detailCardTitle, marginTop: '1rem' }}>Asistente IA no disponible</h3>
                                             <p style={{ color: 'var(--text-light)', fontSize: '0.9rem' }}>Actualiza tu plan para usar esta función.</p>
@@ -637,21 +637,21 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                 ) : (
                     <>
                         {/* Left Panel: Quick Actions & Vitals */}
-                        <aside style={{ width: '25%', display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto' }}>
+                        <aside style={{ width: '25%', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto' }}>
                             <SummaryPanel person={person} latestMetrics={latestMetrics} relevantAppointment={relevantAppointment} updateAppointmentStatus={updateAppointmentStatus} appointmentUpdateLoading={appointmentUpdateLoading} quickConsult={quickConsult} setQuickConsult={setQuickConsult} handleQuickConsultSubmit={handleQuickConsultSubmit} formLoading={formLoading} quickLog={quickLog} setQuickLog={setQuickLog} handleQuickLogSubmit={handleQuickLogSubmit} sendContextToAi={sendContextToAi} formatSummaryForAI={formatSummaryForAI} calculateAge={calculateAge} quickSuccess={quickSuccess} />
                         </aside>
 
                         {/* Center Panel: Timeline (The "Source of Truth") */}
-                        <section style={{ flex: 1.5, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                        <section style={{ flex: 1.5, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                            <TimelinePanel timeline={timeline} timelineFilters={timelineFilters} setTimelineFilters={setTimelineFilters} handleTimelineItemClick={handleTimelineItemClick} sendContextToAi={sendContextToAi} formatItemForAI={formatItemForAI} />
                         </section>
 
                         {/* Right Panel: AI Assistant (The "Copilot") */}
-                        <aside style={{ width: '30%', display: 'flex' }}>
+                        <aside style={{ width: '30%', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
                             {hasAiFeature ? (
                                 <AiAssistantPanel messages={messages} aiLoading={aiLoading} chatEndRef={chatEndRef} handleAiSubmit={handleAiSubmit} aiContext={aiContext} setAiContext={setAiContext} userInput={userInput} setUserInput={setUserInput} aiInputRef={aiInputRef} />
                             ) : (
-                                <div style={{ ...styles.detailCard, width: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+                                <div style={{ ...styles.detailCard, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
                                     <div style={styles.detailCardBody}>
                                         <span style={{ fontSize: '2rem' }}>{ICONS.sparkles}</span>
                                         <h3 style={{ ...styles.detailCardTitle, marginTop: '1rem' }}>Asistente con IA</h3>
