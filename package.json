@@ -22,7 +22,7 @@
     "module": "^1.2.5",
     "crypto": "^1.0.1",
     "styled-components": "^6.1.12",
-    "@react-pdf/renderer": "^3.4.4"
+    "@react-pdf/renderer": "^4.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
