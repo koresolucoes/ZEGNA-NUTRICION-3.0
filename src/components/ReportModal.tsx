@@ -35,9 +35,8 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
     });
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
 
-    const handleOptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, checked } = e.target;
-        setOptions(prev => ({ ...prev, [name]: checked }));
+    const toggleOption = (key: keyof typeof options) => {
+        setOptions(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
     const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,73 +101,163 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
         />
     );
 
+    const SelectableCard: FC<{ 
+        id: keyof typeof options; 
+        label: string; 
+        description: string;
+        icon: React.ReactNode 
+    }> = ({ id, label, description, icon }) => {
+        const isSelected = options[id];
+        return (
+            <div 
+                onClick={() => toggleOption(id)}
+                className="nav-item-hover"
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem',
+                    padding: '1rem',
+                    borderRadius: '12px',
+                    border: isSelected ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
+                    backgroundColor: isSelected ? 'var(--primary-light)' : 'var(--surface-color)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    position: 'relative',
+                    overflow: 'hidden'
+                }}
+            >
+                <div style={{
+                    width: '40px', height: '40px', borderRadius: '50%',
+                    backgroundColor: isSelected ? 'var(--surface-color)' : 'var(--surface-hover-color)',
+                    color: isSelected ? 'var(--primary-color)' : 'var(--text-light)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '1.2rem', flexShrink: 0
+                }}>
+                    {icon}
+                </div>
+                <div style={{flex: 1}}>
+                    <h4 style={{margin: '0 0 0.25rem 0', fontSize: '0.95rem', fontWeight: 600, color: isSelected ? 'var(--primary-dark)' : 'var(--text-color)'}}>{label}</h4>
+                    <p style={{margin: 0, fontSize: '0.8rem', color: isSelected ? 'var(--primary-dark)' : 'var(--text-light)', opacity: 0.8}}>{description}</p>
+                </div>
+                <div style={{
+                    width: '24px', height: '24px', borderRadius: '50%',
+                    border: isSelected ? 'none' : '2px solid var(--border-color)',
+                    backgroundColor: isSelected ? 'var(--primary-color)' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: 'white', fontSize: '0.9rem'
+                }}>
+                    {isSelected && '✓'}
+                </div>
+            </div>
+        );
+    };
+
+    const inputDateStyle: React.CSSProperties = {
+        width: '100%',
+        padding: '0.75rem',
+        borderRadius: '8px',
+        border: '1px solid var(--border-color)',
+        backgroundColor: 'var(--background-color)',
+        color: 'var(--text-color)',
+        fontSize: '0.9rem',
+        outline: 'none'
+    };
+
     const renderConfigView = () => (
         <>
             <div style={styles.modalHeader}>
-                <h2 style={styles.modalTitle}>Configurar Reporte PDF</h2>
-                <button onClick={onClose} style={{...styles.iconButton, border: 'none'}}>{ICONS.close}</button>
-            </div>
-            <div style={styles.modalBody}>
-                <h3 style={{ fontSize: '1.1rem', color: 'var(--primary-color)', marginBottom: '1rem' }}>Secciones a Incluir</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
-                     {Object.entries({
-                        page1_results: "Resumen Clínico",
-                        page2_charts: "Gráficas de Progreso",
-                        page3_tables: "Plan Actual (Dieta/Ejercicio)",
-                        page4_welcome: "Mensaje de Cierre"
-                    }).map(([key, label]) => (
-                        <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem', backgroundColor: 'var(--surface-hover-color)', borderRadius: '8px' }}>
-                            <input type="checkbox" id={key} name={key} checked={options[key as keyof typeof options]} onChange={handleOptionChange} />
-                            <label htmlFor={key} style={{marginBottom: 0, cursor: 'pointer'}}>{label}</label>
-                        </div>
-                    ))}
+                <div>
+                    <h2 style={{...styles.modalTitle, fontSize: '1.4rem'}}>Configurar Reporte</h2>
+                    <p style={{margin: '0.25rem 0 0 0', color: 'var(--text-light)', fontSize: '0.9rem'}}>Personaliza las secciones y datos del PDF.</p>
                 </div>
-
-                <h3 style={{ fontSize: '1.1rem', color: 'var(--primary-color)', marginBottom: '1rem' }}>Rango de Fechas (Historial)</h3>
-                <div style={{display: 'flex', gap: '1rem'}}>
-                    <div style={{flex: 1}}>
-                        <label>Desde</label>
-                        <input type="date" name="start" value={dateRange.start} onChange={handleDateChange} style={{width: '100%', padding: '0.5rem'}} />
-                    </div>
-                    <div style={{flex: 1}}>
-                        <label>Hasta</label>
-                        <input type="date" name="end" value={dateRange.end} onChange={handleDateChange} style={{width: '100%', padding: '0.5rem'}} />
-                    </div>
-                </div>
+                <button onClick={onClose} style={{...styles.iconButton, border: 'none', backgroundColor: 'var(--surface-hover-color)'}}>{ICONS.close}</button>
             </div>
-            <div style={styles.modalFooter}>
-                <button onClick={onClose} className="button-secondary">Cancelar</button>
+            
+            <div style={{...styles.modalBody, paddingRight: '1rem', overflowY: 'auto'}}>
+                <h3 style={{ fontSize: '0.9rem', color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '1rem', fontWeight: 700 }}>Contenido del Reporte</h3>
                 
-                {/* PDF Generation Button */}
-                <PDFDownloadLink document={MyDocument} fileName={`Reporte_${person.full_name.replace(/\s/g, '_')}.pdf`}>
-                    {({ loading }) => (
-                        <button disabled={loading} className="button-primary" style={{minWidth: '160px'}}>
-                            {loading ? 'Generando PDF...' : 'Descargar PDF'}
-                        </button>
-                    )}
-                </PDFDownloadLink>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+                    <SelectableCard 
+                        id="page1_results" 
+                        label="Resumen Clínico" 
+                        description="Peso, IMC, Talla y últimos resultados de laboratorio." 
+                        icon={ICONS.activity} 
+                    />
+                    <SelectableCard 
+                        id="page2_charts" 
+                        label="Gráficas de Progreso" 
+                        description="Evolución visual de peso e IMC en el tiempo." 
+                        icon={ICONS.network} 
+                    />
+                    <SelectableCard 
+                        id="page3_tables" 
+                        label="Plan Actual" 
+                        description="Detalle del plan de alimentación y rutina de ejercicio." 
+                        icon={ICONS.book} 
+                    />
+                    <SelectableCard 
+                        id="page4_welcome" 
+                        label="Mensaje de Cierre" 
+                        description="Notas finales, firma del nutriólogo y contacto." 
+                        icon={ICONS.check} 
+                    />
+                </div>
 
-                <button onClick={() => setView('preview')} className="button-secondary">Ver Vista Previa</button>
+                <div style={{backgroundColor: 'var(--surface-hover-color)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)'}}>
+                    <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-color)', marginBottom: '1rem', marginTop: 0 }}>
+                        Filtrar Datos Históricos
+                    </h3>
+                    <div style={{display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap'}}>
+                        <div style={{flex: 1, minWidth: '150px'}}>
+                            <label style={{display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-light)'}}>Desde</label>
+                            <input type="date" name="start" value={dateRange.start} onChange={handleDateChange} style={inputDateStyle} />
+                        </div>
+                        <div style={{flex: 1, minWidth: '150px'}}>
+                            <label style={{display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-light)'}}>Hasta</label>
+                            <input type="date" name="end" value={dateRange.end} onChange={handleDateChange} style={inputDateStyle} />
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style={styles.modalFooter}>
+                <button onClick={onClose} className="button-secondary" style={{padding: '0.75rem 1.5rem'}}>Cancelar</button>
+                <div style={{display: 'flex', gap: '1rem'}}>
+                    <button onClick={() => setView('preview')} className="button-secondary" style={{padding: '0.75rem 1.5rem'}}>
+                        👁️ Vista Previa
+                    </button>
+                    <PDFDownloadLink document={MyDocument} fileName={`Reporte_${person.full_name.replace(/\s/g, '_')}.pdf`}>
+                        {({ loading }) => (
+                            <button disabled={loading} className="button-primary" style={{minWidth: '160px', padding: '0.75rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'}}>
+                                {loading ? 'Generando...' : <>{ICONS.download} Descargar PDF</>}
+                            </button>
+                        )}
+                    </PDFDownloadLink>
+                </div>
             </div>
         </>
     );
 
     const renderPreviewView = () => (
         <>
-            <div style={{...styles.modalHeader, borderBottom: 'none'}}>
-                <h2 style={styles.modalTitle}>Vista Previa</h2>
+            <div style={{...styles.modalHeader, borderBottom: 'none', backgroundColor: '#323639', color: 'white'}}>
+                <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+                    <button onClick={() => setView('config')} style={{...styles.iconButton, color: 'white', backgroundColor: 'rgba(255,255,255,0.1)'}}>
+                        {ICONS.back}
+                    </button>
+                    <h2 style={{margin: 0, fontSize: '1.2rem'}}>Vista Previa del Documento</h2>
+                </div>
                 <div style={{display: 'flex', gap: '1rem'}}>
-                     <button onClick={() => setView('config')} className="button-secondary">Volver</button>
                      <PDFDownloadLink document={MyDocument} fileName={`Reporte_${person.full_name}.pdf`}>
                         {({ loading }) => (
-                            <button disabled={loading} className="button-primary">
+                            <button disabled={loading} className="button-primary" style={{padding: '0.5rem 1rem', fontSize: '0.9rem'}}>
                                 {loading ? '...' : ICONS.download}
                             </button>
                         )}
                     </PDFDownloadLink>
                 </div>
             </div>
-            <div style={{ flex: 1, backgroundColor: '#525659', display: 'flex', justifyContent: 'center' }}>
+            <div style={{ flex: 1, backgroundColor: '#525659', display: 'flex', justifyContent: 'center', overflow: 'hidden' }}>
                 <PDFViewer style={{ width: '100%', height: '100%', border: 'none' }} showToolbar={true}>
                     {MyDocument}
                 </PDFViewer>
@@ -178,7 +267,7 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
 
     return createPortal(
         <div style={{...styles.modalOverlay, zIndex: zIndex}}>
-            <div style={{...styles.modalContent, width: '90%', maxWidth: '900px', height: '90vh', padding: 0, display: 'flex', flexDirection: 'column'}} className="fade-in">
+            <div style={{...styles.modalContent, width: '95%', maxWidth: '900px', height: '90vh', maxHeight: '800px', padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden'}} className="fade-in">
                 {view === 'config' ? renderConfigView() : renderPreviewView()}
             </div>
         </div>,
