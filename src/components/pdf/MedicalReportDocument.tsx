@@ -5,7 +5,7 @@ import { Person, NutritionistProfile, Clinic, ConsultationWithLabs, DietLog, Exe
 const styles = StyleSheet.create({
   page: {
     paddingTop: 40,
-    paddingBottom: 60, // Space for footer
+    paddingBottom: 60,
     paddingLeft: 40,
     paddingRight: 40,
     fontSize: 10,
@@ -42,15 +42,16 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     marginBottom: 1
   },
+  // Updated Section Title to match screenshot (Blue, Uppercase, Underlined)
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 'bold',
     color: '#0284C7',
-    marginTop: 10,
-    marginBottom: 15,
-    borderBottomWidth: 2,
-    borderBottomColor: '#f3f4f6',
-    paddingBottom: 6,
+    marginTop: 20,
+    marginBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#0284C7', // Blue underline
+    paddingBottom: 4,
     textTransform: 'uppercase',
     letterSpacing: 0.5
   },
@@ -61,94 +62,96 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 6,
   },
+  // Metrics Grid
+  metricsContainer: {
+    flexDirection: 'row',
+    marginBottom: 25,
+    marginTop: 10,
+  },
+  metricBox: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  metricLabel: {
+    fontSize: 8,
+    color: '#6b7280',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    fontWeight: 'bold',
+    letterSpacing: 0.5
+  },
+  metricValueLarge: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  metricSubtext: {
+    fontSize: 9,
+    fontWeight: 'medium',
+  },
+  
+  patientInfoBox: {
+    marginBottom: 20,
+    padding: 10,
+    backgroundColor: '#f9fafb', // Lighter gray
+    borderRadius: 4,
+  },
   row: {
     flexDirection: 'row',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   col2: {
     width: '50%',
-    paddingRight: 10
-  },
-  col3: {
-    width: '33.33%',
-    paddingRight: 10
   },
   label: {
     fontSize: 8,
     color: '#6b7280',
     marginBottom: 2,
     textTransform: 'uppercase',
-    fontWeight: 'bold'
+    fontWeight: 'bold',
   },
-  value: {
-    fontSize: 10,
-    fontWeight: 'medium',
-    color: '#111827',
-  },
-  patientInfoBox: {
-    marginBottom: 30,
-    padding: 10,
-    backgroundColor: '#f8fafc',
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#e2e8f0'
-  },
-  box: {
-    backgroundColor: '#f9fafb',
-    borderRadius: 6,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#f3f4f6',
-    marginBottom: 15
-  },
+  
+  // Table Styles
   table: {
     display: 'flex',
     width: 'auto',
-    marginTop: 10,
-    borderStyle: 'solid',
-    borderWidth: 1,
-    borderRightWidth: 0,
-    borderBottomWidth: 0,
-    borderColor: '#e5e7eb',
+    marginTop: 5,
+    marginBottom: 15,
     borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
     overflow: 'hidden'
   },
   tableRow: {
-    margin: 'auto',
     flexDirection: 'row',
     minHeight: 24,
     alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
   },
-  tableColHeader: {
-    width: '25%',
-    borderStyle: 'solid',
-    borderWidth: 1,
-    borderLeftWidth: 0,
-    borderTopWidth: 0,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#f3f4f6',
-    padding: 6,
+  tableHeaderRow: {
+    flexDirection: 'row',
+    minHeight: 24,
+    alignItems: 'center',
+    backgroundColor: '#f9fafb', // Light gray header bg
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
   },
   tableCol: {
-    width: '25%',
-    borderStyle: 'solid',
-    borderWidth: 1,
-    borderLeftWidth: 0,
-    borderTopWidth: 0,
-    borderColor: '#e5e7eb',
-    padding: 6,
+    padding: '6 8',
   },
   tableCellHeader: {
     fontSize: 8,
     fontWeight: 'bold',
-    color: '#374151',
-    textAlign: 'center',
+    color: '#4b5563', // Gray-600
+    textTransform: 'uppercase',
   },
   tableCell: {
     fontSize: 9,
-    color: '#4b5563',
-    textAlign: 'center',
+    color: '#374151',
   },
+  
+  // Chart & Footer
   chartContainer: {
     marginVertical: 15,
     height: 180,
@@ -271,12 +274,15 @@ const MedicalReportDocument: React.FC<MedicalReportDocumentProps> = ({
       let age = today.getFullYear() - birth.getFullYear();
       const m = today.getMonth() - birth.getMonth();
       if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-      return `${age} AÑOS`;
+      return `${age} AÑOS / ${person.gender === 'male' ? 'MASC' : 'FEM'}`;
   };
 
   const sortedConsultations = [...consultations].sort((a, b) => new Date(a.consultation_date).getTime() - new Date(b.consultation_date).getTime());
   const weightData = sortedConsultations.filter(c => c.weight_kg != null).map(c => ({ date: c.consultation_date, value: c.weight_kg! }));
   const imcData = sortedConsultations.filter(c => c.imc != null).map(c => ({ date: c.consultation_date, value: c.imc! }));
+
+  // Get historical data for the table (most recent first)
+  const historyData = [...consultations].sort((a, b) => new Date(b.consultation_date).getTime() - new Date(a.consultation_date).getTime()).slice(0, 6);
 
   const latestDiet = dietLogs[0];
   const latestExercise = exerciseLogs[0];
@@ -285,7 +291,7 @@ const MedicalReportDocument: React.FC<MedicalReportDocumentProps> = ({
     <Document>
       <Page size="A4" style={styles.page}>
         
-        {/* HEADER (Repeats on every page if needed, but here mostly for page 1 unless logic added) */}
+        {/* HEADER */}
         <View style={styles.header} fixed>
           <View style={{flexDirection: 'row', alignItems: 'center', gap: 10}}>
              {clinic?.logo_url && (
@@ -304,82 +310,155 @@ const MedicalReportDocument: React.FC<MedicalReportDocumentProps> = ({
           </View>
         </View>
 
-        {/* PATIENT INFO (Only on first page naturally) */}
+        {/* PATIENT INFO HEADER */}
         <View style={styles.patientInfoBox} wrap={false}>
           <View style={styles.row}>
             <View style={styles.col2}>
               <Text style={styles.label}>PACIENTE</Text>
-              <Text style={{...styles.value, fontSize: 12, fontWeight: 'bold'}}>{person.full_name.toUpperCase()}</Text>
-              <Text style={{fontSize: 9, color: '#6b7280', marginTop: 2}}>{calculateAge(person.birth_date)} / {person.gender === 'male' ? 'Hombre' : 'Mujer'}</Text>
+              <Text style={{fontSize: 11, fontWeight: 'bold', color: '#111827'}}>{person.full_name.toUpperCase()}</Text>
             </View>
             <View style={styles.col2}>
-               <Text style={styles.label}>EXPEDIENTE / FOLIO</Text>
-               <Text style={styles.value}>{person.folio || 'N/A'}</Text>
+               <Text style={styles.label}>EDAD / GÉNERO</Text>
+               <Text style={{fontSize: 10, fontWeight: 'bold', color: '#1f2937'}}>{calculateAge(person.birth_date)}</Text>
             </View>
-          </View>
-          <View style={styles.row}>
-             <View style={{width: '100%'}}>
-                 <Text style={styles.label}>OBJETIVO</Text>
-                 <Text style={styles.value}>{person.health_goal || 'No especificado'}</Text>
-             </View>
+             <View style={{width: '25%'}}>
+               <Text style={styles.label}>FECHA REPORTE</Text>
+               <Text style={{fontSize: 10, fontWeight: 'bold', color: '#1f2937'}}>{new Date().toLocaleDateString('es-MX')}</Text>
+            </View>
           </View>
         </View>
 
         {/* SECTION 1: RESUMEN CLÍNICO */}
         {options.page1_results && (
           <View>
-            <Text style={styles.sectionTitle}>Resumen de Mediciones</Text>
+            <Text style={styles.sectionTitle}>RESUMEN CLÍNICO</Text>
             
-            <View style={{...styles.box, flexDirection: 'row'}}>
-               <View style={styles.col3}>
-                    <Text style={styles.label}>PESO ACTUAL</Text>
-                    <Text style={{fontSize: 16, fontWeight: 'bold', color: '#0284C7'}}>{reportData.pesoActual ? `${reportData.pesoActual} kg` : '-'}</Text>
-                    <Text style={{fontSize: 8, color: reportData.perdidaPeso?.includes('-') ? '#10B981' : '#6b7280'}}>
-                        {reportData.perdidaPeso ? `Cambio: ${reportData.perdidaPeso}` : 'Inicio'}
+            {/* Top Metrics Grid */}
+            <View style={styles.metricsContainer}>
+               {/* Peso */}
+               <View style={styles.metricBox}>
+                    <Text style={styles.metricLabel}>PESO ACTUAL</Text>
+                    <Text style={{...styles.metricValueLarge, color: '#0284C7'}}>{reportData.pesoActual ? `${reportData.pesoActual} kg` : '-'}</Text>
+                    <Text style={{...styles.metricSubtext, color: '#10B981'}}>
+                        {reportData.perdidaPeso ? `Cambio: ${reportData.perdidaPeso}` : 'Medición Inicial'}
                     </Text>
                </View>
-               <View style={styles.col3}>
-                    <Text style={styles.label}>IMC</Text>
-                    <Text style={{fontSize: 16, fontWeight: 'bold', color: '#374151'}}>{reportData.imcActual || '-'}</Text>
-                    <Text style={{fontSize: 8, color: '#6b7280'}}>kg/m²</Text>
+               {/* IMC */}
+               <View style={styles.metricBox}>
+                    <Text style={styles.metricLabel}>IMC ACTUAL</Text>
+                    <Text style={{...styles.metricValueLarge, color: '#1f2937'}}>{reportData.imcActual || '-'}</Text>
+                    <Text style={{fontSize: 9, color: '#6b7280'}}>kg/m²</Text>
                </View>
-               <View style={styles.col3}>
-                    <Text style={styles.label}>TALLA</Text>
-                    <Text style={{fontSize: 16, fontWeight: 'bold', color: '#374151'}}>{reportData.talla ? `${reportData.talla}` : '-'}</Text>
-                    <Text style={{fontSize: 8, color: '#6b7280'}}>cm</Text>
+               {/* Objetivo */}
+               <View style={styles.metricBox}>
+                    <Text style={styles.metricLabel}>OBJETIVO DE SALUD</Text>
+                    <Text style={{fontSize: 10, color: '#1f2937', textTransform: 'uppercase'}}>{person.health_goal || 'NO ESPECIFICADO'}</Text>
                </View>
             </View>
 
-            <View wrap={false}>
-                <Text style={styles.subTitle}>Indicadores de Laboratorio Recientes</Text>
-                <View style={styles.table}>
+            {/* Lab Results Table */}
+            <View style={styles.table}>
+                <View style={styles.tableHeaderRow}>
+                    <View style={{...styles.tableCol, width: '30%'}}><Text style={styles.tableCellHeader}>PARÁMETRO</Text></View>
+                    <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCellHeader, textAlign: 'center'}}>VALOR</Text></View>
+                    <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCellHeader, textAlign: 'center'}}>REFERENCIA</Text></View>
+                    <View style={{...styles.tableCol, width: '20%'}}><Text style={{...styles.tableCellHeader, textAlign: 'right'}}>ESTADO</Text></View>
+                </View>
+                
+                {/* Row 1: Glucose */}
                 <View style={styles.tableRow}>
-                    <View style={styles.tableColHeader}><Text style={styles.tableCellHeader}>Parámetro</Text></View>
-                    <View style={styles.tableColHeader}><Text style={styles.tableCellHeader}>Valor</Text></View>
-                    <View style={styles.tableColHeader}><Text style={styles.tableCellHeader}>Referencia</Text></View>
-                    <View style={styles.tableColHeader}><Text style={styles.tableCellHeader}>Estado</Text></View>
+                    <View style={{...styles.tableCol, width: '30%'}}><Text style={styles.tableCell}>Glucosa Capilar</Text></View>
+                    <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCell, textAlign: 'center'}}>{reportData.glucosaCapilar ? `${reportData.glucosaCapilar} mg/dL` : '-'}</Text></View>
+                    <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCell, textAlign: 'center'}}>{'< 100'}</Text></View>
+                    <View style={{...styles.tableCol, width: '20%'}}>
+                         <Text style={{
+                             fontSize: 9, 
+                             textAlign: 'right', 
+                             fontWeight: 'bold', 
+                             color: !reportData.glucosaCapilar ? '#9ca3af' : reportData.glucosaCapilar > 100 ? '#EF4444' : '#10B981'
+                        }}>
+                            {!reportData.glucosaCapilar ? '-' : reportData.glucosaCapilar > 100 ? 'ALTO' : 'NORMAL'}
+                        </Text>
+                    </View>
                 </View>
-                <View style={styles.tableRow}>
-                    <View style={styles.tableCol}><Text style={styles.tableCell}>Glucosa</Text></View>
-                    <View style={styles.tableCol}><Text style={styles.tableCell}>{reportData.glucosaCapilar || '-'}</Text></View>
-                    <View style={styles.tableCol}><Text style={styles.tableCell}>{'< 100 mg/dL'}</Text></View>
-                    <View style={styles.tableCol}><Text style={{...styles.tableCell, color: reportData.glucosaCapilar > 100 ? '#EF4444' : '#10B981', fontWeight: 'bold'}}>{!reportData.glucosaCapilar ? '-' : reportData.glucosaCapilar > 100 ? 'ALTO' : 'NORMAL'}</Text></View>
+
+                {/* Row 2: Cholesterol */}
+                 <View style={styles.tableRow}>
+                    <View style={{...styles.tableCol, width: '30%'}}><Text style={styles.tableCell}>Colesterol Total</Text></View>
+                    <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCell, textAlign: 'center'}}>{reportData.colesterolActual ? `${reportData.colesterolActual} mg/dL` : '-'}</Text></View>
+                    <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCell, textAlign: 'center'}}>{'< 200'}</Text></View>
+                    <View style={{...styles.tableCol, width: '20%'}}>
+                         <Text style={{
+                             fontSize: 9, 
+                             textAlign: 'right', 
+                             fontWeight: 'bold', 
+                             color: !reportData.colesterolActual ? '#9ca3af' : reportData.colesterolActual > 200 ? '#EF4444' : '#10B981'
+                        }}>
+                            {!reportData.colesterolActual ? '-' : reportData.colesterolActual > 200 ? 'ALTO' : 'NORMAL'}
+                        </Text>
+                    </View>
                 </View>
-                <View style={styles.tableRow}>
-                    <View style={styles.tableCol}><Text style={styles.tableCell}>Colesterol</Text></View>
-                    <View style={styles.tableCol}><Text style={styles.tableCell}>{reportData.colesterolActual || '-'}</Text></View>
-                    <View style={styles.tableCol}><Text style={styles.tableCell}>{'< 200 mg/dL'}</Text></View>
-                    <View style={styles.tableCol}><Text style={{...styles.tableCell, color: reportData.colesterolActual > 200 ? '#EF4444' : '#10B981', fontWeight: 'bold'}}>{!reportData.colesterolActual ? '-' : reportData.colesterolActual > 200 ? 'ALTO' : 'NORMAL'}</Text></View>
-                </View>
-                </View>
+                 {/* Row 3: Triglycerides (if available) */}
+                 {reportData.triglyceridosActual && (
+                     <View style={styles.tableRow}>
+                        <View style={{...styles.tableCol, width: '30%'}}><Text style={styles.tableCell}>Triglicéridos</Text></View>
+                        <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCell, textAlign: 'center'}}>{reportData.triglyceridosActual} mg/dL</Text></View>
+                        <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCell, textAlign: 'center'}}>{'< 150'}</Text></View>
+                         <View style={{...styles.tableCol, width: '20%'}}>
+                             <Text style={{
+                                 fontSize: 9, 
+                                 textAlign: 'right', 
+                                 fontWeight: 'bold', 
+                                 color: reportData.triglyceridosActual > 150 ? '#EF4444' : '#10B981'
+                            }}>
+                                {reportData.triglyceridosActual > 150 ? 'ALTO' : 'NORMAL'}
+                            </Text>
+                        </View>
+                    </View>
+                 )}
             </View>
+
+            {/* Progress History Table */}
+            <Text style={styles.sectionTitle}>HISTORIAL DE PROGRESO</Text>
+            <View style={styles.table}>
+                <View style={styles.tableHeaderRow}>
+                    <View style={{...styles.tableCol, width: '25%'}}><Text style={styles.tableCellHeader}>FECHA</Text></View>
+                    <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCellHeader, textAlign: 'center'}}>PESO (KG)</Text></View>
+                    <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCellHeader, textAlign: 'center'}}>IMC</Text></View>
+                    <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCellHeader, textAlign: 'center'}}>TALLA (CM)</Text></View>
+                </View>
+                
+                {historyData.map((consult, index) => (
+                    <View key={index} style={styles.tableRow}>
+                        <View style={{...styles.tableCol, width: '25%'}}>
+                            <Text style={styles.tableCell}>{new Date(consult.consultation_date).toLocaleDateString('es-MX')}</Text>
+                        </View>
+                        <View style={{...styles.tableCol, width: '25%'}}>
+                            <Text style={{...styles.tableCell, textAlign: 'center'}}>{consult.weight_kg || '-'}</Text>
+                        </View>
+                        <View style={{...styles.tableCol, width: '25%'}}>
+                            <Text style={{...styles.tableCell, textAlign: 'center'}}>{consult.imc || '-'}</Text>
+                        </View>
+                        <View style={{...styles.tableCol, width: '25%'}}>
+                             <Text style={{...styles.tableCell, textAlign: 'center'}}>{consult.height_cm || '-'}</Text>
+                        </View>
+                    </View>
+                ))}
+                
+                {historyData.length === 0 && (
+                     <View style={{padding: 10}}>
+                         <Text style={{fontSize: 9, color: '#9ca3af', textAlign: 'center', fontStyle: 'italic'}}>No hay historial registrado.</Text>
+                     </View>
+                )}
+            </View>
+
           </View>
         )}
 
         {/* SECTION 2: GRÁFICOS (New Page) */}
         {options.page2_charts && (
            <View break>
-              <Text style={styles.sectionTitle}>Análisis de Progreso</Text>
+              <Text style={styles.sectionTitle}>ANÁLISIS GRÁFICO</Text>
               
               <View style={{flexDirection: 'row', gap: 10, flexWrap: 'wrap'}}>
                   <View style={{width: '100%'}}>
@@ -392,48 +471,48 @@ const MedicalReportDocument: React.FC<MedicalReportDocumentProps> = ({
            </View>
         )}
         
-        {/* SECTION 3: PLANES ACTUALES (New Page) */}
+        {/* SECTION 3: PLAN ACTUAL (New Page) */}
         {options.page3_tables && (
             <View break>
-                <Text style={styles.sectionTitle}>Plan Actual</Text>
+                <Text style={styles.sectionTitle}>PLAN ACTUAL</Text>
                 
                 {/* Dieta */}
                 {latestDiet ? (
                     <View style={{marginBottom: 20}}>
                         <Text style={styles.subTitle}>Plan de Alimentación ({new Date(latestDiet.log_date).toLocaleDateString()})</Text>
                         <View style={styles.table}>
-                            <View style={styles.tableRow}>
-                                <View style={{...styles.tableColHeader, width: '30%'}}><Text style={styles.tableCellHeader}>Tiempo</Text></View>
-                                <View style={{...styles.tableColHeader, width: '70%'}}><Text style={styles.tableCellHeader}>Menú</Text></View>
+                            <View style={styles.tableHeaderRow}>
+                                <View style={{...styles.tableCol, width: '25%'}}><Text style={styles.tableCellHeader}>TIEMPO</Text></View>
+                                <View style={{...styles.tableCol, width: '75%'}}><Text style={styles.tableCellHeader}>MENÚ</Text></View>
                             </View>
                             {latestDiet.desayuno && (
                                 <View style={styles.tableRow}>
-                                    <View style={{...styles.tableCol, width: '30%'}}><Text style={{...styles.tableCell, fontWeight: 'bold'}}>Desayuno</Text></View>
-                                    <View style={{...styles.tableCol, width: '70%'}}><Text style={{...styles.tableCell, textAlign: 'left'}}>{latestDiet.desayuno}</Text></View>
+                                    <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCell, fontWeight: 'bold'}}>Desayuno</Text></View>
+                                    <View style={{...styles.tableCol, width: '75%'}}><Text style={{...styles.tableCell, textAlign: 'left'}}>{latestDiet.desayuno}</Text></View>
                                 </View>
                             )}
                             {latestDiet.colacion_1 && (
                                 <View style={styles.tableRow}>
-                                    <View style={{...styles.tableCol, width: '30%'}}><Text style={{...styles.tableCell, fontWeight: 'bold'}}>Colación 1</Text></View>
-                                    <View style={{...styles.tableCol, width: '70%'}}><Text style={{...styles.tableCell, textAlign: 'left'}}>{latestDiet.colacion_1}</Text></View>
+                                    <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCell, fontWeight: 'bold'}}>Colación 1</Text></View>
+                                    <View style={{...styles.tableCol, width: '75%'}}><Text style={{...styles.tableCell, textAlign: 'left'}}>{latestDiet.colacion_1}</Text></View>
                                 </View>
                             )}
                             {latestDiet.comida && (
                                 <View style={styles.tableRow}>
-                                    <View style={{...styles.tableCol, width: '30%'}}><Text style={{...styles.tableCell, fontWeight: 'bold'}}>Comida</Text></View>
-                                    <View style={{...styles.tableCol, width: '70%'}}><Text style={{...styles.tableCell, textAlign: 'left'}}>{latestDiet.comida}</Text></View>
+                                    <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCell, fontWeight: 'bold'}}>Comida</Text></View>
+                                    <View style={{...styles.tableCol, width: '75%'}}><Text style={{...styles.tableCell, textAlign: 'left'}}>{latestDiet.comida}</Text></View>
                                 </View>
                             )}
                             {latestDiet.colacion_2 && (
                                 <View style={styles.tableRow}>
-                                    <View style={{...styles.tableCol, width: '30%'}}><Text style={{...styles.tableCell, fontWeight: 'bold'}}>Colación 2</Text></View>
-                                    <View style={{...styles.tableCol, width: '70%'}}><Text style={{...styles.tableCell, textAlign: 'left'}}>{latestDiet.colacion_2}</Text></View>
+                                    <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCell, fontWeight: 'bold'}}>Colación 2</Text></View>
+                                    <View style={{...styles.tableCol, width: '75%'}}><Text style={{...styles.tableCell, textAlign: 'left'}}>{latestDiet.colacion_2}</Text></View>
                                 </View>
                             )}
                             {latestDiet.cena && (
                                 <View style={styles.tableRow}>
-                                    <View style={{...styles.tableCol, width: '30%'}}><Text style={{...styles.tableCell, fontWeight: 'bold'}}>Cena</Text></View>
-                                    <View style={{...styles.tableCol, width: '70%'}}><Text style={{...styles.tableCell, textAlign: 'left'}}>{latestDiet.cena}</Text></View>
+                                    <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCell, fontWeight: 'bold'}}>Cena</Text></View>
+                                    <View style={{...styles.tableCol, width: '75%'}}><Text style={{...styles.tableCell, textAlign: 'left'}}>{latestDiet.cena}</Text></View>
                                 </View>
                             )}
                         </View>
@@ -446,7 +525,7 @@ const MedicalReportDocument: React.FC<MedicalReportDocumentProps> = ({
                 {latestExercise ? (
                     <View style={{marginTop: 10}}>
                          <Text style={styles.subTitle}>Rutina de Ejercicio ({latestExercise.enfoque || 'General'})</Text>
-                         <View style={styles.box}>
+                         <View style={{...styles.patientInfoBox, backgroundColor: '#ffffff', borderColor: '#e5e7eb', borderWidth: 1}}>
                             {Array.isArray(latestExercise.ejercicios) && latestExercise.ejercicios.length > 0 ? (
                                 (latestExercise.ejercicios as any[]).map((ex, idx) => (
                                     <Text key={idx} style={{fontSize: 9, marginBottom: 4}}>
@@ -465,7 +544,7 @@ const MedicalReportDocument: React.FC<MedicalReportDocumentProps> = ({
         {/* SECTION 4: CIERRE (New Page) */}
         {options.page4_welcome && (
           <View break style={{marginTop: 30}}>
-            <Text style={styles.sectionTitle}>Comentarios Finales</Text>
+            <Text style={styles.sectionTitle}>COMENTARIOS FINALES</Text>
             <View style={{ borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 20 }}>
                 <Text style={styles.disclaimer}>
                 Este reporte es un resumen de tu estado actual y progreso. Recuerda que la constancia es la clave para obtener resultados sostenibles. Si tienes dudas sobre tu plan o mediciones, por favor contáctanos.
