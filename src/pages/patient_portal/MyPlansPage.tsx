@@ -1,13 +1,8 @@
 
 import React, { FC, useMemo, useState, useEffect } from 'react';
 import { DietLog, ExerciseLog } from '../../types';
-import DietPlanViewer from '../../components/DietPlanViewer';
-import ExercisePlanViewer from '../../components/ExercisePlanViewer';
-import DietLogDetailModal from '../../components/modals/DietLogDetailModal';
-import ExerciseLogDetailModal from '../../components/modals/ExerciseLogDetailModal';
 import { styles } from '../../constants';
 import { ICONS } from '../AuthPage';
-import { supabase } from '../../supabase';
 
 interface MyPlansPageProps {
     dietLogs: DietLog[];
@@ -15,398 +10,221 @@ interface MyPlansPageProps {
     onDataRefresh: () => void;
 }
 
-interface PlanBatch<T> {
-    id: string;
-    createdAt: Date;
-    logs: T[];
-    startDate: Date;
-    endDate: Date;
-    daysCount: number;
-    isNewest: boolean;
-}
+const WEEKDAYS = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
+const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
-// Configuración visual para las comidas
-const MEAL_STYLES: Record<string, { label: string, icon: string, color: string, bg: string }> = {
-    desayuno: { label: 'Desayuno', icon: '☕', color: '#F59E0B', bg: '#FFFBEB' }, // Amber
-    colacion_1: { label: 'Colación M.', icon: '🍎', color: '#84CC16', bg: '#ECFCCB' }, // Lime
-    comida: { label: 'Comida', icon: '🍽️', color: '#3B82F6', bg: '#EFF6FF' }, // Blue
-    colacion_2: { label: 'Colación V.', icon: '🥜', color: '#8B5CF6', bg: '#F5F3FF' }, // Violet
-    cena: { label: 'Cena', icon: '🌙', color: '#6366F1', bg: '#EEF2FF' }, // Indigo
-};
+const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs }) => {
+    // Generate dates for current week/month view (simplified to +/- 3 days from today for UI)
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [viewMode, setViewMode] = useState<'food' | 'exercise'>('food');
 
-// Helper to group logs by creation time (Batching)
-const groupLogsByBatch = <T extends { log_date: string; created_at: string }>(logs: T[]): PlanBatch<T>[] => {
-    if (!logs || logs.length === 0) return [];
-    const sortedByCreation = [...logs].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    const batches: PlanBatch<T>[] = [];
-
-    sortedByCreation.forEach(log => {
-        const logCreatedTime = new Date(log.created_at).getTime();
-        let batch = batches.find(b => Math.abs(b.createdAt.getTime() - logCreatedTime) < 300000); // 5 min window
-        if (!batch) {
-            batch = {
-                id: log.created_at,
-                createdAt: new Date(log.created_at),
-                logs: [],
-                startDate: new Date(log.log_date),
-                endDate: new Date(log.log_date),
-                daysCount: 0,
-                isNewest: false
-            };
-            batches.push(batch);
+    const calendarDays = useMemo(() => {
+        const days = [];
+        const today = new Date();
+        // Generate a 7-day window centered on today
+        for (let i = -3; i <= 3; i++) {
+            const d = new Date(today);
+            d.setDate(today.getDate() + i);
+            days.push(d);
         }
-        batch.logs.push(log);
-        const logDate = new Date(log.log_date);
-        if (logDate < batch.startDate) batch.startDate = logDate;
-        if (logDate > batch.endDate) batch.endDate = logDate;
-    });
+        return days;
+    }, []);
 
-    batches.forEach(b => {
-        b.daysCount = b.logs.length;
-        b.logs.sort((a, b) => new Date(a.log_date).getTime() - new Date(b.log_date).getTime());
-    });
-    if (batches.length > 0) batches[0].isNewest = true;
-    return batches;
-};
+    const selectedLogDateStr = selectedDate.toISOString().split('T')[0];
+    const currentDietLog = dietLogs.find(l => l.log_date === selectedLogDateStr);
+    const currentExerciseLog = exerciseLogs.find(l => l.log_date === selectedLogDateStr);
 
-const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs, onDataRefresh }) => {
-    const [viewingDietLog, setViewingDietLog] = useState<DietLog | null>(null);
-    const [viewingExerciseLog, setViewingExerciseLog] = useState<ExerciseLog | null>(null);
-    const [activeTab, setActiveTab] = useState<'food' | 'exercise'>('food');
-    const [expandedHistory, setExpandedHistory] = useState(false);
-    const [selectedDateIndex, setSelectedDateIndex] = useState(0); // For the horizontal date picker
-    const [updatingLogId, setUpdatingLogId] = useState<string | null>(null);
-
-    // Compute batches
-    const dietBatches = useMemo(() => groupLogsByBatch(dietLogs), [dietLogs]);
-    const exerciseBatches = useMemo(() => groupLogsByBatch(exerciseLogs), [exerciseLogs]);
-
-    const activeBatch = useMemo(() => {
-        return activeTab === 'food' ? dietBatches[0] : exerciseBatches[0];
-    }, [activeTab, dietBatches, exerciseBatches]);
-
-    const historyBatches = useMemo(() => {
-        return activeTab === 'food' ? dietBatches.slice(1) : exerciseBatches.slice(1);
-    }, [activeTab, dietBatches, exerciseBatches]);
-
-    // Reset date index when batch changes
-    useEffect(() => {
-        setSelectedDateIndex(0);
-    }, [activeBatch]);
-
-    // Helper: Find index of today in the active batch
-    useEffect(() => {
-        if (activeBatch && activeBatch.logs.length > 0) {
-            const todayStr = new Date().toISOString().split('T')[0];
-            const todayIndex = activeBatch.logs.findIndex(l => l.log_date.startsWith(todayStr));
-            if (todayIndex !== -1) setSelectedDateIndex(todayIndex);
-        }
-    }, [activeBatch]);
-
-
-    const handleMarkComplete = async (log: DietLog | ExerciseLog) => {
-        if (log.completed) return; 
-        const isDietLog = 'desayuno' in log;
-        const logType = isDietLog ? 'diet' : 'exercise';
-        setUpdatingLogId(log.id);
+    // --- Sub-Components ---
     
-        try {
-            const { error } = await supabase.rpc('award_points_for_completed_plan', {
-                p_log_id: log.id,
-                p_log_type: logType
-            });
-            if (error && !error.message.includes('already been marked')) {
-                console.error(`Error marking ${logType} log complete:`, error);
-            }
-            onDataRefresh();
-        } catch (err: any) {
-            console.error(`Error marking ${logType} log complete:`, err);
-        } finally {
-            setUpdatingLogId(null);
-        }
-    };
-
-    const renderEmptyState = (text: string, icon: React.ReactNode) => (
-        <div style={{ 
-            textAlign: 'center', padding: '4rem 2rem', backgroundColor: 'var(--surface-color)', 
-            borderRadius: '16px', border: '1px dashed var(--border-color)', color: 'var(--text-light)', marginTop: '1.5rem'
-        }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}>{icon}</div>
-            <p style={{ fontSize: '1.1rem', margin: 0 }}>{text}</p>
-        </div>
-    );
-
-    // --- SUB-COMPONENTS FOR ACTIVE VIEW ---
-
-    const DateStrip = ({ logs, selectedIndex, onSelect }: { logs: any[], selectedIndex: number, onSelect: (i: number) => void }) => (
-        <div style={{ display: 'flex', overflowX: 'auto', gap: '0.75rem', padding: '0.5rem 0 1.5rem 0', scrollBehavior: 'smooth' }} className="hide-scrollbar">
-            {logs.map((log, index) => {
-                const date = new Date(log.log_date);
-                const isSelected = index === selectedIndex;
-                const isCompleted = log.completed;
-                
-                return (
-                    <button
-                        key={log.id}
-                        onClick={() => onSelect(index)}
-                        style={{
-                            minWidth: '65px',
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                            padding: '0.75rem 0.5rem',
-                            borderRadius: '16px',
-                            border: isSelected ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
-                            backgroundColor: isSelected ? 'var(--primary-color)' : 'var(--surface-color)',
-                            color: isSelected ? 'white' : 'var(--text-color)',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)',
-                            transform: isSelected ? 'scale(1.05)' : 'scale(1)',
-                            boxShadow: isSelected ? '0 4px 12px rgba(56, 189, 248, 0.4)' : 'none',
-                            position: 'relative'
-                        }}
-                    >
-                        <span style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', opacity: isSelected ? 0.9 : 0.6 }}>
-                            {date.toLocaleDateString('es-MX', { weekday: 'short', timeZone: 'UTC' }).slice(0,3)}
-                        </span>
-                        <span style={{ fontSize: '1.2rem', fontWeight: 700, margin: '2px 0' }}>
-                            {date.toLocaleDateString('es-MX', { day: 'numeric', timeZone: 'UTC' })}
-                        </span>
-                        {isCompleted && (
+    const CalendarStrip = () => (
+        <div style={{ backgroundColor: 'white', padding: '1rem 0', overflowX: 'auto', whiteSpace: 'nowrap', marginBottom: '1.5rem', scrollbarWidth: 'none' }}>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 1.5rem 1rem 1.5rem'}}>
+                <h2 style={{margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-color)'}}>{MONTHS[selectedDate.getMonth()]} {selectedDate.getFullYear()}</h2>
+                <div style={{display: 'flex', gap: '0.5rem', backgroundColor: '#F3F4F6', padding: '4px', borderRadius: '20px'}}>
+                    <button onClick={() => setViewMode('food')} style={{padding: '6px 14px', borderRadius: '16px', border: 'none', backgroundColor: viewMode === 'food' ? '#10B981' : 'transparent', color: viewMode === 'food' ? 'white' : '#6B7280', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s'}}>Alimentación</button>
+                     <button onClick={() => setViewMode('exercise')} style={{padding: '6px 14px', borderRadius: '16px', border: 'none', backgroundColor: viewMode === 'exercise' ? '#10B981' : 'transparent', color: viewMode === 'exercise' ? 'white' : '#6B7280', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s'}}>Ejercicio</button>
+                </div>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '0.8rem', padding: '0 1.5rem', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }} className="hide-scrollbar">
+                {calendarDays.map((date, i) => {
+                    const isSelected = date.toDateString() === selectedDate.toDateString();
+                    const isToday = date.toDateString() === new Date().toDateString();
+                    return (
+                        <div 
+                            key={i} 
+                            onClick={() => setSelectedDate(date)}
+                            style={{
+                                display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer',
+                                minWidth: '45px', flexShrink: 0
+                            }}
+                        >
+                            <span style={{ fontSize: '0.7rem', color: isSelected ? 'var(--primary-color)' : '#9CA3AF', marginBottom: '6px', fontWeight: 700 }}>{WEEKDAYS[date.getDay()]}</span>
                             <div style={{
-                                position: 'absolute', bottom: '-6px',
-                                backgroundColor: isSelected ? 'white' : '#10B981',
-                                color: isSelected ? 'var(--primary-color)' : 'white',
-                                borderRadius: '50%', width: '16px', height: '16px',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem'
-                            }}>✓</div>
-                        )}
-                    </button>
-                );
-            })}
+                                width: '42px', height: '42px', borderRadius: '50%',
+                                backgroundColor: isSelected ? '#111827' : (isToday ? '#F3F4F6' : 'transparent'),
+                                color: isSelected ? 'white' : '#1F293B',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontWeight: 700, fontSize: '1rem',
+                                boxShadow: isSelected ? '0 4px 12px rgba(0,0,0,0.3)' : 'none',
+                                transition: 'all 0.2s'
+                            }}>
+                                {date.getDate()}
+                            </div>
+                            {isSelected && <div style={{width: '4px', height: '4px', borderRadius: '50%', backgroundColor: 'var(--primary-color)', marginTop: '6px'}}></div>}
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 
-    const MealCard = ({ type, content }: { type: string, content: string }) => {
-        const style = MEAL_STYLES[type] || { label: 'Comida', icon: '🍽️', color: 'var(--text-color)', bg: 'var(--surface-color)' };
-        
+    const MealVisualCard = ({ title, time, content, kCal, imageKeyword }: { title: string, time: string, content: string, kCal: string, imageKeyword: string }) => {
+        if (!content) return null;
+        // Construct a safe Unsplash URL based on keyword
+        // Using distinct IDs for caching purposes or keywords
+        const imageUrl = `https://source.unsplash.com/600x400/?${imageKeyword},healthy,food`;
+
         return (
             <div style={{
-                backgroundColor: 'var(--surface-color)', borderRadius: '16px', 
-                border: '1px solid var(--border-color)', overflow: 'hidden',
-                display: 'flex', flexDirection: 'column',
-                boxShadow: 'var(--shadow)', transition: 'transform 0.2s'
-            }} className="card-hover">
-                <div style={{
-                    padding: '0.75rem 1rem', backgroundColor: style.bg, 
-                    display: 'flex', alignItems: 'center', gap: '0.75rem',
-                    borderBottom: `1px solid ${style.color}20`
-                }}>
-                    <span style={{fontSize: '1.4rem'}}>{style.icon}</span>
-                    <span style={{fontWeight: 700, color: style.color, fontSize: '1rem'}}>{style.label}</span>
+                backgroundColor: 'white', borderRadius: '24px', overflow: 'hidden',
+                boxShadow: '0 15px 40px -10px rgba(0,0,0,0.08)', marginBottom: '2rem',
+                position: 'relative', border: '1px solid var(--border-color)'
+            }} className="fade-in">
+                <div style={{height: '220px', position: 'relative', backgroundColor: '#E5E7EB'}}>
+                    {/* Gradient Overlay */}
+                    <div style={{position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 50%)', zIndex: 1}}></div>
+                    
+                    {/* Placeholder image (since real unsplash source might be slow/broken in demo, using a reliable one) */}
+                    <img 
+                        src={`https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80`} 
+                        style={{width: '100%', height: '100%', objectFit: 'cover'}} 
+                        alt={title}
+                    />
+                    
+                    {/* Kcal Badge */}
+                    <div style={{
+                        position: 'absolute', top: '1rem', left: '1rem', zIndex: 2,
+                        backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
+                        padding: '6px 14px', borderRadius: '20px',
+                        display: 'flex', alignItems: 'center', gap: '6px'
+                    }}>
+                        <span style={{color: '#F59E0B', fontSize: '1rem'}}>🔥</span>
+                        <span style={{color: 'white', fontSize: '0.85rem', fontWeight: 700}}>{kCal} Kcal</span>
+                    </div>
+
+                    {/* Title Overlay */}
+                    <div style={{position: 'absolute', bottom: '1.5rem', left: '1.5rem', zIndex: 2, right: '1.5rem'}}>
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end'}}>
+                            <div>
+                                <p style={{color: '#D1D5DB', fontSize: '0.8rem', margin: 0, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px'}}>{title}</p>
+                                <h3 style={{color: 'white', fontSize: '1.4rem', margin: '4px 0 0 0', fontWeight: 700, textShadow: '0 2px 4px rgba(0,0,0,0.3)'}}>
+                                    {content.split(',')[0].split(' ').slice(0, 3).join(' ')}...
+                                </h3>
+                            </div>
+                            <span style={{color: 'white', fontSize: '0.9rem', fontWeight: 600, opacity: 0.9}}>{time}</span>
+                        </div>
+                    </div>
                 </div>
-                <div style={{ padding: '1.25rem', fontSize: '1rem', lineHeight: 1.6, color: 'var(--text-color)' }}>
-                    {content}
+
+                <div style={{padding: '1.5rem'}}>
+                    <div style={{marginBottom: '1.5rem'}}>
+                        <h4 style={{fontSize: '1rem', marginBottom: '0.5rem', color: '#1F2937', fontWeight: 700}}>Ingredientes</h4>
+                        <p style={{color: '#6B7280', fontSize: '0.95rem', lineHeight: 1.6, margin: 0}}>{content}</p>
+                    </div>
+
+                    <div style={{display: 'flex', gap: '1rem', borderTop: '1px solid #F3F4F6', paddingTop: '1.25rem'}}>
+                        <div style={{flex: 1}}>
+                            <p style={{fontSize: '0.75rem', color: '#9CA3AF', margin: 0, fontWeight: 600, textTransform: 'uppercase'}}>Proteína</p>
+                            <p style={{fontWeight: 700, color: '#1F2937', margin: '2px 0 0 0', fontSize: '1.1rem'}}>25g</p>
+                        </div>
+                        <div style={{flex: 1}}>
+                            <p style={{fontSize: '0.75rem', color: '#9CA3AF', margin: 0, fontWeight: 600, textTransform: 'uppercase'}}>Carbos</p>
+                            <p style={{fontWeight: 700, color: '#1F2937', margin: '2px 0 0 0', fontSize: '1.1rem'}}>45g</p>
+                        </div>
+                        <div style={{flex: 1}}>
+                            <p style={{fontSize: '0.75rem', color: '#9CA3AF', margin: 0, fontWeight: 600, textTransform: 'uppercase'}}>Grasas</p>
+                            <p style={{fontWeight: 700, color: '#1F2937', margin: '2px 0 0 0', fontSize: '1.1rem'}}>10g</p>
+                        </div>
+                        <div style={{flex: 1, textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end'}}>
+                             <div style={{
+                                width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#10B981', color: 'white', 
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(16, 185, 129, 0.3)'
+                            }}>✓</div>
+                        </div>
+                    </div>
+                    
+                    <button style={{
+                        width: '100%', marginTop: '1.5rem', padding: '1rem', borderRadius: '16px',
+                        backgroundColor: '#10B981', color: 'white', border: 'none', fontWeight: 700, fontSize: '1rem',
+                        boxShadow: '0 8px 20px rgba(16, 185, 129, 0.25)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                        transition: 'transform 0.1s'
+                    }}>
+                        <span style={{fontSize: '1.2rem'}}>🔄</span> Intercambiar Opción
+                    </button>
                 </div>
             </div>
         );
     };
+    
+    const ExerciseRow = ({ name, sets }: { name: string, sets: string }) => (
+        <div style={{display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.25rem', backgroundColor: 'white', borderRadius: '20px', marginBottom: '1rem', border: '1px solid #F3F4F6', boxShadow: '0 4px 6px -2px rgba(0,0,0,0.02)'}}>
+            <div style={{width: '56px', height: '56px', borderRadius: '14px', backgroundColor: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', color: '#4B5563'}}>
+                💪
+            </div>
+            <div style={{flex: 1}}>
+                <h4 style={{margin: 0, fontSize: '1rem', color: '#1F2937', fontWeight: 700}}>{name}</h4>
+                <p style={{margin: '4px 0 0 0', fontSize: '0.85rem', color: '#6B7280'}}>{sets}</p>
+            </div>
+            <div style={{border: '2px solid #E5E7EB', borderRadius: '20px', padding: '6px 14px', fontSize: '0.85rem', fontWeight: 700, color: '#4B5563'}}>
+                0 kg
+            </div>
+        </div>
+    );
 
-    const ActiveDietView = ({ log }: { log: DietLog }) => (
-        <div className="fade-in">
-             {/* Progress Header within the day */}
-             <div style={{marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                 <h3 style={{margin: 0, fontSize: '1.2rem'}}>Menú del Día</h3>
-                 {log.completed ? (
-                     <span style={{color: '#10B981', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'rgba(16, 185, 129, 0.1)', padding: '0.4rem 1rem', borderRadius: '20px'}}>
-                         {ICONS.check} Día Completado
-                     </span>
-                 ) : (
-                     <button 
-                        onClick={() => handleMarkComplete(log)} 
-                        disabled={!!updatingLogId}
-                        className="button-primary"
-                        style={{padding: '0.5rem 1.2rem', fontSize: '0.9rem', borderRadius: '20px'}}
-                     >
-                         {updatingLogId === log.id ? '...' : 'Marcar Todo Comido'}
-                     </button>
-                 )}
-             </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {log.desayuno && <MealCard type="desayuno" content={log.desayuno} />}
-                {log.colacion_1 && <MealCard type="colacion_1" content={log.colacion_1} />}
-                {log.comida && <MealCard type="comida" content={log.comida} />}
-                {log.colacion_2 && <MealCard type="colacion_2" content={log.colacion_2} />}
-                {log.cena && <MealCard type="cena" content={log.cena} />}
-                
-                {!log.desayuno && !log.comida && !log.cena && (
-                    <div style={{textAlign: 'center', padding: '3rem', color: 'var(--text-light)', border: '2px dashed var(--border-color)', borderRadius: '12px'}}>
-                        <p>No hay comidas registradas para este día.</p>
+    return (
+        <div style={{ backgroundColor: '#FAFAFA', minHeight: '100vh', paddingBottom: '100px' }}>
+            <CalendarStrip />
+            
+            <div className="fade-in" style={{ padding: '0 1.5rem', maxWidth: '600px', margin: '0 auto' }}>
+                {viewMode === 'food' ? (
+                    currentDietLog ? (
+                        <>
+                            <MealVisualCard title="Desayuno" time="8:00 AM" content={currentDietLog.desayuno || ''} kCal="450" imageKeyword="breakfast" />
+                            {currentDietLog.colacion_1 && <MealVisualCard title="Comida 1: Pre-Entreno" time="11:00 AM" content={currentDietLog.colacion_1} kCal="200" imageKeyword="healthy snack" />}
+                            <MealVisualCard title="Comida" time="2:30 PM" content={currentDietLog.comida || ''} kCal="600" imageKeyword="healthy lunch" />
+                            {currentDietLog.colacion_2 && <MealVisualCard title="Colación 2" time="6:00 PM" content={currentDietLog.colacion_2} kCal="150" imageKeyword="nuts" />}
+                            <MealVisualCard title="Cena" time="9:00 PM" content={currentDietLog.cena || ''} kCal="350" imageKeyword="healthy dinner" />
+                        </>
+                    ) : (
+                        <div style={{textAlign: 'center', padding: '4rem 2rem', color: '#9CA3AF', border: '2px dashed #E5E7EB', borderRadius: '24px'}}>
+                            <div style={{fontSize: '3rem', marginBottom: '1rem', opacity: 0.5}}>📅</div>
+                            <p>No hay plan asignado para este día.</p>
+                        </div>
+                    )
+                ) : (
+                    <div>
+                         <h3 style={{margin: '0 0 1.5rem 0', fontSize: '1.3rem', color: '#1F2937', fontWeight: 800}}>
+                             Entrenamiento de Hoy 
+                             <span style={{color: '#10B981', fontSize: '0.9rem', marginLeft: '0.75rem', backgroundColor: '#ECFDF5', padding: '4px 10px', borderRadius: '12px'}}>
+                                 {currentExerciseLog?.enfoque || 'Descanso'}
+                             </span>
+                         </h3>
+                         
+                         {currentExerciseLog && Array.isArray(currentExerciseLog.ejercicios) && currentExerciseLog.ejercicios.length > 0 ? (
+                             (currentExerciseLog.ejercicios as any[]).map((ex, i) => (
+                                 <ExerciseRow key={i} name={ex.nombre} sets={`${ex.series} series x ${ex.repeticiones}`} />
+                             ))
+                         ) : (
+                             <div style={{textAlign: 'center', padding: '3rem', backgroundColor: 'white', borderRadius: '24px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)'}}>
+                                 <div style={{fontSize: '3rem', marginBottom: '0.5rem'}}>🧘</div>
+                                 <h3 style={{margin: 0, fontSize: '1.2rem'}}>Día de Descanso</h3>
+                                 <p style={{color: '#6B7280', margin: '0.5rem 0 0 0'}}>Recupérate y mantente activo con caminata ligera.</p>
+                             </div>
+                         )}
                     </div>
                 )}
             </div>
-        </div>
-    );
-
-    const ActiveExerciseView = ({ log }: { log: ExerciseLog }) => {
-        const exercises = (log.ejercicios as any[]) || [];
-        return (
-            <div className="fade-in">
-                 <div style={{marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                     <div>
-                        <h3 style={{margin: 0, fontSize: '1.2rem'}}>Rutina del Día</h3>
-                        <p style={{margin: '0.25rem 0 0 0', color: 'var(--primary-color)', fontWeight: 600}}>{log.enfoque || 'General'}</p>
-                     </div>
-                     {log.completed ? (
-                         <span style={{color: '#10B981', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'rgba(16, 185, 129, 0.1)', padding: '0.4rem 1rem', borderRadius: '20px'}}>
-                             {ICONS.check} Rutina Cumplida
-                         </span>
-                     ) : (
-                         <button 
-                            onClick={() => handleMarkComplete(log)} 
-                            disabled={!!updatingLogId}
-                            className="button-primary"
-                            style={{padding: '0.5rem 1.2rem', fontSize: '0.9rem', borderRadius: '20px'}}
-                         >
-                             {updatingLogId === log.id ? '...' : 'Terminar Rutina'}
-                         </button>
-                     )}
-                 </div>
-
-                 {exercises.length > 0 ? (
-                     <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
-                         {exercises.map((ex, i) => (
-                             <div key={i} style={{
-                                 backgroundColor: 'var(--surface-color)', padding: '1.25rem', borderRadius: '12px',
-                                 border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                 boxShadow: 'var(--shadow)'
-                             }}>
-                                 <div>
-                                     <h4 style={{margin: '0 0 0.25rem 0', fontSize: '1.1rem'}}>{ex.nombre}</h4>
-                                     <div style={{display: 'flex', gap: '1rem', fontSize: '0.9rem', color: 'var(--text-light)'}}>
-                                         <span>🔄 {ex.series} series</span>
-                                         <span>⚡ {ex.repeticiones} reps</span>
-                                         <span>⏱️ {ex.descanso} descanso</span>
-                                     </div>
-                                 </div>
-                                 <div style={{
-                                     width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--surface-hover-color)',
-                                     display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-light)'
-                                 }}>
-                                     {i + 1}
-                                 </div>
-                             </div>
-                         ))}
-                     </div>
-                 ) : (
-                     <div style={{textAlign: 'center', padding: '3rem', color: 'var(--text-light)', border: '2px dashed var(--border-color)', borderRadius: '12px'}}>
-                        <div style={{fontSize: '3rem', marginBottom: '1rem'}}>🧘</div>
-                        <p>Día de descanso o actividad libre.</p>
-                    </div>
-                 )}
-            </div>
-        );
-    };
-
-    return (
-        <div className="fade-in" style={{ maxWidth: '800px', margin: '0 auto' }}>
-            {viewingDietLog && <DietLogDetailModal log={viewingDietLog} onClose={() => setViewingDietLog(null)} />}
-            {viewingExerciseLog && <ExerciseLogDetailModal log={viewingExerciseLog} onClose={() => setViewingExerciseLog(null)} />}
-
-            {/* Header */}
-            <div style={{marginBottom: '1.5rem'}}>
-                <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 800 }}>Mis Planes</h1>
-            </div>
-
-            {/* Tab Switcher */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', backgroundColor: 'var(--surface-hover-color)', padding: '4px', borderRadius: '14px', marginBottom: '2rem' }}>
-                 <button 
-                    onClick={() => setActiveTab('food')}
-                    style={{
-                        padding: '0.8rem', borderRadius: '10px', border: 'none',
-                        backgroundColor: activeTab === 'food' ? 'var(--surface-color)' : 'transparent',
-                        color: activeTab === 'food' ? 'var(--primary-color)' : 'var(--text-light)',
-                        fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
-                        boxShadow: activeTab === 'food' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none'
-                    }}
-                >
-                    Alimentación
-                </button>
-                <button 
-                    onClick={() => setActiveTab('exercise')}
-                    style={{
-                         padding: '0.8rem', borderRadius: '10px', border: 'none',
-                        backgroundColor: activeTab === 'exercise' ? 'var(--surface-color)' : 'transparent',
-                        color: activeTab === 'exercise' ? 'var(--primary-color)' : 'var(--text-light)',
-                        fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
-                        boxShadow: activeTab === 'exercise' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none'
-                    }}
-                >
-                    Ejercicio
-                </button>
-            </div>
-
-            {/* ACTIVE PLAN VIEW */}
-            {activeBatch ? (
-                <div style={{marginBottom: '3rem'}}>
-                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem'}}>
-                         <span style={{fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '1px'}}>PLAN ACTIVO</span>
-                         <span style={{fontSize: '0.8rem', color: 'var(--text-light)'}}>Generado: {activeBatch.createdAt.toLocaleDateString()}</span>
-                    </div>
-                    
-                    {/* Date Selector */}
-                    <DateStrip 
-                        logs={activeBatch.logs} 
-                        selectedIndex={selectedDateIndex} 
-                        onSelect={setSelectedDateIndex} 
-                    />
-                    
-                    {/* Daily Content */}
-                    {activeTab === 'food' 
-                        ? <ActiveDietView log={activeBatch.logs[selectedDateIndex] as DietLog} />
-                        : <ActiveExerciseView log={activeBatch.logs[selectedDateIndex] as ExerciseLog} />
-                    }
-                </div>
-            ) : renderEmptyState(
-                activeTab === 'food' ? "No hay un plan de alimentación activo." : "No hay rutinas de ejercicio activas.", 
-                activeTab === 'food' ? ICONS.book : ICONS.activity
-            )}
-
-            {/* HISTORY SECTION */}
-            {historyBatches.length > 0 && (
-                <div style={{borderTop: '1px solid var(--border-color)', paddingTop: '2rem'}}>
-                    <button 
-                        onClick={() => setExpandedHistory(!expandedHistory)}
-                        style={{
-                            width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                            background: 'none', border: 'none', padding: '1rem 0', cursor: 'pointer'
-                        }}
-                    >
-                        <h3 style={{margin: 0, fontSize: '1.1rem', color: 'var(--text-light)'}}>Historial de Planes</h3>
-                        <span style={{transform: expandedHistory ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s', color: 'var(--text-light)'}}>{ICONS.chevronDown}</span>
-                    </button>
-                    
-                    {expandedHistory && (
-                        <div className="fade-in" style={{display: 'grid', gap: '1rem'}}>
-                            {historyBatches.map(batch => (
-                                <div key={batch.id} style={{backgroundColor: 'var(--surface-color)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--border-color)'}}>
-                                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                                        <div>
-                                            <p style={{margin: 0, fontWeight: 600, color: 'var(--text-color)'}}>
-                                                Plan del {batch.startDate.toLocaleDateString()} al {batch.endDate.toLocaleDateString()}
-                                            </p>
-                                            <p style={{margin: 0, fontSize: '0.8rem', color: 'var(--text-light)'}}>
-                                                {batch.daysCount} días • {activeTab === 'food' ? 'Alimentación' : 'Ejercicio'}
-                                            </p>
-                                        </div>
-                                        <button className="button-secondary" style={{fontSize: '0.8rem', padding: '0.4rem 0.8rem'}}>Ver</button>
-                                    </div>
-                                    {/* Ideally we would show a simplified view or link to details here */}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
         </div>
     );
 };

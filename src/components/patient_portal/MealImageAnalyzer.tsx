@@ -16,23 +16,16 @@ const resizeAndCompressImage = (file: File, maxWidth: number = 1024, quality: nu
             img.onload = () => {
                 let width = img.width;
                 let height = img.height;
-
-                // Calculate new dimensions
                 if (width > maxWidth) {
                     height = Math.round((height * maxWidth) / width);
                     width = maxWidth;
                 }
-
                 const canvas = document.createElement('canvas');
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx?.drawImage(img, 0, 0, width, height);
-                
-                // Compress to JPEG
                 const dataUrl = canvas.toDataURL('image/jpeg', quality);
-                
-                // Return only the Base64 data (remove "data:image/jpeg;base64," prefix)
                 resolve(dataUrl.split(',')[1]);
             };
             img.onerror = (err) => reject(err);
@@ -44,8 +37,8 @@ const resizeAndCompressImage = (file: File, maxWidth: number = 1024, quality: nu
 interface MealImageAnalyzerProps {
     todaysDietLog: DietLog | null;
     clinicId: string;
-    personId: string; // Added personId for DB insert
-    onEntrySaved?: () => void; // Callback to refresh feed
+    personId: string;
+    onEntrySaved?: () => void;
 }
 
 const MealImageAnalyzer: FC<MealImageAnalyzerProps> = ({ todaysDietLog, clinicId, personId, onEntrySaved }) => {
@@ -72,35 +65,27 @@ const MealImageAnalyzer: FC<MealImageAnalyzerProps> = ({ todaysDietLog, clinicId
             const reader = new FileReader();
             reader.onloadend = () => {
                 setPreview(reader.result as string);
+                // Auto-analyze on select
+                handleAnalyze(selectedFile, reader.result as string);
             };
             reader.readAsDataURL(selectedFile);
         }
     };
 
-    const handleAnalyze = async () => {
-        if (!file || !clinicId) return;
+    const handleAnalyze = async (currentFile: File, currentPreview: string) => {
+        if (!clinicId) return;
         setLoading(true);
         setResult(null);
         setError(null);
 
         try {
-            const base64Data = await resizeAndCompressImage(file);
+            const base64Data = await resizeAndCompressImage(currentFile);
             
             const imagePart = {
                 inlineData: { mimeType: 'image/jpeg', data: base64Data },
             };
 
-            let prompt = '';
-            if (todaysDietLog) {
-                prompt = `Actúa como un asistente nutricional experto y amigable. Tu respuesta debe ser un solo párrafo corto (máximo 40 palabras), conciso y fácil de entender.
-**Tarea:** Analiza la foto de una comida y compárala con el plan del día.
-**Plan:** Desayuno: ${todaysDietLog.desayuno || '-'}, Comida: ${todaysDietLog.comida || '-'}, Cena: ${todaysDietLog.cena || '-'}.
-Si la imagen NO es comida, responde "ERROR: No es comida". Si es válida, identifica el platillo y di si se ajusta al plan. Usa negritas para la conclusión.`;
-            } else {
-                prompt = `Actúa como un asistente nutricional experto. Tu respuesta debe ser un solo párrafo corto (máximo 40 palabras).
-**Tarea:** Analiza la foto y describe brevemente los grupos de alimentos. Si no es comida, responde "ERROR: No es comida".`;
-            }
-            
+            const prompt = `Actúa como un asistente nutricional. Identifica el platillo y sus ingredientes principales. Estima las calorías aproximadas. Responde en 1 o 2 frases cortas y motivadoras. Si no es comida, di "No detecto comida".`;
             const textPart = { text: prompt };
 
             const apiResponse = await fetch('/api/gemini', {
@@ -113,16 +98,13 @@ Si la imagen NO es comida, responde "ERROR: No es comida". Si es válida, identi
             });
 
             if (!apiResponse.ok) throw new Error("Error al analizar la imagen.");
-
             const data = await apiResponse.json();
             
-            if(data.text && data.text.startsWith('ERROR:')) {
-                setError(data.text.replace('ERROR: ', ''));
-                setResult(null);
+            if(data.text && data.text.includes('No detecto comida')) {
+                setError("No parece ser comida. Intenta de nuevo.");
             } else {
                 setResult(data.text);
             }
-
         } catch (err: any) {
             setError(`Error: ${err.message}`);
         } finally {
@@ -134,29 +116,24 @@ Si la imagen NO es comida, responde "ERROR: No es comida". Si es válida, identi
         if (!file || !result || !personId) return;
         setSaving(true);
         try {
-            // 1. Upload Image to Supabase
             const fileExt = file.name.split('.').pop();
             const fileName = `journal/${personId}/${Date.now()}.${fileExt}`;
             const { error: uploadError } = await supabase.storage.from('files').upload(fileName, file);
             if (uploadError) throw uploadError;
 
-            // 2. Insert into DB
             const { error: dbError } = await supabase.from('patient_journal').insert({
                 person_id: personId,
                 meal_type: selectedMealType,
                 image_url: fileName,
                 ai_analysis: result,
-                description: null // Could add a textarea for user description later
+                description: null
             });
 
             if (dbError) throw dbError;
-
-            // Reset
             setFile(null);
             setPreview(null);
             setResult(null);
             if (onEntrySaved) onEntrySaved();
-
         } catch (err: any) {
             setError(`Error al guardar: ${err.message}`);
         } finally {
@@ -164,67 +141,114 @@ Si la imagen NO es comida, responde "ERROR: No es comida". Si es válida, identi
         }
     };
     
-    return (
-        <div>
-            {!preview ? (
-                <div style={{
-                    border: '2px dashed var(--border-color)',
-                    borderRadius: '12px',
-                    padding: '2rem',
-                    textAlign: 'center',
+    // 1. Default Camera Viewfinder State
+    if (!preview) {
+        return (
+            <div 
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                    backgroundColor: '#F3F4F6', // Neutral gray placeholder
+                    height: '240px',
+                    width: '100%',
+                    position: 'relative',
                     cursor: 'pointer',
-                    backgroundColor: 'var(--background-color)',
-                    transition: 'border-color 0.2s',
-                }} onClick={() => fileInputRef.current?.click()}>
-                    <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} />
-                    <span style={{ fontSize: '2.5rem', color: 'var(--text-light)' }}>📷</span>
-                    <p style={{ margin: '0.5rem 0 0 0', fontWeight: 600, color: 'var(--primary-color)' }}>Subir Foto</p>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-light)', marginTop: '0.25rem' }}>Analiza tu comida con IA</p>
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                    borderRadius: '0' // Fits perfectly inside the timeline card
+                }}
+            >
+                <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} />
+                
+                {/* AI Badge Overlay */}
+                <div style={{
+                    position: 'absolute', top: '15px', left: '15px',
+                    backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+                    color: 'white', fontSize: '0.7rem', fontWeight: 700,
+                    padding: '4px 10px', borderRadius: '20px',
+                    display: 'flex', alignItems: 'center', gap: '6px'
+                }}>
+                    <div style={{width: '6px', height: '6px', backgroundColor: '#10B981', borderRadius: '50%', boxShadow: '0 0 8px #10B981'}}></div>
+                    AI READY
                 </div>
-            ) : (
-                <div className="fade-in">
-                    <img src={preview} alt="Vista previa" style={{ width: '100%', borderRadius: '12px', objectFit: 'cover', maxHeight: '250px', marginBottom: '1rem', border: '1px solid var(--border-color)' }} />
+
+                {/* Main Camera Action Icon */}
+                <div style={{
+                    width: '60px', height: '60px', borderRadius: '50%',
+                    backgroundColor: 'black', color: 'white',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '1.8rem', boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
+                    transition: 'transform 0.2s',
+                    zIndex: 2
+                }} className="camera-icon-hover">
+                    📷
+                </div>
+                
+                {/* Helper Text */}
+                <div style={{position: 'absolute', bottom: '20px', color: '#6B7280', fontWeight: 600, fontSize: '0.9rem'}}>
+                    Tomar foto de tu comida
+                </div>
+
+                {/* Visual corners for viewfinder effect */}
+                <div style={{position: 'absolute', top: '20px', right: '20px', width: '30px', height: '30px', borderTop: '3px solid #D1D5DB', borderRight: '3px solid #D1D5DB', borderTopRightRadius: '8px'}}></div>
+                <div style={{position: 'absolute', bottom: '20px', left: '20px', width: '30px', height: '30px', borderBottom: '3px solid #D1D5DB', borderLeft: '3px solid #D1D5DB', borderBottomLeftRadius: '8px'}}></div>
+
+                <style>{`
+                    .camera-icon-hover:hover { transform: scale(1.1); }
+                `}</style>
+            </div>
+        );
+    }
+
+    // 2. Preview & Result State
+    return (
+        <div style={{position: 'relative', height: 'auto', minHeight: '300px', backgroundColor: 'black'}}>
+            <img src={preview} alt="Comida" style={{ width: '100%', height: 'auto', display: 'block', opacity: loading ? 0.6 : 1 }} />
+            
+            {loading && (
+                <div style={{position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, flexDirection: 'column', zIndex: 10}}>
+                     <div className="spinner" style={{width: '40px', height: '40px', border: '4px solid rgba(255,255,255,0.3)', borderTop: '4px solid white', borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: '15px'}}></div>
+                     <span style={{textShadow: '0 2px 4px rgba(0,0,0,0.5)'}}>Analizando platillo...</span>
+                     <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+                </div>
+            )}
+
+            {result && !loading && (
+                <div className="fade-in-up" style={{
+                    padding: '1.5rem', backgroundColor: 'white', 
+                    borderTopLeftRadius: '24px', borderTopRightRadius: '24px', 
+                    marginTop: '-30px', position: 'relative', zIndex: 10,
+                    boxShadow: '0 -10px 40px rgba(0,0,0,0.1)'
+                }}>
+                    <div style={{width: '40px', height: '4px', backgroundColor: '#E5E7EB', borderRadius: '2px', margin: '0 auto 1rem auto'}}></div>
                     
-                    {error && <p style={styles.error}>{error}</p>}
-
-                    {!result && !loading && (
-                        <button onClick={handleAnalyze} className="button-primary" style={{ width: '100%', padding: '0.8rem' }}>
-                            {ICONS.sparkles} Analizar con IA
+                    <h4 style={{margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                        <span style={{color: 'var(--primary-color)'}}>{ICONS.sparkles}</span> Análisis IA
+                    </h4>
+                    <p style={{margin: '0 0 1.5rem 0', fontSize: '0.95rem', color: 'var(--text-light)', lineHeight: 1.6}}>{result}</p>
+                    
+                    <div style={{display: 'flex', gap: '1rem'}}>
+                        <button 
+                            onClick={() => { setFile(null); setPreview(null); }} 
+                            style={{flex: 1, padding: '1rem', border: '1px solid var(--border-color)', borderRadius: '12px', background: 'white', fontWeight: 600, cursor: 'pointer', color: 'var(--text-color)'}}
+                        >
+                            Reintentar
                         </button>
-                    )}
-
-                    {loading && <div style={{textAlign: 'center', color: 'var(--primary-color)', fontWeight: 600}}>Analizando...</div>}
-
-                    {result && (
-                        <div className="fade-in">
-                            <div style={{padding: '1rem', backgroundColor: 'var(--surface-hover-color)', borderRadius: '12px', marginBottom: '1rem', fontSize: '0.9rem', lineHeight: 1.5}}>
-                                <strong>Análisis IA:</strong> {result}
-                            </div>
-                            
-                            <div style={{marginBottom: '1rem'}}>
-                                <label style={{display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: 600}}>Tipo de Comida</label>
-                                <select 
-                                    value={selectedMealType} 
-                                    onChange={(e) => setSelectedMealType(e.target.value)}
-                                    style={{width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--background-color)'}}
-                                >
-                                    <option value="desayuno">Desayuno</option>
-                                    <option value="colacion_1">Colación 1</option>
-                                    <option value="comida">Comida</option>
-                                    <option value="colacion_2">Colación 2</option>
-                                    <option value="cena">Cena</option>
-                                    <option value="snack">Snack</option>
-                                </select>
-                            </div>
-
-                            <div style={{display: 'flex', gap: '0.75rem'}}>
-                                <button onClick={() => { setFile(null); setPreview(null); setResult(null); }} className="button-secondary" style={{flex: 1}}>Cancelar</button>
-                                <button onClick={handleSaveToJournal} disabled={saving} className="button-primary" style={{flex: 1}}>
-                                    {saving ? 'Guardando...' : 'Guardar en Diario'}
-                                </button>
-                            </div>
-                        </div>
-                    )}
+                        <button 
+                            onClick={handleSaveToJournal} 
+                            disabled={saving}
+                            className="button-primary" 
+                            style={{flex: 1, padding: '1rem', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, boxShadow: '0 4px 15px rgba(var(--primary-rgb), 0.3)'}}
+                        >
+                            {saving ? 'Guardando...' : 'Guardar ✅'}
+                        </button>
+                    </div>
+                </div>
+            )}
+             {error && (
+                <div style={{position: 'absolute', bottom: 0, left: 0, right: 0, padding: '1rem', backgroundColor: '#FEF2F2', color: '#DC2626', textAlign: 'center', zIndex: 20}}>
+                    {error} <button onClick={() => {setFile(null); setPreview(null);}} style={{marginLeft: '10px', textDecoration: 'underline', border: 'none', background: 'none', color: 'inherit', fontWeight: 'bold', cursor: 'pointer'}}>Reintentar</button>
                 </div>
             )}
         </div>

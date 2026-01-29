@@ -1,3 +1,4 @@
+
 import React, { FC } from 'react';
 import { supabase } from '../../supabase';
 import { PatientJournalEntry } from '../../types';

@@ -3,8 +3,6 @@ import React, { FC, useMemo, useState } from 'react';
 import { supabase } from '../../supabase';
 import { ConsultationWithLabs, GamificationLog, DailyCheckin } from '../../types';
 import ProgressChart from '../../components/shared/ProgressChart';
-import ConfirmationModal from '../../components/shared/ConfirmationModal';
-import DailyCheckinFormModal from '../../components/patient_portal/DailyCheckinFormModal';
 import { styles } from '../../constants';
 import { ICONS } from '../AuthPage';
 
@@ -16,250 +14,178 @@ interface MyProgressPageProps {
 }
 
 const MyProgressPage: FC<MyProgressPageProps> = ({ consultations, gamificationLogs, checkins, onDataRefresh }) => {
-    const [activeTab, setActiveTab] = useState<'metricas' | 'recompensas' | 'registros'>('metricas');
-    const [editingCheckin, setEditingCheckin] = useState<DailyCheckin | null>(null);
-    const [deletingCheckin, setDeletingCheckin] = useState<DailyCheckin | null>(null);
-
-    const handleConfirmDelete = async () => {
-        if (!deletingCheckin) return;
-        const { error } = await supabase.from('daily_checkins').delete().eq('id', deletingCheckin.id);
-        if (error) console.error("Error deleting checkin:", error);
-        else onDataRefresh();
-        setDeletingCheckin(null);
-    };
+    const [viewRange, setViewRange] = useState<'1m' | '3m' | 'all'>('3m');
 
     // Filter and sort data for charts
     const sortedConsultations = useMemo(() => 
         [...consultations].sort((a, b) => new Date(a.consultation_date).getTime() - new Date(b.consultation_date).getTime()), 
     [consultations]);
 
-    const weightData = useMemo(() => sortedConsultations.filter(c => c.weight_kg != null).map(c => ({ date: c.consultation_date, value: c.weight_kg! })), [sortedConsultations]);
-    const imcData = useMemo(() => sortedConsultations.filter(c => c.imc != null).map(c => ({ date: c.consultation_date, value: c.imc! })), [sortedConsultations]);
+    const filteredConsultations = useMemo(() => {
+        if (viewRange === 'all') return sortedConsultations;
+        const now = new Date();
+        const cutoff = new Date();
+        if (viewRange === '1m') cutoff.setMonth(now.getMonth() - 1);
+        if (viewRange === '3m') cutoff.setMonth(now.getMonth() - 3);
+        return sortedConsultations.filter(c => new Date(c.consultation_date) >= cutoff);
+    }, [sortedConsultations, viewRange]);
+
+    const weightData = useMemo(() => filteredConsultations.filter(c => c.weight_kg != null).map(c => ({ date: c.consultation_date, value: c.weight_kg! })), [filteredConsultations]);
     
-    // Calculate key stats for the summary cards
+    // Stats Calculation
     const stats = useMemo(() => {
-        if (weightData.length < 1) return null;
-        const currentWeight = weightData[weightData.length - 1].value;
-        const startWeight = weightData[0].value;
+        if (sortedConsultations.length < 1) return null;
+        const start = sortedConsultations[0];
+        const current = sortedConsultations[sortedConsultations.length - 1];
+        
+        const startWeight = start.weight_kg || 0;
+        const currentWeight = current.weight_kg || 0;
         const diff = currentWeight - startWeight;
         const isLoss = diff < 0;
+
         return {
-            current: currentWeight,
-            start: startWeight,
+            startWeight,
+            currentWeight,
             diff: Math.abs(diff).toFixed(1),
-            trend: isLoss ? 'down' : 'up'
+            trend: isLoss ? 'down' : 'up',
+            startDate: new Date(start.consultation_date).toLocaleDateString('es-MX', {month: 'short', year: 'numeric'}),
+            currentDate: new Date(current.consultation_date).toLocaleDateString('es-MX', {month: 'short', day: 'numeric'})
         };
-    }, [weightData]);
+    }, [sortedConsultations]);
 
-    const getGamificationIcon = (reason: string) => {
-        const lower = reason.toLowerCase();
-        if (lower.includes('rango') || lower.includes('leyenda')) return '🏆';
-        if (lower.includes('asistencia')) return '📅';
-        if (lower.includes('plan')) return '🥗';
-        if (lower.includes('rutina')) return '💪';
-        if (lower.includes('registro')) return '📝';
-        return '⭐';
-    };
-    
-    const renderEmptyState = (text: string, icon: React.ReactNode) => (
-        <div style={{ 
-            textAlign: 'center', 
-            padding: '4rem 2rem', 
-            color: 'var(--text-light)', 
-            backgroundColor: 'var(--surface-color)', 
-            borderRadius: '16px', 
-            border: '1px dashed var(--border-color)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '1rem'
+    const totalPoints = gamificationLogs.reduce((acc, l) => acc + l.points_awarded, 0);
+
+    const StatCard = ({ label, value, color, icon }: { label: string, value: string, color: string, icon: string }) => (
+        <div style={{
+            backgroundColor: 'white', borderRadius: '20px', padding: '1.5rem',
+            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', flex: 1,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
+            border: '1px solid var(--border-color)'
         }}>
-            <div style={{fontSize: '3rem', opacity: 0.5}}>{icon}</div>
-            <p style={{margin: 0, fontSize: '1.1rem'}}>{text}</p>
-        </div>
-    );
-    
-    const StatCard: FC<{ label: string; value: string; subtext?: React.ReactNode; icon: React.ReactNode }> = ({ label, value, subtext, icon }) => (
-        <div style={{ backgroundColor: 'var(--surface-color)', padding: '1.25rem', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
-                <span style={{fontSize: '0.8rem', color: 'var(--text-light)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px'}}>{label}</span>
-                <span style={{color: 'var(--primary-color)'}}>{icon}</span>
+            <div style={{fontSize: '2rem', marginBottom: '0.5rem', backgroundColor: `${color}20`, padding: '10px', borderRadius: '50%', width: '60px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                {icon}
             </div>
-            <div style={{fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-color)'}}>{value}</div>
-            {subtext && <div style={{fontSize: '0.85rem'}}>{subtext}</div>}
+            <div style={{fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-color)'}}>{value}</div>
+            <div style={{fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 600, textTransform: 'uppercase'}}>{label}</div>
         </div>
     );
 
-    const TabButton: FC<{ id: typeof activeTab; label: string; icon: React.ReactNode }> = ({ id, label, icon }) => (
-        <button 
-            onClick={() => setActiveTab(id)}
-            style={{
-                flex: 1,
-                padding: '0.75rem 0.5rem',
-                borderRadius: '12px',
-                border: 'none',
-                backgroundColor: activeTab === id ? 'var(--surface-color)' : 'transparent',
-                color: activeTab === id ? 'var(--primary-color)' : 'var(--text-light)',
-                fontWeight: activeTab === id ? 700 : 500,
-                cursor: 'pointer',
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                boxShadow: activeTab === id ? '0 2px 8px rgba(0,0,0,0.05)' : 'none',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem',
-                fontSize: '0.9rem'
-            }}
-        >
-            <span style={{fontSize: '1.1rem'}}>{icon}</span>
-            {label}
-        </button>
+    const AchievementCard = ({ title, points, icon, unlocked }: { title: string, points: number, icon: string, unlocked: boolean }) => (
+        <div style={{
+            backgroundColor: unlocked ? 'white' : '#F3F4F6', 
+            borderRadius: '16px', padding: '1rem',
+            border: unlocked ? '1px solid #E5E7EB' : '1px dashed #D1D5DB',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
+            opacity: unlocked ? 1 : 0.6,
+            boxShadow: unlocked ? '0 4px 6px rgba(0,0,0,0.05)' : 'none'
+        }}>
+            <div style={{fontSize: '2.5rem', marginBottom: '0.5rem', filter: unlocked ? 'none' : 'grayscale(100%)'}}>
+                {icon}
+            </div>
+            <h4 style={{margin: '0 0 0.25rem 0', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-color)'}}>{title}</h4>
+            <span style={{fontSize: '0.75rem', fontWeight: 600, color: unlocked ? '#10B981' : 'var(--text-light)', backgroundColor: unlocked ? '#ECFDF5' : 'transparent', padding: '2px 8px', borderRadius: '10px'}}>
+                {unlocked ? `+${points} pts` : 'Bloqueado'}
+            </span>
+        </div>
     );
 
     return (
-        <div className="fade-in" style={{ maxWidth: '1000px', margin: '0 auto' }}>
-            {editingCheckin && <DailyCheckinFormModal isOpen={!!editingCheckin} onClose={() => setEditingCheckin(null)} onSave={() => { setEditingCheckin(null); onDataRefresh(); }} checkinToEdit={editingCheckin} />}
-            {deletingCheckin && <ConfirmationModal isOpen={!!deletingCheckin} onClose={() => setDeletingCheckin(null)} onConfirm={handleConfirmDelete} title="Confirmar Eliminación" message={<p>¿Eliminar el registro del {new Date((deletingCheckin.checkin_date as string).replace(/-/g, '/')).toLocaleDateString('es-MX')}?</p>} confirmText="Sí, eliminar" />}
-
-            <div style={{marginBottom: '2rem'}}>
-                <h1 style={{ margin: '0 0 0.5rem 0', fontSize: '2rem', fontWeight: 800 }}>Mi Progreso</h1>
-                <p style={{ margin: 0, color: 'var(--text-light)' }}>
-                    Tu evolución en cifras y logros.
-                </p>
-            </div>
+        <div className="fade-in" style={{ maxWidth: '600px', margin: '0 auto', padding: '1rem 1rem 4rem 1rem' }}>
             
-            {/* Segmented Control Navigation */}
-            <div style={{ 
-                backgroundColor: 'var(--surface-hover-color)', 
-                padding: '4px', 
-                borderRadius: '16px', 
-                display: 'flex', 
-                marginBottom: '2rem',
-                border: '1px solid var(--border-color)'
-            }}>
-                <TabButton id="metricas" label="Métricas" icon={ICONS.activity} />
-                <TabButton id="recompensas" label="Logros" icon={ICONS.sparkles} />
-                <TabButton id="registros" label="Diario" icon={ICONS.edit} />
+            {/* Header / Range Selector */}
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem'}}>
+                <h1 style={{margin: 0, fontSize: '1.5rem', fontWeight: 800}}>Mi Progreso</h1>
+                <div style={{backgroundColor: '#F3F4F6', borderRadius: '20px', padding: '4px', display: 'flex'}}>
+                    {['1m', '3m', 'all'].map((r) => (
+                        <button 
+                            key={r} 
+                            onClick={() => setViewRange(r as any)}
+                            style={{
+                                padding: '6px 12px', borderRadius: '16px', border: 'none',
+                                backgroundColor: viewRange === r ? '#111827' : 'transparent',
+                                color: viewRange === r ? 'white' : '#6B7280',
+                                fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            {r === 'all' ? 'Todo' : r.toUpperCase()}
+                        </button>
+                    ))}
+                </div>
             </div>
-            
-            <div className="fade-in">
-                {activeTab === 'metricas' && (
-                    <div style={{display: 'flex', flexDirection: 'column', gap: '2rem'}}>
-                        {/* Quick Stats Cards */}
-                        {stats && (
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <StatCard 
-                                    label="Peso Actual" 
-                                    value={`${stats.current} kg`} 
-                                    icon={ICONS.user}
-                                    subtext={
-                                        <span style={{color: stats.trend === 'down' ? '#10B981' : '#F59E0B', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px'}}>
-                                            {stats.trend === 'down' ? '↘' : '↗'} {stats.diff} kg {stats.trend === 'down' ? 'perdidos' : 'cambio'}
-                                        </span>
-                                    }
-                                />
-                                <StatCard 
-                                    label="IMC Actual" 
-                                    value={`${imcData[imcData.length-1]?.value || '-'}`} 
-                                    icon={ICONS.activity} 
-                                    subtext={<span style={{color: 'var(--text-light)'}}>Índice de Masa Corporal</span>}
-                                />
-                            </div>
-                        )}
 
-                        {/* Charts */}
-                        {weightData.length > 0 ? (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
-                                <ProgressChart title="Evolución de Peso" data={weightData} unit="kg" />
-                                <ProgressChart title="Historial de IMC" data={imcData} unit="pts" color="#8B5CF6" />
-                            </div>
-                        ) : renderEmptyState("Registra tu peso en consultas para ver tu evolución.", ICONS.activity)}
-                    </div>
-                )}
-
-                {activeTab === 'recompensas' && (
+            {/* Weight Chart Card */}
+            <div style={{backgroundColor: 'white', borderRadius: '24px', padding: '1.5rem', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)', marginBottom: '2rem', border: '1px solid var(--border-color)'}}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1rem'}}>
                     <div>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                            <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>Historial de Puntos</h2>
-                            <div style={{ backgroundColor: 'var(--primary-light)', color: 'var(--primary-dark)', padding: '4px 12px', borderRadius: '20px', fontWeight: 700, fontSize: '0.9rem' }}>
-                                Total: {gamificationLogs.reduce((acc, l) => acc + l.points_awarded, 0)}
+                        <p style={{margin: 0, color: 'var(--text-light)', fontSize: '0.9rem'}}>Peso Actual</p>
+                        <h2 style={{margin: 0, fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-color)'}}>
+                            {stats?.currentWeight} <span style={{fontSize: '1rem', fontWeight: 500}}>kg</span>
+                        </h2>
+                    </div>
+                    {stats && (
+                        <div style={{textAlign: 'right'}}>
+                            <div style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                backgroundColor: stats.trend === 'down' ? '#ECFDF5' : '#FEF2F2',
+                                color: stats.trend === 'down' ? '#059669' : '#DC2626',
+                                padding: '6px 12px', borderRadius: '20px', fontWeight: 700, fontSize: '0.9rem'
+                            }}>
+                                {stats.trend === 'down' ? '↓' : '↑'} {stats.diff} kg
                             </div>
                         </div>
-
-                        {gamificationLogs.length > 0 ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                {gamificationLogs.map(log => (
-                                    <div key={log.id} style={{ 
-                                        display: 'flex', alignItems: 'center', gap: '1rem', 
-                                        backgroundColor: 'var(--surface-color)', padding: '1.25rem', 
-                                        borderRadius: '16px', border: '1px solid var(--border-color)',
-                                        boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-                                    }}>
-                                        <div style={{ 
-                                            fontSize: '1.5rem', backgroundColor: 'var(--surface-hover-color)', 
-                                            width: '50px', height: '50px', borderRadius: '16px', 
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            boxShadow: 'inset 0 0 0 1px var(--border-color)'
-                                        }}>
-                                            {getGamificationIcon(log.reason)}
-                                        </div>
-                                        <div style={{ flex: 1 }}>
-                                            <p style={{ margin: 0, fontWeight: 600, color: 'var(--text-color)', fontSize: '1rem' }}>{log.reason}</p>
-                                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-light)' }}>
-                                                {new Date(log.created_at).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
-                                            </p>
-                                        </div>
-                                        <div style={{ fontWeight: 800, color: '#10B981', fontSize: '1.1rem' }}>
-                                            +{log.points_awarded}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : renderEmptyState("Completa actividades para ganar puntos y subir de nivel.", "🏆")}
-                    </div>
-                )}
-
-                {activeTab === 'registros' && (
-                    <div>
-                         <h2 style={{ margin: '0 0 1.5rem 0', fontSize: '1.2rem', fontWeight: 700 }}>Tu Diario</h2>
-                        {checkins.length > 0 ? (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
-                                {checkins.map(checkin => {
-                                    const date = new Date(checkin.checkin_date.replace(/-/g, '/'));
-                                    return (
-                                    <div key={checkin.id} style={{ backgroundColor: 'var(--surface-color)', borderRadius: '16px', border: '1px solid var(--border-color)', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-                                        <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--surface-hover-color)' }}>
-                                            <div>
-                                                <span style={{fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-light)', textTransform: 'uppercase'}}>{date.toLocaleDateString('es-MX', { month: 'short' })}</span>
-                                                <div style={{fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-color)', lineHeight: 1}}>{date.getDate()}</div>
-                                            </div>
-                                            <div style={{display: 'flex', gap: '0.5rem'}}>
-                                                <button onClick={() => setEditingCheckin(checkin)} style={{...styles.iconButton, backgroundColor: 'var(--surface-color)'}}>{ICONS.edit}</button>
-                                                <button onClick={() => setDeletingCheckin(checkin)} style={{...styles.iconButton, backgroundColor: 'var(--surface-color)', color: 'var(--error-color)'}}>{ICONS.delete}</button>
-                                            </div>
-                                        </div>
-                                        <div style={{ padding: '1.25rem', flex: 1 }}>
-                                            <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem' }}>
-                                                <div>
-                                                    <span style={{fontSize: '0.7rem', color: 'var(--text-light)', fontWeight: 700, display: 'block', marginBottom: '4px'}}>ÁNIMO</span>
-                                                    <div style={{color: '#2DD4BF', letterSpacing: '2px'}}>{'★'.repeat(checkin.mood_rating || 0)}<span style={{color: 'var(--border-color)'}}>{'★'.repeat(5 - (checkin.mood_rating || 0))}</span></div>
-                                                </div>
-                                                 <div>
-                                                    <span style={{fontSize: '0.7rem', color: 'var(--text-light)', fontWeight: 700, display: 'block', marginBottom: '4px'}}>ENERGÍA</span>
-                                                    <div style={{color: '#F59E0B', letterSpacing: '2px'}}>{'⚡'.repeat(checkin.energy_level_rating || 0)}<span style={{color: 'var(--border-color)'}}>{'⚡'.repeat(5 - (checkin.energy_level_rating || 0))}</span></div>
-                                                </div>
-                                            </div>
-                                            {checkin.notes ? (
-                                                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-color)', fontStyle: 'italic', lineHeight: 1.5 }}>"{checkin.notes}"</p>
-                                            ) : <span style={{fontSize: '0.85rem', color: 'var(--text-light)'}}>Sin notas adicionales.</span>}
-                                        </div>
-                                    </div>
-                                )})}
-                            </div>
-                        ) : renderEmptyState("Registra cómo te sientes cada día para llevar un control.", "📝")}
-                    </div>
-                )}
+                    )}
+                </div>
+                <ProgressChart title="" data={weightData} unit="kg" color="#10B981" />
             </div>
+
+            {/* Transformation Summary */}
+            {stats && (
+                <div style={{marginBottom: '2.5rem'}}>
+                    <h3 style={{margin: '0 0 1rem 0', fontSize: '1.1rem', fontWeight: 700}}>Transformación</h3>
+                    <div style={{
+                        display: 'flex', backgroundColor: '#1F2937', borderRadius: '24px', padding: '1.5rem', color: 'white',
+                        position: 'relative', overflow: 'hidden'
+                    }}>
+                        <div style={{flex: 1, position: 'relative', zIndex: 1}}>
+                            <p style={{margin: 0, fontSize: '0.8rem', opacity: 0.7}}>ANTES ({stats.startDate})</p>
+                            <p style={{margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 700}}>{stats.startWeight}kg</p>
+                        </div>
+                        
+                        <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 1rem'}}>
+                            <div style={{width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>➜</div>
+                        </div>
+
+                        <div style={{flex: 1, textAlign: 'right', position: 'relative', zIndex: 1}}>
+                            <p style={{margin: 0, fontSize: '0.8rem', opacity: 0.7}}>AHORA</p>
+                            <p style={{margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 700, color: '#38BDF8'}}>{stats.currentWeight}kg</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Achievements Section */}
+            <div>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem'}}>
+                    <h3 style={{margin: 0, fontSize: '1.1rem', fontWeight: 700}}>Logros</h3>
+                    <span style={{fontSize: '0.9rem', color: 'var(--primary-color)', fontWeight: 600}}>Ver todos</span>
+                </div>
+                
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                    <StatCard label="Racha Actual" value={`${gamificationLogs.length > 0 ? '5' : '0'}`} icon="🔥" color="#F59E0B" />
+                    <StatCard label="Puntos Totales" value={`${totalPoints}`} icon="⭐" color="#8B5CF6" />
+                </div>
+
+                <div style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginTop: '1rem'}}>
+                    <AchievementCard title="Inicio" points={100} icon="🚀" unlocked={totalPoints >= 100} />
+                    <AchievementCard title="-5kg" points={500} icon="⚖️" unlocked={totalPoints >= 500} />
+                    <AchievementCard title="Racha 7" points={300} icon="🔥" unlocked={totalPoints >= 300} />
+                    <AchievementCard title="Gym Pro" points={1000} icon="💪" unlocked={totalPoints >= 1000} />
+                    <AchievementCard title="Chef" points={200} icon="👨‍🍳" unlocked={totalPoints >= 200} />
+                    <AchievementCard title="Hidratado" points={150} icon="💧" unlocked={totalPoints >= 150} />
+                </div>
+            </div>
+
         </div>
     );
 };

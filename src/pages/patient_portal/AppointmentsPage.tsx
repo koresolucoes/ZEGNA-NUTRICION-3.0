@@ -8,14 +8,12 @@ import { supabase } from '../../supabase';
 import ConfirmationModal from '../../components/shared/ConfirmationModal';
 
 const appointmentStatusMap: { [key: string]: { text: string; color: string; bg: string; icon: React.ReactNode } } = {
-    'pending-approval': { text: 'Pendiente', color: '#EAB308', bg: '#FEF9C3', icon: ICONS.clock },
-    scheduled: { text: 'Confirmada', color: '#10B981', bg: '#D1FAE5', icon: ICONS.check },
-    completed: { text: 'Completada', color: '#6B7280', bg: '#F3F4F6', icon: ICONS.check },
-    cancelled: { text: 'Cancelada', color: '#EF4444', bg: '#FEE2E2', icon: ICONS.close },
-    'no-show': { text: 'No Asistió', color: '#EF4444', bg: '#FEE2E2', icon: ICONS.close },
-    'checked-in': { text: 'En Espera', color: '#3B82F6', bg: '#DBEAFE', icon: ICONS.activity },
-    'in-consultation': { text: 'En Consulta', color: '#8B5CF6', bg: '#EDE9FE', icon: ICONS.activity },
-    'called': { text: 'Llamando', color: '#F59E0B', bg: '#FEF3C7', icon: ICONS.activity },
+    'pending-approval': { text: 'Pendiente', color: '#B45309', bg: '#FEF3C7', icon: ICONS.clock },
+    scheduled: { text: 'Confirmada', color: '#047857', bg: '#D1FAE5', icon: ICONS.check },
+    completed: { text: 'Completada', color: '#374151', bg: '#F3F4F6', icon: ICONS.check },
+    cancelled: { text: 'Cancelada', color: '#B91C1C', bg: '#FEE2E2', icon: ICONS.close },
+    'no-show': { text: 'No Asistió', color: '#B91C1C', bg: '#FEE2E2', icon: ICONS.close },
+    'in-consultation': { text: 'En Curso', color: '#4338CA', bg: '#E0E7FF', icon: ICONS.activity },
 };
 
 const AppointmentsPage: FC<{ 
@@ -29,7 +27,6 @@ const AppointmentsPage: FC<{
     const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
     const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
     const [appointmentToCancel, setAppointmentToCancel] = useState<AppointmentWithPerson | null>(null);
-    const [appointmentToReschedule, setAppointmentToReschedule] = useState<AppointmentWithPerson | null>(null);
     const [activeTab, setActiveTab] = useState<'upcoming' | 'history'>('upcoming');
 
     useEffect(() => {
@@ -41,27 +38,6 @@ const AppointmentsPage: FC<{
         };
         fetchTeam();
     }, [person]);
-
-    const { usedConsultations, maxConsultations } = useMemo(() => {
-        const plan = servicePlans.find(p => p.id === person.current_plan_id);
-        if (plan && person.subscription_start_date && person.subscription_end_date) {
-            const startDate = person.subscription_start_date;
-            const endDate = person.subscription_end_date;
-            const used = appointments.filter(a => {
-                const isConsumingStatus = ['scheduled', 'completed', 'in-consultation', 'called', 'checked-in'].includes(a.status);
-                if (!isConsumingStatus) return false;
-                const apptDate = a.start_time.substring(0, 10);
-                return apptDate >= startDate && apptDate <= endDate;
-            }).length;
-            return { usedConsultations: used, maxConsultations: plan.max_consultations };
-        }
-        return { usedConsultations: 0, maxConsultations: null };
-    }, [person, servicePlans, appointments]);
-
-    const consultationLimitReached = useMemo(() => {
-        if (maxConsultations === null || maxConsultations === 0) return false;
-        return usedConsultations >= maxConsultations;
-    }, [usedConsultations, maxConsultations]);
 
     const { upcoming, past } = useMemo(() => {
         const upcomingList: AppointmentWithPerson[] = [];
@@ -83,8 +59,6 @@ const AppointmentsPage: FC<{
         };
     }, [appointments]);
 
-    const memberMap = useMemo(() => new Map(teamMembers.map(m => [m.user_id, m])), [teamMembers]);
-
     const handleCancelAppointment = async () => {
         if (!appointmentToCancel) return;
         const { error } = await supabase.from('appointments').update({ status: 'cancelled' }).eq('id', appointmentToCancel.id);
@@ -92,103 +66,70 @@ const AppointmentsPage: FC<{
         else onDataRefresh();
         setAppointmentToCancel(null);
     };
-    
-    const handleRequestReschedule = (appt: AppointmentWithPerson) => {
-        setAppointmentToReschedule(appt);
-        setIsRequestModalOpen(true);
-    };
 
-    const handleSaveFromModal = async () => {
-        if (appointmentToReschedule) {
-            await supabase.from('appointments').update({ status: 'cancelled', notes: `Cancelada para reagendar. Nueva solicitud creada.` }).eq('id', appointmentToReschedule.id);
-            setAppointmentToReschedule(null);
-        }
-        setIsRequestModalOpen(false);
-        onDataRefresh();
-    };
-
-    const handleCloseRequestModal = () => {
-        setIsRequestModalOpen(false);
-        setAppointmentToReschedule(null);
-    };
-
-    // Ticket Card Component
-    const AppointmentCard: FC<{ appt: AppointmentWithPerson; onCancel: (appt: AppointmentWithPerson) => void; onReschedule: (appt: AppointmentWithPerson) => void; isUpcoming: boolean }> = ({ appt, onCancel, onReschedule, isUpcoming }) => {
-        const nutritionist = appt.user_id ? memberMap.get(appt.user_id) : null;
-        const canTakeAction = isUpcoming && ['scheduled', 'pending-approval'].includes(appt.status);
+    const AppointmentCard: FC<{ appt: AppointmentWithPerson; canCancel?: boolean }> = ({ appt, canCancel }) => {
         const dateObj = new Date(appt.start_time);
-        const month = dateObj.toLocaleDateString('es-MX', { month: 'short' }).toUpperCase();
         const day = dateObj.getDate();
+        const month = dateObj.toLocaleDateString('es-MX', { month: 'short' }).toUpperCase();
         const time = dateObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
         const weekday = dateObj.toLocaleDateString('es-MX', { weekday: 'long' });
         const statusConfig = appointmentStatusMap[appt.status] || appointmentStatusMap['scheduled'];
 
         return (
-            <div style={{
+            <div className="fade-in" style={{
                 display: 'flex',
-                backgroundColor: 'var(--surface-color)',
-                borderRadius: '16px',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                backgroundColor: 'white',
+                borderRadius: '20px',
+                boxShadow: '0 4px 15px -3px rgba(0,0,0,0.05)',
                 overflow: 'hidden',
                 marginBottom: '1rem',
                 border: '1px solid var(--border-color)',
-                transition: 'transform 0.2s',
-            }} className="card-hover">
-                {/* Left Date Column - The "Stub" */}
+            }}>
+                {/* Left: Date Block */}
                 <div style={{
-                    backgroundColor: 'var(--surface-hover-color)',
-                    width: '80px',
+                    width: '85px',
+                    backgroundColor: '#F8FAFC',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    padding: '1rem 0.5rem',
-                    borderRight: '2px dashed var(--border-color)',
-                    position: 'relative'
+                    borderRight: '1px dashed #E5E7EB',
+                    padding: '0 10px'
                 }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-light)', textTransform: 'uppercase' }}>{month}</span>
-                    <span style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-color)', lineHeight: 1, margin: '4px 0' }}>{day}</span>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-light)' }}>{dateObj.getFullYear()}</span>
-                    
-                    {/* Perforation circles visual effect */}
-                    <div style={{position: 'absolute', top: '-6px', right: '-6px', width: '12px', height: '12px', backgroundColor: 'var(--background-color)', borderRadius: '50%', border: '1px solid var(--border-color)'}}></div>
-                    <div style={{position: 'absolute', bottom: '-6px', right: '-6px', width: '12px', height: '12px', backgroundColor: 'var(--background-color)', borderRadius: '50%', border: '1px solid var(--border-color)'}}></div>
+                    <span style={{fontSize: '0.8rem', fontWeight: 700, color: '#9CA3AF'}}>{month}</span>
+                    <span style={{fontSize: '1.8rem', fontWeight: 800, color: '#1F2937', lineHeight: 1}}>{day}</span>
+                    <span style={{fontSize: '0.7rem', color: '#9CA3AF'}}>{dateObj.getFullYear()}</span>
                 </div>
 
-                {/* Right Content Column */}
-                <div style={{ flex: 1, padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+                {/* Right: Details */}
+                <div style={{ flex: 1, padding: '1.25rem' }}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem'}}>
                          <div>
-                             <span style={{fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-light)', fontWeight: 600, letterSpacing: '0.5px'}}>{weekday} • {time}</span>
-                             <h3 style={{ margin: '4px 0 0 0', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-color)', lineHeight: 1.2 }}>{appt.title}</h3>
+                             <h3 style={{margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-color)'}}>{appt.title}</h3>
+                             <p style={{margin: '0.25rem 0 0 0', fontSize: '0.9rem', color: '#6B7280', textTransform: 'capitalize'}}>
+                                 {weekday} • {time}
+                             </p>
                          </div>
-                         <span style={{
+                         <div style={{
                              backgroundColor: statusConfig.bg, color: statusConfig.color,
-                             padding: '4px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700,
-                             textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap'
+                             padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700,
+                             display: 'flex', alignItems: 'center', gap: '4px'
                          }}>
                              {statusConfig.text}
-                         </span>
+                         </div>
                     </div>
 
-                    {nutritionist && (
-                        <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 'auto', paddingTop: '0.5rem'}}>
-                             <img 
-                                src={nutritionist.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${nutritionist.full_name || '?'}&radius=50`} 
-                                alt="avatar" 
-                                style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} 
-                            />
-                            <span style={{ fontSize: '0.9rem', color: 'var(--text-color)' }}>{nutritionist.full_name}</span>
-                        </div>
-                    )}
-
-                    {canTakeAction && (
-                        <div style={{ display: 'flex', gap: '0.75rem', paddingTop: '1rem', marginTop: '0.5rem', borderTop: '1px solid var(--border-color)' }}>
-                            <button onClick={(e) => {e.stopPropagation(); onReschedule(appt)}} className="button-secondary" style={{ flex: 1, fontSize: '0.85rem', padding: '0.5rem' }}>
-                                Reagendar
-                            </button>
-                            <button onClick={(e) => {e.stopPropagation(); onCancel(appt)}} style={{ flex: 1, fontSize: '0.85rem', padding: '0.5rem', backgroundColor: 'var(--error-bg)', color: 'var(--error-color)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}>
-                                Cancelar
+                    {canCancel && (
+                        <div style={{marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #F3F4F6'}}>
+                            <button 
+                                onClick={() => setAppointmentToCancel(appt)}
+                                style={{
+                                    width: '100%', padding: '0.6rem', border: '1px solid #FECACA', 
+                                    backgroundColor: '#FEF2F2', color: '#DC2626', borderRadius: '10px',
+                                    fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer'
+                                }}
+                            >
+                                Cancelar Cita
                             </button>
                         </div>
                     )}
@@ -198,61 +139,53 @@ const AppointmentsPage: FC<{
     };
 
     return (
-        <div className="fade-in" style={{ maxWidth: '800px', margin: '0 auto' }}>
+        <div className="fade-in" style={{ maxWidth: '600px', margin: '0 auto', padding: '1.5rem 1rem 5rem 1rem' }}>
              {appointmentToCancel && (
                 <ConfirmationModal
                     isOpen={!!appointmentToCancel}
                     onClose={() => setAppointmentToCancel(null)}
                     onConfirm={handleCancelAppointment}
-                    title="Confirmar Cancelación"
-                    message={<p>¿Estás seguro de que quieres cancelar esta cita? Esta acción no se puede deshacer.</p>}
-                    confirmText="Sí, cancelar cita"
+                    title="Cancelar Cita"
+                    message={<p>¿Seguro que deseas cancelar tu cita del <strong>{new Date(appointmentToCancel.start_time).toLocaleDateString()}</strong>?</p>}
+                    confirmText="Sí, cancelar"
                 />
             )}
+            
             {isRequestModalOpen && (
                 <AppointmentRequestModal
                     isOpen={isRequestModalOpen}
-                    onClose={handleCloseRequestModal}
-                    onSave={handleSaveFromModal}
+                    onClose={() => setIsRequestModalOpen(false)}
+                    onSave={() => { setIsRequestModalOpen(false); onDataRefresh(); }}
                     person={person}
                     teamMembers={teamMembers}
                 />
             )}
 
-            <div style={{...styles.pageHeader, marginBottom: '1.5rem', alignItems: 'center'}}>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem'}}>
                 <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 800 }}>Mis Citas</h1>
                 <button 
                     onClick={() => setIsRequestModalOpen(true)} 
-                    disabled={consultationLimitReached} 
+                    className="button-primary"
                     style={{
-                        backgroundColor: 'var(--primary-color)', color: 'white', border: 'none',
-                        padding: '0.8rem 1.5rem', borderRadius: '12px', fontWeight: 600, fontSize: '1rem',
-                        display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: consultationLimitReached ? 'not-allowed' : 'pointer',
-                        opacity: consultationLimitReached ? 0.6 : 1, boxShadow: '0 4px 12px rgba(56, 189, 248, 0.4)'
+                        padding: '0.7rem 1rem', borderRadius: '14px', fontSize: '0.9rem', fontWeight: 700,
+                        display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 10px rgba(56, 189, 248, 0.3)'
                     }}
                 >
-                    {ICONS.add} Solicitar Cita
+                    {ICONS.add} Agendar
                 </button>
             </div>
 
-            {consultationLimitReached && (
-                <div style={{ padding: '1rem', marginBottom: '2rem', backgroundColor: 'rgba(234, 179, 8, 0.1)', border: '1px solid #EAB308', borderRadius: '12px', color: '#EAB308', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.9rem' }}>
-                    <span style={{fontSize: '1.2rem'}}>⚠️</span>
-                    Has utilizado todas las citas de tu plan actual ({usedConsultations}/{maxConsultations}).
-                </div>
-            )}
-
-             {/* Segmented Control */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', padding: '4px', backgroundColor: 'var(--surface-hover-color)', borderRadius: '12px', marginBottom: '2rem', border: '1px solid var(--border-color)' }}>
+             {/* Custom Tab Switcher */}
+            <div style={{ backgroundColor: '#F3F4F6', padding: '4px', borderRadius: '14px', display: 'flex', marginBottom: '2rem' }}>
                  <button 
                     onClick={() => setActiveTab('upcoming')}
                     style={{
-                        padding: '0.75rem', border: 'none', borderRadius: '10px',
-                        backgroundColor: activeTab === 'upcoming' ? 'var(--surface-color)' : 'transparent',
-                        color: activeTab === 'upcoming' ? 'var(--primary-color)' : 'var(--text-light)',
-                        fontWeight: activeTab === 'upcoming' ? 700 : 500, cursor: 'pointer', fontSize: '0.9rem',
+                        flex: 1, padding: '0.75rem', borderRadius: '12px', border: 'none',
+                        backgroundColor: activeTab === 'upcoming' ? 'white' : 'transparent',
+                        color: activeTab === 'upcoming' ? '#111827' : '#6B7280',
+                        fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer',
                         boxShadow: activeTab === 'upcoming' ? '0 2px 5px rgba(0,0,0,0.05)' : 'none',
-                        transition: 'all 0.2s ease'
+                        transition: 'all 0.2s'
                     }}
                  >
                      Próximas
@@ -260,25 +193,36 @@ const AppointmentsPage: FC<{
                  <button 
                     onClick={() => setActiveTab('history')}
                     style={{
-                        padding: '0.75rem', border: 'none', borderRadius: '10px',
-                        backgroundColor: activeTab === 'history' ? 'var(--surface-color)' : 'transparent',
-                        color: activeTab === 'history' ? 'var(--primary-color)' : 'var(--text-light)',
-                        fontWeight: activeTab === 'history' ? 700 : 500, cursor: 'pointer', fontSize: '0.9rem',
+                        flex: 1, padding: '0.75rem', borderRadius: '12px', border: 'none',
+                        backgroundColor: activeTab === 'history' ? 'white' : 'transparent',
+                        color: activeTab === 'history' ? '#111827' : '#6B7280',
+                        fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer',
                         boxShadow: activeTab === 'history' ? '0 2px 5px rgba(0,0,0,0.05)' : 'none',
-                        transition: 'all 0.2s ease'
+                        transition: 'all 0.2s'
                     }}
                  >
                      Historial
                  </button>
             </div>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ minHeight: '300px' }}>
                 {activeTab === 'upcoming' ? (
-                    upcoming.length > 0 ? upcoming.map(appt => <AppointmentCard key={appt.id} appt={appt} onCancel={setAppointmentToCancel} onReschedule={handleRequestReschedule} isUpcoming={true} />) 
-                    : <div style={{textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-light)', backgroundColor: 'var(--surface-color)', borderRadius: '16px', border: '1px dashed var(--border-color)'}}><p style={{margin:0}}>No tienes citas próximas.</p></div>
+                    upcoming.length > 0 ? upcoming.map(appt => (
+                        <AppointmentCard key={appt.id} appt={appt} canCancel={true} />
+                    )) : (
+                        <div style={{textAlign: 'center', padding: '3rem', color: '#9CA3AF', border: '2px dashed #E5E7EB', borderRadius: '20px'}}>
+                             <div style={{fontSize: '3rem', marginBottom: '0.5rem'}}>📅</div>
+                             <p>No tienes citas próximas.</p>
+                        </div>
+                    )
                 ) : (
-                    past.length > 0 ? past.map(appt => <AppointmentCard key={appt.id} appt={appt} onCancel={() => {}} onReschedule={() => {}} isUpcoming={false} />) 
-                    : <div style={{textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-light)', backgroundColor: 'var(--surface-color)', borderRadius: '16px', border: '1px dashed var(--border-color)'}}><p style={{margin:0}}>No hay historial de citas.</p></div>
+                    past.length > 0 ? past.map(appt => (
+                        <AppointmentCard key={appt.id} appt={appt} canCancel={false} />
+                    )) : (
+                        <div style={{textAlign: 'center', padding: '3rem', color: '#9CA3AF', border: '2px dashed #E5E7EB', borderRadius: '20px'}}>
+                             <p>No hay historial de citas.</p>
+                        </div>
+                    )
                 )}
             </div>
         </div>
