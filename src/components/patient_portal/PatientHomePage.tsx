@@ -274,23 +274,23 @@ const PatientHomePage: FC<{
                          
                          <div style={{marginBottom: '2rem'}}>
                             <h4 style={{margin: '0 0 1rem 0', fontSize: '0.9rem', textTransform: 'uppercase', color: 'var(--text-light)', fontWeight: 800, letterSpacing: '1px', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem'}}>ALIMENTACIÓN</h4>
-                            {dietLogToShow ? (
+                            {todaysDietLog ? (
                                 <div style={{backgroundColor: 'var(--background-color)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)'}}>
-                                    <PlanItem label="Desayuno" content={dietLogToShow.desayuno || ''} />
-                                    <PlanItem label="Comida" content={dietLogToShow.comida || ''} />
-                                    <PlanItem label="Cena" content={dietLogToShow.cena || ''} />
+                                    <PlanItem label="Desayuno" content={todaysDietLog.desayuno || ''} />
+                                    <PlanItem label="Comida" content={todaysDietLog.comida || ''} />
+                                    <PlanItem label="Cena" content={todaysDietLog.cena || ''} />
                                     
-                                    {dietLogToShow.log_date === todayStr && !dietLogToShow.completed && (
+                                    {todaysDietLog.log_date === todayStr && !todaysDietLog.completed && (
                                          <button 
-                                            onClick={() => handleMarkComplete(dietLogToShow)} 
+                                            onClick={() => handleMarkComplete(todaysDietLog)} 
                                             disabled={!!updatingCompletion}
                                             className="button-primary"
                                             style={{width: '100%', marginTop: '1rem', padding: '0.8rem', fontSize: '1rem', fontWeight: 700}}
                                         >
-                                            {updatingCompletion === dietLogToShow.id ? 'Guardando...' : 'Marcar Completado'}
+                                            {updatingCompletion === todaysDietLog.id ? 'Guardando...' : 'Marcar Completado'}
                                         </button>
                                     )}
-                                    {dietLogToShow.completed && (
+                                    {todaysDietLog.completed && (
                                         <div style={{marginTop: '1rem', padding: '0.75rem', backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10B981', borderRadius: '8px', fontWeight: 700, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'}}>
                                             <span>✅</span> ¡Plan de hoy completado!
                                         </div>
@@ -301,15 +301,15 @@ const PatientHomePage: FC<{
 
                         <div>
                             <h4 style={{margin: '0 0 1rem 0', fontSize: '0.9rem', textTransform: 'uppercase', color: 'var(--text-light)', fontWeight: 800, letterSpacing: '1px', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem'}}>EJERCICIO</h4>
-                            {exerciseLogToShow ? (
+                            {todaysExerciseLog ? (
                                  <div style={{backgroundColor: 'var(--background-color)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)'}}>
-                                     <p style={{margin: 0, fontSize: '1rem', fontWeight: 500}}>{exerciseLogToShow.enfoque || 'Rutina General'}</p>
-                                      {exerciseLogToShow.log_date === todayStr && !exerciseLogToShow.completed && (
-                                         <button onClick={() => handleMarkComplete(exerciseLogToShow)} disabled={updatingCompletion === exerciseLogToShow.id} className="button-primary" style={{ width: '100%', marginTop: '1rem', padding: '0.8rem', fontSize: '1rem', fontWeight: 700 }}>
-                                            {updatingCompletion === exerciseLogToShow.id ? '...' : 'Marcar Completado'}
+                                     <p style={{margin: 0, fontSize: '1rem', fontWeight: 500}}>{todaysExerciseLog.enfoque || 'Rutina General'}</p>
+                                      {todaysExerciseLog.log_date === todayStr && !todaysExerciseLog.completed && (
+                                         <button onClick={() => handleMarkComplete(todaysExerciseLog)} disabled={updatingCompletion === todaysExerciseLog.id} className="button-primary" style={{ width: '100%', marginTop: '1rem', padding: '0.8rem', fontSize: '1rem', fontWeight: 700 }}>
+                                            {updatingCompletion === todaysExerciseLog.id ? '...' : 'Marcar Completado'}
                                         </button>
                                     )}
-                                     {exerciseLogToShow.completed && (
+                                     {todaysExerciseLog.completed && (
                                         <div style={{marginTop: '1rem', padding: '0.75rem', backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10B981', borderRadius: '8px', fontWeight: 700, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'}}>
                                             <span>✅</span> ¡Rutina completada!
                                         </div>
