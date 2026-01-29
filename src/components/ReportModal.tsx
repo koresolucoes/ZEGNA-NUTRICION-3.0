@@ -25,7 +25,7 @@ interface ReportModalProps {
 
 const modalRoot = document.getElementById('modal-root');
 
-const ReportModal: FC<ReportModalProps> = ({ person, consultations, onClose, nutritionistProfile, clinic, zIndex = 1200 }) => {
+const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, exerciseLogs, onClose, nutritionistProfile, clinic, zIndex = 1200 }) => {
     const [view, setView] = useState<'config' | 'preview'>('config');
     const [options, setOptions] = useState({
         page1_results: true,
@@ -95,6 +95,8 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, onClose, nut
             nutritionistProfile={nutritionistProfile}
             clinic={clinic}
             consultations={filteredConsultations}
+            dietLogs={dietLogs}
+            exerciseLogs={exerciseLogs}
             reportData={reportData}
             options={options}
         />
@@ -111,7 +113,8 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, onClose, nut
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
                      {Object.entries({
                         page1_results: "Resumen Clínico",
-                        page2_charts: "Historial y Tablas",
+                        page2_charts: "Gráficas de Progreso",
+                        page3_tables: "Plan Actual (Dieta/Ejercicio)",
                         page4_welcome: "Mensaje de Cierre"
                     }).map(([key, label]) => (
                         <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem', backgroundColor: 'var(--surface-hover-color)', borderRadius: '8px' }}>
@@ -121,7 +124,7 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, onClose, nut
                     ))}
                 </div>
 
-                <h3 style={{ fontSize: '1.1rem', color: 'var(--primary-color)', marginBottom: '1rem' }}>Rango de Fechas</h3>
+                <h3 style={{ fontSize: '1.1rem', color: 'var(--primary-color)', marginBottom: '1rem' }}>Rango de Fechas (Historial)</h3>
                 <div style={{display: 'flex', gap: '1rem'}}>
                     <div style={{flex: 1}}>
                         <label>Desde</label>
