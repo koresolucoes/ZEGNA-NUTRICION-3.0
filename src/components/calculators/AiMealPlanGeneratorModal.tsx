@@ -16,11 +16,12 @@ interface AiMealPlanGeneratorModalProps {
     planPortions: Record<string, string>;
     personId: string | null;
     persons?: Person[];
+    zIndex?: number; // New prop
 }
 
 const modalRoot = document.getElementById('modal-root');
 
-const AiMealPlanGeneratorModal: FC<AiMealPlanGeneratorModalProps> = ({ isOpen, onClose, onPlanSaved, equivalentsData, planPortions, personId, persons = [] }) => {
+const AiMealPlanGeneratorModal: FC<AiMealPlanGeneratorModalProps> = ({ isOpen, onClose, onPlanSaved, equivalentsData, planPortions, personId, persons = [], zIndex = 1200 }) => {
     const { clinic } = useClinic();
     
     const [localPersonId, setLocalPersonId] = useState<string | null>(personId);
@@ -312,7 +313,7 @@ La respuesta DEBE ser únicamente un objeto JSON válido.`;
     if (!isOpen || !modalRoot) return null;
 
     return createPortal(
-        <div style={styles.modalOverlay}>
+        <div style={{...styles.modalOverlay, zIndex: zIndex}}>
             <div style={{...styles.modalContent, maxWidth: '900px', height: '90vh', display: 'flex', flexDirection: 'column'}} className="fade-in">
                 <div style={styles.modalHeader}>
                     <h2 style={styles.modalTitle}>Generador de Plan Preciso (IA + SMAE)</h2>
@@ -329,7 +330,7 @@ La respuesta DEBE ser únicamente un objeto JSON válido.`;
                             border: '1px solid #F59E0B', 
                             borderRadius: '12px', 
                             padding: '1.5rem', 
-                            marginBottom: '1.5rem',
+                            marginBottom: '1.5rem', 
                             textAlign: 'center'
                         }}>
                             <div style={{fontSize: '3rem', marginBottom: '0.5rem'}}>⚠️</div>

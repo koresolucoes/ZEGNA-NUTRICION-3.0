@@ -146,6 +146,10 @@ interface DietPlannerProps {
 const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile, onPlanSaved, initialPlan, clearInitialPlan, knowledgeResources, customModalZIndex }) => {
     const { clinic, subscription } = useClinic();
     
+    // Calculate the Z-Index for sub-modals. If customModalZIndex is provided (Consultation Mode), use it + 10.
+    // Otherwise, default to a high value (1300) to beat the Sidebar (1100).
+    const subModalZIndex = customModalZIndex ? customModalZIndex + 50 : 1300;
+    
     // --- STATE MANAGEMENT ---
     const [step, setStep] = useState(1); // 1: Config, 2: Distribución, 3: Resultados
     
@@ -313,7 +317,10 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
         <div className="fade-in-up" style={{
             position: 'fixed', bottom: 0, left: isMobile ? 0 : '260px', right: 0,
             backgroundColor: 'var(--surface-color)', borderTop: '1px solid var(--border-color)',
-            padding: '1rem 2rem', zIndex: 100, boxShadow: '0 -5px 20px rgba(0,0,0,0.1)',
+            padding: '1rem 2rem', 
+            // Important: This zIndex must be lower than the sub-modals (1300/2200) but higher than normal content.
+            zIndex: 100, 
+            boxShadow: '0 -5px 20px rgba(0,0,0,0.1)',
             display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '2rem'
         }}>
             <div style={{display: 'flex', gap: '1.5rem', flex: 1}}>
@@ -353,10 +360,23 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
     return (
         <div className="fade-in" style={{ paddingBottom: step === 2 ? '100px' : '2rem' }}>
             
-            {/* Modals */}
-            {isAiPlanModalOpen && <AiMealPlanGeneratorModal isOpen={isAiPlanModalOpen} onClose={() => setIsAiPlanModalOpen(false)} onPlanSaved={() => {onPlanSaved(); setStep(3);}} equivalentsData={equivalentsData} planPortions={portions} personId={selectedPersonId || null} persons={persons} />}
-            {isRecipeModalOpen && <AiRecipeFromEquivalentsModal isOpen={isRecipeModalOpen} onClose={() => setIsRecipeModalOpen(false)} equivalentsData={equivalentsData} planPortions={portions} />}
-            {foodExamplesState.isOpen && foodExamplesState.equivalent && <FoodExamplesModal isOpen={true} onClose={() => setFoodExamplesState(prev => ({...prev, isOpen: false}))} equivalent={foodExamplesState.equivalent} portions={foodExamplesState.portions} />}
+            {/* Modals - Passed high z-index to sit on top of everything, including Consultation Mode Tools modal */}
+            {isAiPlanModalOpen && <AiMealPlanGeneratorModal isOpen={isAiPlanModalOpen} onClose={() => setIsAiPlanModalOpen(false)} onPlanSaved={() => {onPlanSaved(); setStep(3);}} equivalentsData={equivalentsData} planPortions={portions} personId={selectedPersonId || null} persons={persons} zIndex={subModalZIndex} />}
+            {isRecipeModalOpen && <AiRecipeFromEquivalentsModal isOpen={isRecipeModalOpen} onClose={() => setIsRecipeModalOpen(false)} equivalentsData={equivalentsData} planPortions={portions} zIndex={subModalZIndex} />}
+            
+            {foodExamplesState.isOpen && foodExamplesState.equivalent && (
+                <FoodExamplesModal 
+                    isOpen={true} 
+                    onClose={() => setFoodExamplesState(prev => ({...prev, isOpen: false}))} 
+                    equivalent={foodExamplesState.equivalent} 
+                    portions={foodExamplesState.portions}
+                    onUpdatePortions={(newPortions) => {
+                        handlePortionChange(foodExamplesState.equivalent!.id, String(newPortions));
+                        setFoodExamplesState(prev => ({...prev, isOpen: false}));
+                    }}
+                    zIndex={subModalZIndex}
+                />
+            )}
             
             {/* Main UI */}
             <div style={{...styles.pageHeader, marginBottom: '2rem'}}>

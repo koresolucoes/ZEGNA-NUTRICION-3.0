@@ -168,6 +168,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
     const [quickSuccess, setQuickSuccess] = useState<string | null>(null);
     const [isToolsOpen, setIsToolsOpen] = useState(false);
     const [appointmentUpdateLoading, setAppointmentUpdateLoading] = useState(false);
+    const [isFinishing, setIsFinishing] = useState(false);
 
     // AI Assistant State
     const [aiMessages, setAiMessages] = useState<AiMessage[]>([]);
@@ -256,6 +257,50 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
             console.error(e);
         } finally {
             setAppointmentUpdateLoading(false);
+        }
+    };
+
+    const handleFinishAndExit = async () => {
+        setIsFinishing(true);
+        try {
+            // 1. Auto-save vitals if they are typed but not submitted (Safety net)
+            if (quickConsult.weight_kg || quickConsult.height_cm) {
+                const w = quickConsult.weight_kg ? parseFloat(quickConsult.weight_kg) : null;
+                const h = quickConsult.height_cm ? parseFloat(quickConsult.height_cm) : null;
+                let imc = null;
+                if (w && h) imc = parseFloat((w / ((h / 100) ** 2)).toFixed(2));
+
+                const { error: consultError } = await supabase.from('consultations').insert({
+                    person_id: person.id,
+                    consultation_date: new Date().toISOString().split('T')[0],
+                    weight_kg: w,
+                    height_cm: h,
+                    imc: imc,
+                    notes: 'Registro automático al finalizar consulta',
+                    nutritionist_id: (await supabase.auth.getUser()).data.user?.id
+                });
+                if(consultError) console.error("Error saving consult data on exit", consultError);
+            }
+            
+            // 2. Mark appointment as completed
+            if (sessionAppointment) {
+                 await supabase.from('appointments').update({ status: 'completed' }).eq('id', sessionAppointment.id);
+                 
+                 // Trigger gamification points for completion
+                 await supabase.rpc('award_points_for_consultation_attendance', {
+                    p_person_id: person.id,
+                    p_appointment_id: sessionAppointment.id
+                });
+            }
+
+            // 3. Exit
+            onExit();
+        } catch (error) {
+            console.error("Error finalizing consultation:", error);
+            // Even if error, we exit to not trap user
+            onExit();
+        } finally {
+            setIsFinishing(false);
         }
     };
     
@@ -402,6 +447,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                     <CalculatorsPage 
                         isMobile={isMobile} 
                         initialPersonToLoad={person} 
+                        // IMPORTANT: Pass a very high z-index to be above the Tools Modal (2100)
                         customModalZIndex={2200}
                     />
                 </ToolsModal>
@@ -422,8 +468,8 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                     <button onClick={() => setIsToolsOpen(true)} className="button-secondary" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
                         {ICONS.calculator} Herramientas
                     </button>
-                    <button onClick={onExit} style={{backgroundColor: 'var(--error-bg)', color: 'var(--error-color)', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: 600}}>
-                        Finalizar Consulta
+                    <button onClick={handleFinishAndExit} disabled={isFinishing} style={{backgroundColor: 'var(--error-bg)', color: 'var(--error-color)', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: 600}}>
+                        {isFinishing ? 'Guardando...' : 'Finalizar Consulta'}
                     </button>
                 </div>
             </div>

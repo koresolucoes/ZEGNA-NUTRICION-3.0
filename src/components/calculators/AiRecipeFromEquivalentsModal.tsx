@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../supabase';
@@ -11,6 +12,7 @@ interface AiRecipeFromEquivalentsModalProps {
     onClose: () => void;
     equivalentsData: FoodEquivalent[];
     planPortions: Record<string, string>;
+    zIndex?: number; // New prop
 }
 
 const modalRoot = document.getElementById('modal-root');
@@ -34,7 +36,7 @@ const RECIPE_TEMPLATE_AI = `**Nombre:**
 * Aceites y Grasas: 0
 * Azúcares: 0`;
 
-const AiRecipeFromEquivalentsModal: FC<AiRecipeFromEquivalentsModalProps> = ({ isOpen, onClose, equivalentsData, planPortions }) => {
+const AiRecipeFromEquivalentsModal: FC<AiRecipeFromEquivalentsModalProps> = ({ isOpen, onClose, equivalentsData, planPortions, zIndex = 1200 }) => {
     const { clinic } = useClinic();
     const [customInstructions, setCustomInstructions] = useState('');
     const [generatedRecipe, setGeneratedRecipe] = useState('');
@@ -141,7 +143,7 @@ ${RECIPE_TEMPLATE_AI}`;
     if (!isOpen || !modalRoot) return null;
 
     return createPortal(
-        <div style={styles.modalOverlay}>
+        <div style={{...styles.modalOverlay, zIndex: zIndex}}>
             <div style={{...styles.modalContent, maxWidth: '800px'}} className="fade-in">
                 <div style={styles.modalHeader}>
                     <h2 style={styles.modalTitle}>Generador de Recetas desde Equivalentes</h2>
