@@ -86,7 +86,8 @@ export type Service = Database['public']['Tables']['services']['Row'] & {
     sat_unit_code?: string | null;
     sat_tax_object_code?: string | null;
 };
-
+// Add Patient Journal Entry
+export type PatientJournalEntry = Database['public']['Tables']['patient_journal']['Row'];
 
 // Agenda & Queue Types
 export type Appointment = Database['public']['Tables']['appointments']['Row'];

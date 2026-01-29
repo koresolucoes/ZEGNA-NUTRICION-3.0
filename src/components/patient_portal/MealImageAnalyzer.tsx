@@ -3,6 +3,7 @@ import React, { FC, useState, useRef } from 'react';
 import { DietLog } from '../../types';
 import { styles } from '../../constants';
 import { ICONS } from '../../pages/AuthPage';
+import { supabase } from '../../supabase';
 
 // Helper function to resize and compress image before sending
 const resizeAndCompressImage = (file: File, maxWidth: number = 1024, quality: number = 0.7): Promise<string> => {
@@ -43,20 +44,24 @@ const resizeAndCompressImage = (file: File, maxWidth: number = 1024, quality: nu
 interface MealImageAnalyzerProps {
     todaysDietLog: DietLog | null;
     clinicId: string;
+    personId: string; // Added personId for DB insert
+    onEntrySaved?: () => void; // Callback to refresh feed
 }
 
-const MealImageAnalyzer: FC<MealImageAnalyzerProps> = ({ todaysDietLog, clinicId }) => {
+const MealImageAnalyzer: FC<MealImageAnalyzerProps> = ({ todaysDietLog, clinicId, personId, onEntrySaved }) => {
     const [file, setFile] = useState<File | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
     const [result, setResult] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [selectedMealType, setSelectedMealType] = useState('comida');
+    const [saving, setSaving] = useState(false);
+    
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const selectedFile = e.target.files[0];
-            // Basic client-side check
             if (!selectedFile.type.startsWith('image/')) {
                 setError('Por favor, selecciona un archivo de imagen válido.');
                 return;
@@ -73,55 +78,27 @@ const MealImageAnalyzer: FC<MealImageAnalyzerProps> = ({ todaysDietLog, clinicId
     };
 
     const handleAnalyze = async () => {
-        if (!file) {
-            setError('Por favor, selecciona una imagen para analizar.');
-            return;
-        }
-        if (!clinicId) {
-            setError('Error de configuración: No se encontró el ID de la clínica.');
-            return;
-        }
+        if (!file || !clinicId) return;
         setLoading(true);
         setResult(null);
         setError(null);
 
         try {
-            // Compress image before sending to avoid Payload Too Large errors
             const base64Data = await resizeAndCompressImage(file);
             
             const imagePart = {
-                inlineData: {
-                    mimeType: 'image/jpeg', // Always sending JPEG after compression
-                    data: base64Data,
-                },
+                inlineData: { mimeType: 'image/jpeg', data: base64Data },
             };
 
             let prompt = '';
             if (todaysDietLog) {
-                prompt = `Actúa como un asistente nutricional experto y amigable. Tu respuesta debe ser un solo párrafo corto, conciso y fácil de entender para un paciente.
-
-**Tarea Principal:** Analiza la foto de una comida y compárala con el plan alimenticio del día.
-
-**Contexto del Plan de Hoy:**
-- Desayuno: ${todaysDietLog.desayuno || 'No especificado'}
-- Comida: ${todaysDietLog.comida || 'No especificado'}
-- Cena: ${todaysDietLog.cena || 'No especificado'}
-
-**Instrucciones de Respuesta:**
-1.  **Validación de Imagen:** Si la imagen NO es una foto clara de comida, responde ÚNICAMENTE con el texto: "ERROR: La imagen no parece ser una foto clara de un platillo. Por favor, sube una foto mejor enfocada de tu comida."
-2.  **Respuesta Válida:** Si la imagen es válida, identifica el platillo. Luego, escribe un párrafo corto (3-5 frases) que incluya:
-    - Una comparación amigable entre lo que se ve en la foto y lo que estaba en el plan.
-    - Una conclusión clara sobre el nivel de adecuación (si se alinea o no).
-    - Si no se alinea, una sugerencia corta y positiva para la próxima vez.
-    - Utiliza negritas (**texto**) para resaltar la conclusión principal.`;
+                prompt = `Actúa como un asistente nutricional experto y amigable. Tu respuesta debe ser un solo párrafo corto (máximo 40 palabras), conciso y fácil de entender.
+**Tarea:** Analiza la foto de una comida y compárala con el plan del día.
+**Plan:** Desayuno: ${todaysDietLog.desayuno || '-'}, Comida: ${todaysDietLog.comida || '-'}, Cena: ${todaysDietLog.cena || '-'}.
+Si la imagen NO es comida, responde "ERROR: No es comida". Si es válida, identifica el platillo y di si se ajusta al plan. Usa negritas para la conclusión.`;
             } else {
-                prompt = `Actúa como un asistente nutricional experto y amigable. Tu respuesta debe ser un solo párrafo corto, conciso y fácil de entender para un paciente.
-
-**Tarea Principal:** Analiza la foto de una comida y da un breve análisis general.
-
-**Instrucciones de Respuesta:**
-1.  **Validación de Imagen:** Si la imagen NO es una foto clara de comida, responde ÚNICAMENTE con el texto: "ERROR: La imagen no parece ser una foto clara de un platillo. Por favor, sube una foto mejor enfocada de tu comida."
-2.  **Respuesta Válida:** Si la imagen es válida, identifica el platillo y describe en un párrafo corto (2-4 frases) los grupos de alimentos que contiene (proteínas, vegetales, etc.) y si se ve balanceado. Utiliza negritas para resaltar la conclusión.`;
+                prompt = `Actúa como un asistente nutricional experto. Tu respuesta debe ser un solo párrafo corto (máximo 40 palabras).
+**Tarea:** Analiza la foto y describe brevemente los grupos de alimentos. Si no es comida, responde "ERROR: No es comida".`;
             }
             
             const textPart = { text: prompt };
@@ -135,20 +112,7 @@ const MealImageAnalyzer: FC<MealImageAnalyzerProps> = ({ todaysDietLog, clinicId
                 })
             });
 
-            if (!apiResponse.ok) {
-                // Handle non-JSON errors (like 413 Request Entity Too Large from server/proxy)
-                const contentType = apiResponse.headers.get("content-type");
-                if (contentType && contentType.indexOf("application/json") !== -1) {
-                    const errorData = await apiResponse.json();
-                    throw new Error(errorData.error || `Error del servidor: ${apiResponse.statusText}`);
-                } else {
-                    const textError = await apiResponse.text();
-                    if (apiResponse.status === 413) {
-                        throw new Error("La imagen es demasiado grande incluso después de comprimir. Intenta con otra foto.");
-                    }
-                    throw new Error(`Error del servidor (${apiResponse.status}): ${textError.slice(0, 100)}...`);
-                }
-            }
+            if (!apiResponse.ok) throw new Error("Error al analizar la imagen.");
 
             const data = await apiResponse.json();
             
@@ -160,47 +124,107 @@ const MealImageAnalyzer: FC<MealImageAnalyzerProps> = ({ todaysDietLog, clinicId
             }
 
         } catch (err: any) {
-            console.error("Error de análisis:", err);
-            setError(`Error al analizar la imagen: ${err.message}`);
+            setError(`Error: ${err.message}`);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSaveToJournal = async () => {
+        if (!file || !result || !personId) return;
+        setSaving(true);
+        try {
+            // 1. Upload Image to Supabase
+            const fileExt = file.name.split('.').pop();
+            const fileName = `journal/${personId}/${Date.now()}.${fileExt}`;
+            const { error: uploadError } = await supabase.storage.from('files').upload(fileName, file);
+            if (uploadError) throw uploadError;
+
+            // 2. Insert into DB
+            const { error: dbError } = await supabase.from('patient_journal').insert({
+                person_id: personId,
+                meal_type: selectedMealType,
+                image_url: fileName,
+                ai_analysis: result,
+                description: null // Could add a textarea for user description later
+            });
+
+            if (dbError) throw dbError;
+
+            // Reset
+            setFile(null);
+            setPreview(null);
+            setResult(null);
+            if (onEntrySaved) onEntrySaved();
+
+        } catch (err: any) {
+            setError(`Error al guardar: ${err.message}`);
+        } finally {
+            setSaving(false);
         }
     };
     
     return (
         <div>
-            <div style={{
-                border: `2px dashed ${preview ? 'var(--primary-color)' : 'var(--border-color)'}`,
-                borderRadius: '8px',
-                padding: '1rem',
-                textAlign: 'center',
-                cursor: 'pointer',
-                backgroundColor: 'var(--background-color)',
-                transition: 'border-color 0.2s',
-            }} onClick={() => fileInputRef.current?.click()}>
-                <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} />
-                {preview ? (
-                    <img src={preview} alt="Vista previa del platillo" style={{ maxHeight: '200px', maxWidth: '100%', borderRadius: '4px', objectFit: 'contain' }} />
-                ) : (
-                    <div>
-                        <span style={{ fontSize: '2rem', color: 'var(--text-light)' }}>📷</span>
-                        <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-light)' }}>Toca aquí para seleccionar una foto de tu comida</p>
-                    </div>
-                )}
-            </div>
-            <p style={{fontSize: '0.8rem', color: 'var(--text-light)', textAlign: 'center', margin: '0.5rem 0 1rem 0'}}>
-                Para un mejor análisis, asegúrate de que la foto sea clara y bien iluminada. Evita imágenes inapropiadas.
-            </p>
-            <button onClick={handleAnalyze} disabled={!file || loading} style={{ width: '100%' }}>
-                {loading ? 'Comprimiendo y Analizando...' : 'Analizar mi platillo'}
-            </button>
-            
-            {error && <p style={{...styles.error, marginTop: '1rem'}}>{error}</p>}
+            {!preview ? (
+                <div style={{
+                    border: '2px dashed var(--border-color)',
+                    borderRadius: '12px',
+                    padding: '2rem',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    backgroundColor: 'var(--background-color)',
+                    transition: 'border-color 0.2s',
+                }} onClick={() => fileInputRef.current?.click()}>
+                    <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} />
+                    <span style={{ fontSize: '2.5rem', color: 'var(--text-light)' }}>📷</span>
+                    <p style={{ margin: '0.5rem 0 0 0', fontWeight: 600, color: 'var(--primary-color)' }}>Subir Foto</p>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-light)', marginTop: '0.25rem' }}>Analiza tu comida con IA</p>
+                </div>
+            ) : (
+                <div className="fade-in">
+                    <img src={preview} alt="Vista previa" style={{ width: '100%', borderRadius: '12px', objectFit: 'cover', maxHeight: '250px', marginBottom: '1rem', border: '1px solid var(--border-color)' }} />
+                    
+                    {error && <p style={styles.error}>{error}</p>}
 
-            {result && (
-                <div style={{marginTop: '1.5rem', padding: '1rem', backgroundColor: 'var(--surface-hover-color)', borderRadius: '8px', whiteSpace: 'pre-wrap', lineHeight: 1.6, fontSize: '0.9rem'}}>
-                    <h4 style={{margin: '0 0 1rem 0', color: 'var(--primary-color)'}}>Análisis de la IA</h4>
-                    {result}
+                    {!result && !loading && (
+                        <button onClick={handleAnalyze} className="button-primary" style={{ width: '100%', padding: '0.8rem' }}>
+                            {ICONS.sparkles} Analizar con IA
+                        </button>
+                    )}
+
+                    {loading && <div style={{textAlign: 'center', color: 'var(--primary-color)', fontWeight: 600}}>Analizando...</div>}
+
+                    {result && (
+                        <div className="fade-in">
+                            <div style={{padding: '1rem', backgroundColor: 'var(--surface-hover-color)', borderRadius: '12px', marginBottom: '1rem', fontSize: '0.9rem', lineHeight: 1.5}}>
+                                <strong>Análisis IA:</strong> {result}
+                            </div>
+                            
+                            <div style={{marginBottom: '1rem'}}>
+                                <label style={{display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: 600}}>Tipo de Comida</label>
+                                <select 
+                                    value={selectedMealType} 
+                                    onChange={(e) => setSelectedMealType(e.target.value)}
+                                    style={{width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--background-color)'}}
+                                >
+                                    <option value="desayuno">Desayuno</option>
+                                    <option value="colacion_1">Colación 1</option>
+                                    <option value="comida">Comida</option>
+                                    <option value="colacion_2">Colación 2</option>
+                                    <option value="cena">Cena</option>
+                                    <option value="snack">Snack</option>
+                                </select>
+                            </div>
+
+                            <div style={{display: 'flex', gap: '0.75rem'}}>
+                                <button onClick={() => { setFile(null); setPreview(null); setResult(null); }} className="button-secondary" style={{flex: 1}}>Cancelar</button>
+                                <button onClick={handleSaveToJournal} disabled={saving} className="button-primary" style={{flex: 1}}>
+                                    {saving ? 'Guardando...' : 'Guardar en Diario'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

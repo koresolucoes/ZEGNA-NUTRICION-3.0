@@ -1,5 +1,4 @@
 
-
 export type Json =
   | string
   | number
@@ -41,6 +40,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      patient_journal: {
+        Row: {
+          id: string
+          person_id: string
+          entry_date: string
+          meal_type: string | null
+          image_url: string
+          description: string | null
+          ai_analysis: string | null
+          nutritionist_feedback: string | null
+          reactions: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          person_id: string
+          entry_date?: string
+          meal_type?: string | null
+          image_url: string
+          description?: string | null
+          ai_analysis?: string | null
+          nutritionist_feedback?: string | null
+          reactions?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          person_id?: string
+          entry_date?: string
+          meal_type?: string | null
+          image_url?: string
+          description?: string | null
+          ai_analysis?: string | null
+          nutritionist_feedback?: string | null
+          reactions?: Json | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_journal_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "persons"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       affiliate_events: {
         Row: {
           affiliate_link_id: string
@@ -735,6 +781,7 @@ export type Database = {
           id: string
           logo_url: string | null
           name: string
+          navigation_layout: string | null
           operating_days: number[] | null
           operating_hours_end: string | null
           operating_hours_start: string | null
@@ -754,6 +801,7 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name: string
+          navigation_layout?: string | null
           operating_days?: number[] | null
           operating_hours_end?: string | null
           operating_hours_start?: string | null
@@ -773,6 +821,7 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name?: string
+          navigation_layout?: string | null
           operating_days?: number[] | null
           operating_hours_end?: string | null
           operating_hours_start?: string | null

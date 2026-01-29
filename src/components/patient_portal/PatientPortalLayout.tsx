@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useEffect, useCallback, useMemo } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../../supabase';
@@ -20,7 +21,7 @@ type PatientPortalView = 'home' | 'plans' | 'progress' | 'files' | 'appointments
 
 const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
     const [view, setView] = useState<PatientPortalView>('home');
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 1024); // Increased breakpoint for tablet support
     
     // Data states
     const [person, setPerson] = useState<Person | null>(null);
@@ -41,30 +42,21 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
     const { setTheme } = useThemeManager();
 
     const isPatientAiEnabled = useMemo(() => {
-        // 1. The clinic must have the AI feature in their subscription (SaaS level)
         const clinicHasAiFeature = subscription?.plans?.features 
             ? (subscription.plans.features as any).ai_assistant === true 
             : false;
-
-        // 2. The specific agent for the portal must be active in clinic settings
         const isAgentActiveInSettings = agentConfig?.is_patient_portal_agent_active === true;
-
-        // 3. The patient's specific plan must allow AI
-        // Logic: If patient has a plan, check its features. If no plan, default to FALSE (unless we want to allow free usage)
         const currentPlan = servicePlans.find(p => p.id === person?.current_plan_id);
         const patientPlanHasAi = currentPlan?.features 
             ? (currentPlan.features as any).patient_portal_ai_enabled === true 
-            : false; // Default to false if no plan or explicit setting
-
-        // Special Case: If the clinic has AI but the patient has NO plan, should they have AI? 
-        // Usually no, to incentivize plans. So the strict check is correct.
+            : false; 
         
         return clinicHasAiFeature && isAgentActiveInSettings && patientPlanHasAi;
     }, [subscription, agentConfig, servicePlans, person]);
     
     useEffect(() => {
         const handleResize = () => {
-            setIsMobile(window.innerWidth < 768);
+            setIsMobile(window.innerWidth < 1024);
         };
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
@@ -153,7 +145,13 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
             <>
                 {isPatientAiEnabled && isAiChatOpen && person && <PatientAiChatModal isOpen={isAiChatOpen} onClose={() => setIsAiChatOpen(false)} person={person} />}
                 {isPatientAiEnabled && <PatientPortalFAB onOpenChat={() => setIsAiChatOpen(true)} isMobile={isMobile} />}
-                <div style={{paddingBottom: isMobile ? '100px' : '40px'}}>
+                
+                {/* Main Scrollable Container */}
+                <div style={{
+                    paddingBottom: isMobile ? '110px' : '40px', // Extra padding for bottom bar
+                    minHeight: '100vh',
+                    backgroundColor: 'var(--background-color)'
+                }}>
                     {(() => {
                         switch (view) {
                             case 'home': return <PatientHomePage user={session.user} person={person} dietLogs={dietLogs} exerciseLogs={exerciseLogs} checkins={checkins} consultations={consultations} appointments={appointments} servicePlans={servicePlans} onDataRefresh={() => fetchData(person.id, person.clinic_id)} isMobile={isMobile} isAiEnabled={isPatientAiEnabled} />;
@@ -170,6 +168,7 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
         );
     };
     
+    // --- Modern Tab Bar Components ---
     const BottomNavItem: FC<{ viewName: PatientPortalView; icon: React.ReactNode; label: string }> = ({ viewName, icon, label }) => {
         const isActive = view === viewName;
         return (
@@ -184,19 +183,44 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
                     background: 'transparent',
                     border: 'none',
                     color: isActive ? 'var(--primary-color)' : 'var(--text-light)',
-                    padding: '0.5rem',
+                    padding: '8px 0',
                     cursor: 'pointer',
-                    transition: 'color 0.2s ease',
-                    gap: '4px'
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    position: 'relative',
+                    opacity: isActive ? 1 : 0.7
                 }}
             >
-                <span style={{ fontSize: '1.4rem', transform: isActive ? 'scale(1.1)' : 'scale(1)', transition: 'transform 0.2s' }}>{icon}</span>
-                <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>{label}</span>
+                <div style={{
+                    fontSize: '1.5rem', 
+                    marginBottom: '2px',
+                    transform: isActive ? 'translateY(-2px)' : 'none',
+                    transition: 'transform 0.2s'
+                }}>
+                    {icon}
+                </div>
+                <span style={{ 
+                    fontSize: '0.65rem', 
+                    fontWeight: 600,
+                    opacity: isActive ? 1 : 0.8
+                }}>
+                    {label}
+                </span>
+                {isActive && (
+                    <div style={{
+                        position: 'absolute',
+                        top: '0',
+                        width: '40%',
+                        height: '3px',
+                        backgroundColor: 'var(--primary-color)',
+                        borderRadius: '0 0 4px 4px',
+                        boxShadow: '0 2px 8px var(--primary-color)'
+                    }} />
+                )}
             </button>
         );
     };
 
-    const NavItem: FC<{ viewName: PatientPortalView; icon: React.ReactNode; label: string }> = ({ viewName, icon, label }) => {
+    const DesktopNavItem: FC<{ viewName: PatientPortalView; icon: React.ReactNode; label: string }> = ({ viewName, icon, label }) => {
          const isActive = view === viewName;
          return (
              <button
@@ -205,19 +229,19 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
                  style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.5rem 1rem',
-                    borderRadius: '8px',
+                    gap: '0.75rem',
+                    padding: '0.75rem 1.25rem',
+                    borderRadius: '12px',
                     border: 'none',
                     background: isActive ? 'var(--surface-hover-color)' : 'transparent',
                     color: isActive ? 'var(--primary-color)' : 'var(--text-color)',
-                    fontWeight: isActive ? 600 : 500,
+                    fontWeight: isActive ? 700 : 500,
                     cursor: 'pointer',
                     transition: 'all 0.2s',
-                    fontSize: '0.9rem'
+                    fontSize: '0.95rem'
                  }}
              >
-                 <span style={{fontSize: '1.1rem'}}>{icon}</span>
+                 <span style={{fontSize: '1.2rem'}}>{icon}</span>
                  {label}
              </button>
          )
@@ -227,85 +251,82 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
         <div style={{...styles.patientPortalLayout, flexDirection: 'column'}}>
             {showConsentModal && person && <ConsentModal personName={person.full_name} onAccept={handleAcceptConsent} onLogout={handleLogout} />}
             
-            {/* Desktop Navbar */}
+            {/* Desktop Navbar (Sidebar Style) */}
             {!isMobile && (
-                <header style={{
-                    height: '70px',
+                <aside style={{
+                    width: '280px',
                     backgroundColor: 'var(--surface-color)',
-                    borderBottom: '1px solid var(--border-color)',
+                    borderRight: '1px solid var(--border-color)',
+                    padding: '2rem 1.5rem',
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '0 2rem',
-                    position: 'sticky',
+                    flexDirection: 'column',
+                    position: 'fixed',
                     top: 0,
-                    zIndex: 1000,
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                    left: 0,
+                    bottom: 0,
+                    zIndex: 1000
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '3rem', paddingLeft: '0.5rem' }}>
                          <img 
                             src={person?.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${person?.full_name || '?'}&radius=50`} 
                             alt="Avatar" 
-                            style={{width: '40px', height: '40px', borderRadius: '10px', objectFit: 'cover'}}
+                            style={{width: '48px', height: '48px', borderRadius: '12px', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}}
                         />
                         <div>
-                            <h2 style={{fontSize: '1rem', margin: 0, color: 'var(--text-color)'}}>{person?.full_name?.split(' ')[0]}</h2>
-                            <p style={{margin: 0, fontSize: '0.75rem', color: 'var(--text-light)'}}>Portal Paciente</p>
+                            <h2 style={{fontSize: '1rem', margin: 0, color: 'var(--text-color)', fontWeight: 700}}>{person?.full_name?.split(' ')[0]}</h2>
+                            <p style={{margin: 0, fontSize: '0.8rem', color: 'var(--text-light)'}}>Portal Paciente</p>
                         </div>
                     </div>
-                    <nav style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <NavItem viewName="home" icon={ICONS.home} label="Inicio" />
-                        <NavItem viewName="plans" icon={ICONS.book} label="Planes" />
-                        <NavItem viewName="progress" icon={ICONS.activity} label="Progreso" />
-                        <NavItem viewName="files" icon={ICONS.file} label="Archivos" />
-                        <NavItem viewName="appointments" icon={ICONS.calendar} label="Consultas" />
-                        <NavItem viewName="notifications" icon={ICONS.settings} label="Mi Cuenta" />
+                    
+                    <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
+                        <DesktopNavItem viewName="home" icon={ICONS.home} label="Inicio" />
+                        <DesktopNavItem viewName="plans" icon={ICONS.book} label="Mis Planes" />
+                        <DesktopNavItem viewName="progress" icon={ICONS.activity} label="Mi Progreso" />
+                        <DesktopNavItem viewName="files" icon={ICONS.file} label="Archivos" />
+                        <DesktopNavItem viewName="appointments" icon={ICONS.calendar} label="Citas" />
+                        <div style={{height: '1px', backgroundColor: 'var(--border-color)', margin: '1rem 0'}}></div>
+                        <DesktopNavItem viewName="notifications" icon={ICONS.settings} label="Mi Cuenta" />
                     </nav>
-                    <button onClick={handleLogout} style={{background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-color)', padding: '0.5rem 1rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer'}} className="nav-item-hover">
-                        {ICONS.logout} Salir
+
+                    <button onClick={handleLogout} style={{background: 'var(--surface-hover-color)', border: 'none', color: 'var(--error-color)', padding: '1rem', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 600, marginTop: 'auto'}} className="nav-item-hover">
+                        {ICONS.logout} Cerrar Sesión
                     </button>
-                </header>
+                </aside>
             )}
             
-            <main style={{ flex: 1, padding: isMobile ? '1rem' : '2rem', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
-                {isMobile && (
-                     <header style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)'}}>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
-                            <img 
-                                src={person?.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${person?.full_name || '?'}&radius=50`} 
-                                alt="Avatar" 
-                                style={{width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover'}}
-                            />
-                            <span style={{fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-color)'}}>Zegna</span>
-                        </div>
-                        <div style={{fontSize: '0.9rem', fontWeight: 600, color: 'var(--primary-color)'}}>
-                            {view === 'home' ? 'Inicio' : view === 'plans' ? 'Mis Planes' : view === 'progress' ? 'Progreso' : view === 'appointments' ? 'Citas' : view === 'files' ? 'Archivos' : 'Ajustes'}
-                        </div>
-                     </header>
-                )}
+            <main style={{ 
+                flex: 1, 
+                maxWidth: '100%', 
+                marginLeft: isMobile ? 0 : '280px',
+                width: isMobile ? '100%' : 'calc(100% - 280px)',
+                position: 'relative'
+            }}>
                 {renderContent()}
             </main>
 
-            {/* Mobile Bottom Nav */}
+            {/* Mobile Bottom Tab Bar (App-like) */}
             {isMobile && (
                 <nav style={{
                     position: 'fixed',
                     bottom: 0,
                     left: 0,
                     right: 0,
-                    backgroundColor: 'var(--surface-color)',
-                    borderTop: '1px solid var(--border-color)',
+                    height: '85px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)', // Glassmorphism base (adjust for dark mode via theme vars)
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    borderTop: '1px solid rgba(0,0,0,0.05)',
                     display: 'flex',
                     justifyContent: 'space-around',
-                    padding: '0.5rem 0',
+                    paddingBottom: '20px', // Safe area for iPhone home bar
                     zIndex: 1000,
-                    boxShadow: '0 -4px 10px rgba(0,0,0,0.05)'
+                    boxShadow: '0 -5px 20px rgba(0,0,0,0.03)'
                 }}>
-                    <BottomNavItem viewName="home" icon={ICONS.home} label="Inicio" />
-                    <BottomNavItem viewName="plans" icon={ICONS.book} label="Planes" />
+                    <BottomNavItem viewName="home" icon={ICONS.home} label="Hoy" />
+                    <BottomNavItem viewName="plans" icon={ICONS.book} label="Plan" />
                     <BottomNavItem viewName="progress" icon={ICONS.activity} label="Progreso" />
-                    <BottomNavItem viewName="appointments" icon={ICONS.calendar} label="Agenda" />
-                    <BottomNavItem viewName="notifications" icon={ICONS.settings} label="Cuenta" />
+                    <BottomNavItem viewName="appointments" icon={ICONS.calendar} label="Citas" />
+                    <BottomNavItem viewName="notifications" icon={ICONS.settings} label="Perfil" />
                 </nav>
             )}
         </div>

@@ -1,8 +1,6 @@
-
-import React, { FC, useMemo, useState, useEffect } from 'react';
-// FIX: In Supabase v2, User is exported via `import type`.
+import React, { FC, useMemo, useState, useEffect, useCallback } from 'react';
 import type { User } from '@supabase/supabase-js';
-import { Person, DietLog, ExerciseLog, DailyCheckin, ConsultationWithLabs, AppointmentWithPerson, PatientServicePlan, PopulatedReferralConsentRequest } from '../../types';
+import { Person, DietLog, ExerciseLog, DailyCheckin, ConsultationWithLabs, AppointmentWithPerson, PatientServicePlan, PopulatedReferralConsentRequest, PatientJournalEntry } from '../../types';
 import { ICONS } from '../AuthPage';
 import ConfirmationModal from '../../components/shared/ConfirmationModal';
 import DailyCheckinFormModal from '../../components/patient_portal/DailyCheckinFormModal';
@@ -11,6 +9,7 @@ import { styles } from '../../constants';
 import MealImageAnalyzer from '../../components/patient_portal/MealImageAnalyzer';
 import DailyCheckinForm from '../../components/patient_portal/DailyCheckinForm';
 import ConsentRequestModal from '../../components/patient_portal/ConsentRequestModal';
+import SmartJournalFeed from '../../components/patient_portal/SmartJournalFeed';
 
 const getLocalDateString = (date: Date) => {
     const offset = date.getTimezoneOffset();
@@ -38,6 +37,21 @@ const PatientHomePage: FC<{
     const [completionError, setCompletionError] = useState<string | null>(null);
     const [pendingConsents, setPendingConsents] = useState<PopulatedReferralConsentRequest[]>([]);
     const [viewingConsent, setViewingConsent] = useState<PopulatedReferralConsentRequest | null>(null);
+    
+    // Journal State
+    const [journalEntries, setJournalEntries] = useState<PatientJournalEntry[]>([]);
+    const [loadingJournal, setLoadingJournal] = useState(true);
+
+    const fetchJournal = useCallback(async () => {
+        setLoadingJournal(true);
+        const { data } = await supabase.from('patient_journal').select('*').eq('person_id', person.id).order('entry_date', { ascending: false }).limit(10);
+        setJournalEntries((data as PatientJournalEntry[]) || []);
+        setLoadingJournal(false);
+    }, [person.id]);
+
+    useEffect(() => {
+        fetchJournal();
+    }, [fetchJournal]);
 
     useEffect(() => {
         const fetchConsents = async () => {
@@ -84,9 +98,7 @@ const PatientHomePage: FC<{
                 }
                 throw error;
             }
-    
             onDataRefresh();
-    
         } catch (err: any) {
             console.error(`Error marking ${logType} log complete:`, err);
             setCompletionError(`Error: ${err.message}`);
@@ -97,13 +109,7 @@ const PatientHomePage: FC<{
 
     const todayStr = getLocalDateString(new Date());
     const todaysDietLog = dietLogs.find(log => log.log_date === todayStr);
-    const mostRecentDietLog = dietLogs[0] || null;
-    const dietLogToShow = todaysDietLog || mostRecentDietLog;
-
     const todaysExerciseLog = exerciseLogs.find(log => log.log_date === todayStr);
-    const mostRecentExerciseLog = exerciseLogs[0] || null;
-    const exerciseLogToShow = todaysExerciseLog || mostRecentExerciseLog;
-    
     const todaysCheckin = useMemo(() => checkins.find(c => c.checkin_date === todayStr), [checkins, todayStr]);
 
     const upcomingAppointment = useMemo(() => {
@@ -318,7 +324,9 @@ const PatientHomePage: FC<{
                         {isAiEnabled ? (
                             <MealImageAnalyzer 
                                 todaysDietLog={todaysDietLog || null} 
-                                clinicId={person.clinic_id}
+                                clinicId={person.clinic_id} 
+                                personId={person.id}
+                                onEntrySaved={fetchJournal} // Refresh feed
                             />
                         ) : (
                              <div style={{textAlign: 'center', padding: '1rem', color: 'var(--text-light)', fontSize: '0.9rem'}}>
@@ -394,6 +402,17 @@ const PatientHomePage: FC<{
                 </div>
 
             </div>
+            
+            {/* Journal Section - Full Width at bottom */}
+            {isAiEnabled && (
+                <div style={{ marginTop: '2rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0 }}>Diario de Comidas</h2>
+                        <button className="button-secondary" onClick={fetchJournal}>Actualizar</button>
+                    </div>
+                    <SmartJournalFeed entries={journalEntries} loading={loadingJournal} />
+                </div>
+            )}
         </div>
     );
 };
