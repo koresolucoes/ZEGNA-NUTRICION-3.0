@@ -3,6 +3,9 @@ import React, { FC, useMemo, useState, useEffect } from 'react';
 import { DietLog, ExerciseLog } from '../../types';
 import { styles } from '../../constants';
 import { ICONS } from '../AuthPage';
+import { useClinic } from '../../contexts/ClinicContext'; // Assume we have access to clinic context or similar to get ID
+import { supabase } from '../../supabase'; // Needed to get person data if not passed directly, or rely on passed props
+import MealSwapModal from '../../components/patient_portal/MealSwapModal';
 
 interface MyPlansPageProps {
     dietLogs: DietLog[];
@@ -13,10 +16,27 @@ interface MyPlansPageProps {
 const WEEKDAYS = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
-const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs }) => {
+const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs, onDataRefresh }) => {
     // Generate dates for current week/month view (simplified to +/- 3 days from today for UI)
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'food' | 'exercise'>('food');
+    
+    // Swap Modal State
+    const [swappingMeal, setSwappingMeal] = useState<{ logId: string; column: string; content: string } | null>(null);
+    const [clinicId, setClinicId] = useState<string | null>(null);
+
+    // Fetch clinic ID for AI (Using the dietLog relationship would be cleaner, but simple fetch works for now)
+    useEffect(() => {
+        if (dietLogs.length > 0) {
+             const fetchClinic = async () => {
+                 // Assuming dietLogs have person_id, we can find clinic. Or use context if available higher up.
+                 // For now, let's grab it from the person table using one of the logs
+                 const { data } = await supabase.from('persons').select('clinic_id').eq('id', dietLogs[0].person_id).single();
+                 if (data) setClinicId(data.clinic_id);
+             };
+             fetchClinic();
+        }
+    }, [dietLogs]);
 
     const calendarDays = useMemo(() => {
         const days = [];
@@ -33,6 +53,15 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs }) => {
     const selectedLogDateStr = selectedDate.toISOString().split('T')[0];
     const currentDietLog = dietLogs.find(l => l.log_date === selectedLogDateStr);
     const currentExerciseLog = exerciseLogs.find(l => l.log_date === selectedLogDateStr);
+
+    const handleSwapClick = (column: string, content: string) => {
+        if (!currentDietLog) return;
+        setSwappingMeal({
+            logId: currentDietLog.id,
+            column,
+            content
+        });
+    };
 
     // --- Sub-Components ---
     
@@ -79,10 +108,9 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs }) => {
         </div>
     );
 
-    const MealVisualCard = ({ title, time, content, kCal, imageKeyword }: { title: string, time: string, content: string, kCal: string, imageKeyword: string }) => {
+    const MealVisualCard = ({ title, time, content, kCal, imageKeyword, mealColumn }: { title: string, time: string, content: string, kCal: string, imageKeyword: string, mealColumn: string }) => {
         if (!content) return null;
         // Construct a safe Unsplash URL based on keyword
-        // Using distinct IDs for caching purposes or keywords
         const imageUrl = `https://source.unsplash.com/600x400/?${imageKeyword},healthy,food`;
 
         return (
@@ -95,7 +123,7 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs }) => {
                     {/* Gradient Overlay */}
                     <div style={{position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 50%)', zIndex: 1}}></div>
                     
-                    {/* Placeholder image (since real unsplash source might be slow/broken in demo, using a reliable one) */}
+                    {/* Placeholder image */}
                     <img 
                         src={`https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80`} 
                         style={{width: '100%', height: '100%', objectFit: 'cover'}} 
@@ -154,12 +182,15 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs }) => {
                         </div>
                     </div>
                     
-                    <button style={{
-                        width: '100%', marginTop: '1.5rem', padding: '1rem', borderRadius: '16px',
-                        backgroundColor: '#10B981', color: 'white', border: 'none', fontWeight: 700, fontSize: '1rem',
-                        boxShadow: '0 8px 20px rgba(16, 185, 129, 0.25)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                        transition: 'transform 0.1s'
-                    }}>
+                    <button 
+                        onClick={() => handleSwapClick(mealColumn, content)}
+                        style={{
+                            width: '100%', marginTop: '1.5rem', padding: '1rem', borderRadius: '16px',
+                            backgroundColor: '#10B981', color: 'white', border: 'none', fontWeight: 700, fontSize: '1rem',
+                            boxShadow: '0 8px 20px rgba(16, 185, 129, 0.25)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                            transition: 'transform 0.1s'
+                        }}
+                    >
                         <span style={{fontSize: '1.2rem'}}>🔄</span> Intercambiar Opción
                     </button>
                 </div>
@@ -186,15 +217,27 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs }) => {
         <div style={{ backgroundColor: '#FAFAFA', minHeight: '100vh', paddingBottom: '100px' }}>
             <CalendarStrip />
             
+            {swappingMeal && clinicId && (
+                <MealSwapModal 
+                    isOpen={true} 
+                    onClose={() => setSwappingMeal(null)} 
+                    onSuccess={() => { setSwappingMeal(null); onDataRefresh(); }}
+                    clinicId={clinicId}
+                    logId={swappingMeal.logId}
+                    mealColumn={swappingMeal.column}
+                    originalContent={swappingMeal.content}
+                />
+            )}
+            
             <div className="fade-in" style={{ padding: '0 1.5rem', maxWidth: '600px', margin: '0 auto' }}>
                 {viewMode === 'food' ? (
                     currentDietLog ? (
                         <>
-                            <MealVisualCard title="Desayuno" time="8:00 AM" content={currentDietLog.desayuno || ''} kCal="450" imageKeyword="breakfast" />
-                            {currentDietLog.colacion_1 && <MealVisualCard title="Comida 1: Pre-Entreno" time="11:00 AM" content={currentDietLog.colacion_1} kCal="200" imageKeyword="healthy snack" />}
-                            <MealVisualCard title="Comida" time="2:30 PM" content={currentDietLog.comida || ''} kCal="600" imageKeyword="healthy lunch" />
-                            {currentDietLog.colacion_2 && <MealVisualCard title="Colación 2" time="6:00 PM" content={currentDietLog.colacion_2} kCal="150" imageKeyword="nuts" />}
-                            <MealVisualCard title="Cena" time="9:00 PM" content={currentDietLog.cena || ''} kCal="350" imageKeyword="healthy dinner" />
+                            <MealVisualCard title="Desayuno" time="8:00 AM" content={currentDietLog.desayuno || ''} kCal="450" imageKeyword="breakfast" mealColumn="desayuno" />
+                            {currentDietLog.colacion_1 && <MealVisualCard title="Comida 1: Pre-Entreno" time="11:00 AM" content={currentDietLog.colacion_1} kCal="200" imageKeyword="healthy snack" mealColumn="colacion_1" />}
+                            <MealVisualCard title="Comida" time="2:30 PM" content={currentDietLog.comida || ''} kCal="600" imageKeyword="healthy lunch" mealColumn="comida" />
+                            {currentDietLog.colacion_2 && <MealVisualCard title="Colación 2" time="6:00 PM" content={currentDietLog.colacion_2} kCal="150" imageKeyword="nuts" mealColumn="colacion_2" />}
+                            <MealVisualCard title="Cena" time="9:00 PM" content={currentDietLog.cena || ''} kCal="350" imageKeyword="healthy dinner" mealColumn="cena" />
                         </>
                     ) : (
                         <div style={{textAlign: 'center', padding: '4rem 2rem', color: '#9CA3AF', border: '2px dashed #E5E7EB', borderRadius: '24px'}}>
