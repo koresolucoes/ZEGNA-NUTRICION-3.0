@@ -76,6 +76,11 @@ const SubscriptionPage: FC<{ navigate: (page: string, context?: any) => void; }>
         }
     };
 
+    const handleManageSubscription = () => {
+        // Redirigir al panel de suscripciones de Mercado Pago México
+        window.open('https://www.mercadopago.com.mx/subscriptions', '_blank');
+    };
+
     const FeatureItem: FC<{ label: string; included: boolean }> = ({ label, included }) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem', fontSize: '0.9rem' }}>
             <div style={{ 
@@ -143,7 +148,11 @@ const SubscriptionPage: FC<{ navigate: (page: string, context?: any) => void; }>
                         </p>
                     </div>
 
-                    <button className="button-secondary" style={{padding: '0.75rem 1.5rem'}}>
+                    <button 
+                        className="button-secondary" 
+                        style={{padding: '0.75rem 1.5rem'}}
+                        onClick={handleManageSubscription}
+                    >
                         Gestionar en Mercado Pago
                     </button>
                 </div>
