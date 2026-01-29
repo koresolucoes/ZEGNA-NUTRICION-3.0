@@ -11,28 +11,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: 'Helvetica',
     backgroundColor: '#ffffff',
-    color: '#1f2937',
-    position: 'relative' // Needed for absolute positioning context if not fixed
-  },
-  watermarkWrapper: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: '100%',
-    height: '100%',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: -1,
-    opacity: 0.08, // Very faint
-  },
-  watermarkImage: {
-    width: 300,
-    height: 300,
-    objectFit: 'contain',
-    transform: 'rotate(-45deg)'
+    color: '#1f2937'
   },
   header: {
     flexDirection: 'row',
@@ -301,21 +280,12 @@ const MedicalReportDocument: React.FC<MedicalReportDocumentProps> = ({
 
   const latestDiet = dietLogs[0];
   const latestExercise = exerciseLogs[0];
-  
-  // Default Zegna logo if clinic logo not present
-  const watermarkLogo = clinic?.logo_url || 'https://i.imgur.com/NOdUorv.png';
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         
-        {/* WATERMARK (Fixed on every page) */}
-        <View style={styles.watermarkWrapper} fixed>
-            {/* eslint-disable-next-line jsx-a11y/alt-text */}
-            <Image src={watermarkLogo} style={styles.watermarkImage} />
-        </View>
-
-        {/* HEADER (Repeats on every page) */}
+        {/* HEADER (Repeats on every page if needed, but here mostly for page 1 unless logic added) */}
         <View style={styles.header} fixed>
           <View style={{flexDirection: 'row', alignItems: 'center', gap: 10}}>
              {clinic?.logo_url && (
