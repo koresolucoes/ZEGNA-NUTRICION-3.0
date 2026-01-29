@@ -15,6 +15,25 @@ interface PatientAiChatModalProps {
     person: Person;
 }
 
+// Simple Markdown Parser Component
+const MarkdownRenderer: FC<{ content: string }> = ({ content }) => {
+    // 1. Split by double asterisks for bold
+    const parts = content.split(/(\*\*.*?\*\*)/g);
+    
+    return (
+        <span style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+            {parts.map((part, index) => {
+                if (part.startsWith('**') && part.endsWith('**')) {
+                    // Remove asterisks and wrap in strong
+                    return <strong key={index}>{part.slice(2, -2)}</strong>;
+                }
+                // Check for bullet points or lists if needed, but basic bold/text is requested
+                return part;
+            })}
+        </span>
+    );
+};
+
 const PatientAiChatModal: FC<PatientAiChatModalProps> = ({ isOpen, onClose, person }) => {
     const [agentConfig, setAgentConfig] = useState<AiAgent | null>(null);
     const [messages, setMessages] = useState<any[]>([]);
@@ -35,7 +54,7 @@ const PatientAiChatModal: FC<PatientAiChatModalProps> = ({ isOpen, onClose, pers
             if (messages.length === 0) {
                  setMessages([{ 
                      role: 'model', 
-                     parts: [{ text: `¡Hola ${person.full_name.split(' ')[0]}! Soy tu asistente nutricional. ¿En qué puedo ayudarte hoy?` }] 
+                     parts: [{ text: `¡Hola **${person.full_name.split(' ')[0]}**! Soy tu asistente nutricional. ¿En qué puedo ayudarte hoy?` }] 
                  }]);
             }
         }
@@ -149,10 +168,9 @@ const PatientAiChatModal: FC<PatientAiChatModalProps> = ({ isOpen, onClose, pers
                                     backgroundColor: isUser ? '#10B981' : 'white',
                                     color: isUser ? 'white' : '#1F293B',
                                     boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
-                                    fontSize: '0.95rem',
-                                    lineHeight: 1.5
+                                    fontSize: '0.95rem'
                                 }}>
-                                    {text}
+                                    <MarkdownRenderer content={text} />
                                 </div>
                             </div>
                         );

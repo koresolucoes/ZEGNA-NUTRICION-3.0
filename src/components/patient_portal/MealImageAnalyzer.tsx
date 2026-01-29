@@ -1,5 +1,5 @@
 
-import React, { FC, useState, useRef } from 'react';
+import React, { FC, useState, useRef, useEffect } from 'react';
 import { DietLog } from '../../types';
 import { styles } from '../../constants';
 import { ICONS } from '../../pages/AuthPage';
@@ -39,9 +39,10 @@ interface MealImageAnalyzerProps {
     clinicId: string;
     personId: string;
     onEntrySaved?: () => void;
+    fixedMealType?: string | null; // New prop to force meal type
 }
 
-const MealImageAnalyzer: FC<MealImageAnalyzerProps> = ({ todaysDietLog, clinicId, personId, onEntrySaved }) => {
+const MealImageAnalyzer: FC<MealImageAnalyzerProps> = ({ todaysDietLog, clinicId, personId, onEntrySaved, fixedMealType }) => {
     const [file, setFile] = useState<File | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
     const [result, setResult] = useState<string | null>(null);
@@ -51,6 +52,12 @@ const MealImageAnalyzer: FC<MealImageAnalyzerProps> = ({ todaysDietLog, clinicId
     const [saving, setSaving] = useState(false);
     
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (fixedMealType) {
+            setSelectedMealType(fixedMealType);
+        }
+    }, [fixedMealType]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -187,7 +194,7 @@ const MealImageAnalyzer: FC<MealImageAnalyzerProps> = ({ todaysDietLog, clinicId
                 
                 {/* Helper Text */}
                 <div style={{position: 'absolute', bottom: '20px', color: '#6B7280', fontWeight: 600, fontSize: '0.9rem'}}>
-                    Tomar foto de tu comida
+                    Tomar foto {fixedMealType ? `de ${fixedMealType}` : 'de tu comida'}
                 </div>
 
                 {/* Visual corners for viewfinder effect */}
@@ -227,6 +234,20 @@ const MealImageAnalyzer: FC<MealImageAnalyzerProps> = ({ todaysDietLog, clinicId
                         <span style={{color: 'var(--primary-color)'}}>{ICONS.sparkles}</span> Análisis IA
                     </h4>
                     <p style={{margin: '0 0 1.5rem 0', fontSize: '0.95rem', color: 'var(--text-light)', lineHeight: 1.6}}>{result}</p>
+                    
+                    {!fixedMealType && (
+                        <div style={{marginBottom: '1rem'}}>
+                             <label style={{display: 'block', fontSize: '0.85rem', color: 'var(--text-light)', marginBottom: '0.5rem'}}>Tipo de Comida</label>
+                             <select value={selectedMealType} onChange={e => setSelectedMealType(e.target.value)} style={{width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--background-color)'}}>
+                                <option value="desayuno">Desayuno</option>
+                                <option value="colacion_1">Colación 1</option>
+                                <option value="comida">Comida</option>
+                                <option value="colacion_2">Colación 2</option>
+                                <option value="cena">Cena</option>
+                                <option value="snack">Snack</option>
+                             </select>
+                        </div>
+                    )}
                     
                     <div style={{display: 'flex', gap: '1rem'}}>
                         <button 

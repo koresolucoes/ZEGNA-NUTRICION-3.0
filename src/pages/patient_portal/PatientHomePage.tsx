@@ -11,6 +11,9 @@ import MealImageAnalyzer from '../../components/patient_portal/MealImageAnalyzer
 import DailyCheckinForm from '../../components/patient_portal/DailyCheckinForm';
 import ConsentRequestModal from '../../components/patient_portal/ConsentRequestModal';
 import SmartJournalFeed from '../../components/patient_portal/SmartJournalFeed';
+import { createPortal } from 'react-dom';
+
+const modalRoot = document.getElementById('modal-root');
 
 const getLocalDateString = (date: Date) => {
     const offset = date.getTimezoneOffset();
@@ -38,6 +41,7 @@ const PatientHomePage: FC<{
     const [completionError, setCompletionError] = useState<string | null>(null);
     const [pendingConsents, setPendingConsents] = useState<PopulatedReferralConsentRequest[]>([]);
     const [viewingConsent, setViewingConsent] = useState<PopulatedReferralConsentRequest | null>(null);
+    const [uploadingMealType, setUploadingMealType] = useState<string | null>(null); // For handling camera modal
     
     // Journal State
     const [journalEntries, setJournalEntries] = useState<PatientJournalEntry[]>([]);
@@ -146,14 +150,25 @@ const PatientHomePage: FC<{
         return currentStreak;
     }, [checkins, todayStr]);
 
-    // Determines current meal based on time
+    // Determines current meal based on time to highlight active
     const getCurrentMeal = () => {
         const hour = new Date().getHours();
         if (hour < 11) return 'Desayuno';
-        if (hour < 16) return 'Comida';
+        if (hour < 14) return 'Colación 1';
+        if (hour < 17) return 'Comida';
+        if (hour < 20) return 'Colación 2';
         return 'Cena';
     };
     const currentMealType = getCurrentMeal();
+    
+    // Meal Configuration for displaying all slots
+    const MEAL_SLOTS = [
+        { key: 'desayuno', label: 'Desayuno', time: '8:00 AM' },
+        { key: 'colacion_1', label: 'Colación 1', time: '11:00 AM' },
+        { key: 'comida', label: 'Comida', time: '2:00 PM' },
+        { key: 'colacion_2', label: 'Colación 2', time: '5:00 PM' },
+        { key: 'cena', label: 'Cena', time: '8:00 PM' },
+    ];
 
     const TimelineItem: FC<{ 
         time: string; 
@@ -162,7 +177,8 @@ const PatientHomePage: FC<{
         isActive?: boolean;
         isCompleted?: boolean;
         isLast?: boolean;
-    }> = ({ time, title, content, isActive, isCompleted, isLast }) => (
+        onCameraClick?: () => void;
+    }> = ({ time, title, content, isActive, isCompleted, isLast, onCameraClick }) => (
         <div style={{ display: 'flex', position: 'relative' }}>
             {/* Timeline Line */}
             {!isLast && (
@@ -194,70 +210,68 @@ const PatientHomePage: FC<{
                     <span style={{ fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 500 }}>{time}</span>
                 </div>
                 
-                {isActive ? (
-                    <div className="fade-in" style={{
-                        marginTop: '0.75rem',
-                        backgroundColor: 'white', borderRadius: '24px',
-                        boxShadow: '0 10px 30px -5px rgba(0,0,0,0.1)',
-                        border: '1px solid var(--border-color)',
-                        overflow: 'hidden'
-                    }}>
-                        <div style={{position: 'relative'}}>
-                            {/* Camera / AI Analysis Widget embedded in timeline */}
-                            <MealImageAnalyzer 
-                                todaysDietLog={todaysDietLog || null} 
-                                clinicId={person.clinic_id} 
-                                personId={person.id}
-                                onEntrySaved={fetchJournal} 
-                            />
-                        </div>
-                        
-                        <div style={{padding: '1.25rem'}}>
-                             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem'}}>
-                                <span style={{fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary-color)', backgroundColor: 'var(--primary-light)', padding: '2px 8px', borderRadius: '10px'}}>
-                                    TU PLAN
-                                </span>
-                             </div>
-                            <p style={{margin: '0 0 1rem 0', fontWeight: 600, fontSize: '1rem', color: 'var(--text-color)', lineHeight: 1.5}}>
-                                {content || 'No asignado'}
-                            </p>
-                            
-                            <div style={{display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #F3F4F6', paddingTop: '1rem'}}>
-                                <div style={{textAlign: 'center', flex: 1}}>
-                                    <div style={{fontSize: '1.2rem'}}>🍞</div>
-                                    <span style={{fontSize: '0.7rem', color: 'var(--text-light)', fontWeight: 600}}>Carbos</span>
-                                </div>
-                                <div style={{textAlign: 'center', flex: 1, borderLeft: '1px solid #F3F4F6', borderRight: '1px solid #F3F4F6'}}>
-                                    <div style={{fontSize: '1.2rem'}}>🥩</div>
-                                    <span style={{fontSize: '0.7rem', color: 'var(--text-light)', fontWeight: 600}}>Proteína</span>
-                                </div>
-                                <div style={{textAlign: 'center', flex: 1}}>
-                                    <div style={{fontSize: '1.2rem'}}>🥦</div>
-                                    <span style={{fontSize: '0.7rem', color: 'var(--text-light)', fontWeight: 600}}>Veg/Fruta</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                ) : (
-                    <div style={{
-                        marginTop: '0.5rem', padding: '1rem', borderRadius: '16px',
-                        backgroundColor: isCompleted ? '#F0FDFA' : 'var(--surface-color)',
-                        border: '1px solid var(--border-color)',
-                        opacity: isCompleted ? 0.8 : 1,
-                        transition: 'all 0.2s'
-                    }}>
-                        <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-color)' }}>
-                            {content || 'Sin plan asignado'}
+                <div style={{
+                    marginTop: '0.5rem', padding: '1rem', borderRadius: '16px',
+                    backgroundColor: isCompleted ? '#F0FDFA' : (isActive ? 'white' : 'var(--surface-color)'),
+                    border: isActive ? '1px solid var(--primary-color)' : '1px solid var(--border-color)',
+                    opacity: isCompleted || isActive ? 1 : 0.9,
+                    transition: 'all 0.2s',
+                    boxShadow: isActive ? '0 4px 15px rgba(0,0,0,0.05)' : 'none'
+                }}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+                        <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-color)', lineHeight: 1.5, flex: 1 }}>
+                            {content || <span style={{fontStyle: 'italic', color: 'var(--text-light)', fontSize: '0.9rem'}}>Sin plan asignado</span>}
                         </p>
-                        {isCompleted && (
-                            <div style={{marginTop: '0.5rem', fontSize: '0.8rem', color: '#10B981', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.25rem'}}>
-                                {ICONS.check} Completado
-                            </div>
+                        
+                        {isAiEnabled && (
+                            <button 
+                                onClick={onCameraClick}
+                                style={{
+                                    background: 'var(--surface-hover-color)', 
+                                    border: '1px solid var(--border-color)', 
+                                    borderRadius: '50%', 
+                                    width: '36px', height: '36px', 
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                                    fontSize: '1.2rem', cursor: 'pointer', marginLeft: '0.75rem'
+                                }}
+                                title="Subir foto"
+                            >
+                                📷
+                            </button>
                         )}
                     </div>
-                )}
+                    
+                    {isCompleted && (
+                        <div style={{marginTop: '0.5rem', fontSize: '0.8rem', color: '#10B981', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.25rem'}}>
+                            {ICONS.check} Completado
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
+    );
+
+    const CameraModal = () => (
+        modalRoot ? createPortal(
+            <div style={{...styles.modalOverlay, zIndex: 2000}}>
+                <div style={{...styles.modalContent, maxWidth: '600px', padding: 0, borderRadius: '24px', overflow: 'hidden'}} className="fade-in">
+                    <div style={{padding: '1rem', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                        <h3 style={{margin: 0, fontSize: '1.1rem'}}>Subir {uploadingMealType}</h3>
+                        <button onClick={() => setUploadingMealType(null)} style={{...styles.iconButton, border: 'none'}}>{ICONS.close}</button>
+                    </div>
+                    <div>
+                        <MealImageAnalyzer 
+                            todaysDietLog={todaysDietLog || null} 
+                            clinicId={person.clinic_id} 
+                            personId={person.id}
+                            onEntrySaved={() => { fetchJournal(); setUploadingMealType(null); }}
+                            fixedMealType={uploadingMealType}
+                        />
+                    </div>
+                </div>
+            </div>,
+            modalRoot
+        ) : null
     );
 
     return (
@@ -268,6 +282,7 @@ const PatientHomePage: FC<{
              {editingCheckin && <DailyCheckinFormModal isOpen={!!editingCheckin} onClose={() => setEditingCheckin(null)} onSave={() => { setEditingCheckin(null); onDataRefresh(); }} checkinToEdit={editingCheckin} />}
             {deletingCheckin && <ConfirmationModal isOpen={!!deletingCheckin} onClose={() => setDeletingCheckin(null)} onConfirm={handleConfirmDelete} title="Confirmar Eliminación" message={<p>¿Eliminar tu registro del día?</p>} confirmText="Sí, eliminar" />}
             {viewingConsent && <ConsentRequestModal isOpen={!!viewingConsent} request={viewingConsent} onClose={() => setViewingConsent(null)} onDecision={onDataRefresh} />}
+            {uploadingMealType && <CameraModal />}
             
             {/* Header: Today & Streak */}
             <div style={{
@@ -292,50 +307,35 @@ const PatientHomePage: FC<{
                  </div>
             </div>
 
-            {/* Vertical Timeline */}
+            {/* Vertical Timeline - Render ALL slots */}
             <div style={{ paddingLeft: '0.5rem' }}>
-                {todaysDietLog ? (
-                    <>
+                {MEAL_SLOTS.map((slot, index) => {
+                    const content = todaysDietLog ? (todaysDietLog as any)[slot.key] : '';
+                    return (
                         <TimelineItem 
-                            time="9:00 AM" 
-                            title="Desayuno" 
-                            content={todaysDietLog.desayuno || ''} 
-                            isActive={currentMealType === 'Desayuno'}
-                            isCompleted={todaysDietLog.completed} 
+                            key={slot.key}
+                            time={slot.time}
+                            title={slot.label}
+                            content={content}
+                            isActive={currentMealType === slot.label}
+                            isCompleted={todaysDietLog?.completed}
+                            isLast={index === MEAL_SLOTS.length - 1}
+                            onCameraClick={() => setUploadingMealType(slot.key)}
                         />
-                        <TimelineItem 
-                            time="2:00 PM" 
-                            title="Comida" 
-                            content={todaysDietLog.comida || ''} 
-                            isActive={currentMealType === 'Comida'}
-                            isCompleted={todaysDietLog.completed}
-                        />
-                        <TimelineItem 
-                            time="8:00 PM" 
-                            title="Cena" 
-                            content={todaysDietLog.cena || ''} 
-                            isActive={currentMealType === 'Cena'}
-                            isCompleted={todaysDietLog.completed}
-                            isLast
-                        />
-                         {/* Complete Day Button */}
-                        {!todaysDietLog.completed && todaysDietLog.log_date === todayStr && (
-                            <div style={{paddingLeft: '36px', marginTop: '1rem'}}>
-                                <button 
-                                    onClick={() => handleMarkComplete(todaysDietLog)} 
-                                    disabled={!!updatingCompletion}
-                                    className="button-primary"
-                                    style={{width: '100%', padding: '1rem', borderRadius: '16px', fontSize: '1rem', fontWeight: 700, boxShadow: '0 8px 20px rgba(var(--primary-rgb), 0.3)'}}
-                                >
-                                    {updatingCompletion === todaysDietLog.id ? 'Guardando...' : '✅ Cerrar Día'}
-                                </button>
-                            </div>
-                        )}
-                    </>
-                ) : (
-                    <div style={{textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-light)', border: '2px dashed var(--border-color)', borderRadius: '24px', backgroundColor: 'var(--surface-color)'}}>
-                         <div style={{fontSize: '3rem', marginBottom: '1rem', opacity: 0.5}}>🍽️</div>
-                        <p>No tienes plan asignado para hoy.</p>
+                    );
+                })}
+                
+                {/* Complete Day Button */}
+                {todaysDietLog && !todaysDietLog.completed && todaysDietLog.log_date === todayStr && (
+                    <div style={{paddingLeft: '36px', marginTop: '1rem'}}>
+                        <button 
+                            onClick={() => handleMarkComplete(todaysDietLog)} 
+                            disabled={!!updatingCompletion}
+                            className="button-primary"
+                            style={{width: '100%', padding: '1rem', borderRadius: '16px', fontSize: '1rem', fontWeight: 700, boxShadow: '0 8px 20px rgba(var(--primary-rgb), 0.3)'}}
+                        >
+                            {updatingCompletion === todaysDietLog.id ? 'Guardando...' : '✅ Cerrar Día'}
+                        </button>
                     </div>
                 )}
             </div>
@@ -343,7 +343,7 @@ const PatientHomePage: FC<{
             {/* Journal Feed - Below Timeline */}
              {isAiEnabled && (
                 <div style={{ marginTop: '3rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                         <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>Historial Visual</h2>
                         <button onClick={fetchJournal} style={{background: 'none', border: 'none', color: 'var(--primary-color)', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer'}}>Ver Todo</button>
                     </div>

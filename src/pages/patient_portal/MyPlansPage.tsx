@@ -3,9 +3,13 @@ import React, { FC, useMemo, useState, useEffect } from 'react';
 import { DietLog, ExerciseLog } from '../../types';
 import { styles } from '../../constants';
 import { ICONS } from '../AuthPage';
-import { useClinic } from '../../contexts/ClinicContext'; // Assume we have access to clinic context or similar to get ID
-import { supabase } from '../../supabase'; // Needed to get person data if not passed directly, or rely on passed props
+import { useClinic } from '../../contexts/ClinicContext'; 
+import { supabase } from '../../supabase'; 
 import MealSwapModal from '../../components/patient_portal/MealSwapModal';
+import MealImageAnalyzer from '../../components/patient_portal/MealImageAnalyzer';
+import { createPortal } from 'react-dom';
+
+const modalRoot = document.getElementById('modal-root');
 
 interface MyPlansPageProps {
     dietLogs: DietLog[];
@@ -24,6 +28,9 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs, onDataRefre
     // Swap Modal State
     const [swappingMeal, setSwappingMeal] = useState<{ logId: string; column: string; content: string } | null>(null);
     const [clinicId, setClinicId] = useState<string | null>(null);
+    
+    // Camera Upload State
+    const [uploadingMeal, setUploadingMeal] = useState<{ type: string; log: DietLog } | null>(null);
 
     // Fetch clinic ID for AI (Using the dietLog relationship would be cleaner, but simple fetch works for now)
     useEffect(() => {
@@ -61,6 +68,12 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs, onDataRefre
             column,
             content
         });
+    };
+    
+    const handleCameraClick = (mealType: string) => {
+        if (currentDietLog) {
+            setUploadingMeal({ type: mealType, log: currentDietLog });
+        }
     };
 
     // --- Sub-Components ---
@@ -110,9 +123,7 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs, onDataRefre
 
     const MealVisualCard = ({ title, time, content, kCal, imageKeyword, mealColumn }: { title: string, time: string, content: string, kCal: string, imageKeyword: string, mealColumn: string }) => {
         if (!content) return null;
-        // Construct a safe Unsplash URL based on keyword
-        const imageUrl = `https://source.unsplash.com/600x400/?${imageKeyword},healthy,food`;
-
+        
         return (
             <div style={{
                 backgroundColor: 'white', borderRadius: '24px', overflow: 'hidden',
@@ -140,6 +151,21 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs, onDataRefre
                         <span style={{color: '#F59E0B', fontSize: '1rem'}}>🔥</span>
                         <span style={{color: 'white', fontSize: '0.85rem', fontWeight: 700}}>{kCal} Kcal</span>
                     </div>
+                    
+                    {/* Upload Button */}
+                    <button 
+                        onClick={() => handleCameraClick(mealColumn)}
+                        style={{
+                            position: 'absolute', top: '1rem', right: '1rem', zIndex: 2,
+                            backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)',
+                            border: '1px solid rgba(255,255,255,0.4)', borderRadius: '50%',
+                            width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer', fontSize: '1.2rem'
+                        }}
+                        title="Subir foto"
+                    >
+                        📷
+                    </button>
 
                     {/* Title Overlay */}
                     <div style={{position: 'absolute', bottom: '1.5rem', left: '1.5rem', zIndex: 2, right: '1.5rem'}}>
@@ -212,11 +238,36 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs, onDataRefre
             </div>
         </div>
     );
+    
+    const CameraModal = () => (
+        modalRoot ? createPortal(
+            <div style={{...styles.modalOverlay, zIndex: 2000}}>
+                <div style={{...styles.modalContent, maxWidth: '600px', padding: 0, borderRadius: '24px', overflow: 'hidden'}} className="fade-in">
+                    <div style={{padding: '1rem', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                        <h3 style={{margin: 0, fontSize: '1.1rem'}}>Subir Foto de Comida</h3>
+                        <button onClick={() => setUploadingMeal(null)} style={{...styles.iconButton, border: 'none'}}>{ICONS.close}</button>
+                    </div>
+                    <div>
+                        <MealImageAnalyzer 
+                            todaysDietLog={uploadingMeal?.log || null} 
+                            clinicId={clinicId || ''} 
+                            personId={uploadingMeal?.log.person_id || ''}
+                            onEntrySaved={() => setUploadingMeal(null)}
+                            fixedMealType={uploadingMeal?.type}
+                        />
+                    </div>
+                </div>
+            </div>,
+            modalRoot
+        ) : null
+    );
 
     return (
         <div style={{ backgroundColor: '#FAFAFA', minHeight: '100vh', paddingBottom: '100px' }}>
             <CalendarStrip />
             
+            {uploadingMeal && clinicId && <CameraModal />}
+
             {swappingMeal && clinicId && (
                 <MealSwapModal 
                     isOpen={true} 
