@@ -1,22 +1,13 @@
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet, Image, Font, Svg, Line, Polyline, Circle, G } from '@react-pdf/renderer';
+import { Page, Text, View, Document, StyleSheet, Image, Svg, Line, Polyline, Circle, G } from '@react-pdf/renderer';
 import { Person, NutritionistProfile, Clinic, ConsultationWithLabs, DietLog, ExerciseLog } from '../../types';
-
-// Registrar fuente Inter
-Font.register({
-  family: 'Inter',
-  fonts: [
-    { src: 'https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hjp-Ek-_EeA.ttf', fontWeight: 400 },
-    { src: 'https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuGkyfAZ9hjp-Ek-_EeA.ttf', fontWeight: 700 }
-  ]
-});
 
 const styles = StyleSheet.create({
   page: {
     padding: 30,
     paddingBottom: 50,
     fontSize: 10,
-    fontFamily: 'Inter',
+    fontFamily: 'Helvetica',
     backgroundColor: '#ffffff',
     color: '#1f2937'
   },
@@ -89,8 +80,11 @@ const styles = StyleSheet.create({
   },
   value: {
     fontSize: 10,
-    fontWeight: 500,
+    fontWeight: 'medium', // Helvetica uses 'medium' or numbers differently, usually normal/bold. React-pdf handles numeric weights mostly for registered fonts or standard bold.
     color: '#111827',
+  },
+  patientInfoBox: {
+    marginBottom: 20
   },
   box: {
     backgroundColor: '#f9fafb',
@@ -154,6 +148,12 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center'
+  },
+  disclaimer: {
+    fontSize: 8,
+    color: '#6b7280',
+    fontStyle: 'italic',
+    textAlign: 'justify'
   },
   footer: {
     position: 'absolute',
