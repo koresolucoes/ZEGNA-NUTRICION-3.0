@@ -12,13 +12,19 @@ interface MealSwapModalProps {
     onSuccess: () => void;
     clinicId: string;
     logId: string;
-    mealColumn: string; // 'desayuno', 'comida', 'cena', etc.
+    mealColumn: string; // 'desayuno', 'comida', 'cena', or 'enfoque' for exercise
     originalContent: string;
+    type?: 'food' | 'exercise'; // New prop
+    tableName?: 'diet_logs' | 'exercise_logs'; // New prop
 }
 
 const modalRoot = document.getElementById('modal-root');
 
-const MealSwapModal: FC<MealSwapModalProps> = ({ isOpen, onClose, onSuccess, clinicId, logId, mealColumn, originalContent }) => {
+const MealSwapModal: FC<MealSwapModalProps> = ({ 
+    isOpen, onClose, onSuccess, clinicId, logId, mealColumn, originalContent,
+    type = 'food',
+    tableName = 'diet_logs'
+}) => {
     const [options, setOptions] = useState<{ name: string; description: string; calories: string }[]>([]);
     const [selectedOptionIndex, setSelectedOptionIndex] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
@@ -35,14 +41,27 @@ const MealSwapModal: FC<MealSwapModalProps> = ({ isOpen, onClose, onSuccess, cli
             setError(null);
 
             try {
-                const prompt = `Actúa como un nutriólogo experto. El paciente quiere cambiar su comida actual: "${originalContent}".
+                let prompt = '';
                 
-                Genera 3 opciones alternativas que sean:
-                1. Nutricionalmente equivalentes (mismas calorías y macros aproximados).
-                2. Variadas en ingredientes.
-                3. Prácticas de preparar.
-                
-                Devuelve SOLO un JSON con la estructura especificada.`;
+                if (type === 'exercise') {
+                    prompt = `Actúa como un entrenador personal experto. El paciente quiere cambiar su rutina o enfoque de ejercicio actual: "${originalContent}".
+                    
+                    Genera 3 opciones alternativas de rutinas que sean:
+                    1. De intensidad similar o adaptable.
+                    2. Variadas en movimientos.
+                    3. Con un enfoque claro.
+                    
+                    Devuelve SOLO un JSON con la estructura especificada. En el campo "calories" pon la quema estimada (ej. '300 kcal').`;
+                } else {
+                    prompt = `Actúa como un nutriólogo experto. El paciente quiere cambiar su comida actual: "${originalContent}".
+                    
+                    Genera 3 opciones alternativas que sean:
+                    1. Nutricionalmente equivalentes (mismas calorías y macros aproximados).
+                    2. Variadas en ingredientes.
+                    3. Prácticas de preparar.
+                    
+                    Devuelve SOLO un JSON con la estructura especificada.`;
+                }
 
                 const schema = {
                     type: Type.OBJECT,
@@ -52,9 +71,9 @@ const MealSwapModal: FC<MealSwapModalProps> = ({ isOpen, onClose, onSuccess, cli
                             items: {
                                 type: Type.OBJECT,
                                 properties: {
-                                    name: { type: Type.STRING, description: "Nombre corto del platillo" },
-                                    description: { type: Type.STRING, description: "Descripción de ingredientes y cantidades (breve)" },
-                                    calories: { type: Type.STRING, description: "Calorías aproximadas (ej. '450 kcal')" }
+                                    name: { type: Type.STRING, description: type === 'exercise' ? "Nombre de la Rutina" : "Nombre del platillo" },
+                                    description: { type: Type.STRING, description: type === 'exercise' ? "Lista breve de ejercicios" : "Descripción de ingredientes" },
+                                    calories: { type: Type.STRING, description: type === 'exercise' ? "Quema estimada" : "Calorías aproximadas" }
                                 },
                                 required: ["name", "description", "calories"]
                             }
@@ -97,7 +116,7 @@ const MealSwapModal: FC<MealSwapModalProps> = ({ isOpen, onClose, onSuccess, cli
         if (isOpen) {
             fetchSuggestions();
         }
-    }, [isOpen, clinicId, originalContent]);
+    }, [isOpen, clinicId, originalContent, type]);
 
     const handleSave = async () => {
         if (selectedOptionIndex === null) return;
@@ -106,8 +125,9 @@ const MealSwapModal: FC<MealSwapModalProps> = ({ isOpen, onClose, onSuccess, cli
             const selected = options[selectedOptionIndex];
             const newContent = `${selected.name}: ${selected.description}`;
             
+            // FIX: Cast table name to any to avoid string literal vs string errors in supabase client
             const { error: updateError } = await supabase
-                .from('diet_logs')
+                .from(tableName as any)
                 .update({ [mealColumn]: newContent })
                 .eq('id', logId);
 
@@ -127,19 +147,19 @@ const MealSwapModal: FC<MealSwapModalProps> = ({ isOpen, onClose, onSuccess, cli
         <div style={styles.modalOverlay}>
             <div style={{...styles.modalContent, maxWidth: '600px'}} className="fade-in">
                 <div style={styles.modalHeader}>
-                    <h2 style={styles.modalTitle}>Intercambiar Opción</h2>
+                    <h2 style={styles.modalTitle}>Intercambiar {type === 'exercise' ? 'Rutina' : 'Opción'}</h2>
                     <button onClick={onClose} style={{...styles.iconButton, border: 'none'}}>{ICONS.close}</button>
                 </div>
                 <div style={{...styles.modalBody, padding: '1.5rem'}}>
                     <div style={{backgroundColor: 'var(--surface-hover-color)', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid var(--border-color)'}}>
-                        <span style={{fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 600, textTransform: 'uppercase'}}>Opción Actual</span>
-                        <p style={{margin: '0.5rem 0 0 0', fontWeight: 500, color: 'var(--text-color)'}}>{originalContent}</p>
+                        <span style={{fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 600, textTransform: 'uppercase'}}>Actual</span>
+                        <p style={{margin: '0.5rem 0 0 0', fontWeight: 500, color: 'var(--text-color)'}}>{originalContent || 'Sin asignar'}</p>
                     </div>
 
                     {loading ? (
                         <div style={{textAlign: 'center', padding: '3rem'}}>
                             <div className="spinner" style={{width: '40px', height: '40px', border: '4px solid #E5E7EB', borderTop: '4px solid var(--primary-color)', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 1rem auto'}}></div>
-                            <p style={{color: 'var(--text-light)'}}>La IA está buscando alternativas saludables...</p>
+                            <p style={{color: 'var(--text-light)'}}>La IA está buscando alternativas...</p>
                             <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
                         </div>
                     ) : error ? (
@@ -168,8 +188,8 @@ const MealSwapModal: FC<MealSwapModalProps> = ({ isOpen, onClose, onSuccess, cli
                                     )}
                                     <h4 style={{margin: '0 0 0.5rem 0', color: 'var(--text-color)'}}>{opt.name}</h4>
                                     <p style={{margin: 0, fontSize: '0.9rem', color: 'var(--text-light)'}}>{opt.description}</p>
-                                    <span style={{display: 'inline-block', marginTop: '0.5rem', fontSize: '0.8rem', fontWeight: 600, color: '#F59E0B', backgroundColor: '#FFF7ED', padding: '2px 8px', borderRadius: '12px'}}>
-                                        🔥 {opt.calories}
+                                    <span style={{display: 'inline-block', marginTop: '0.5rem', fontSize: '0.8rem', fontWeight: 600, color: type === 'exercise' ? '#8B5CF6' : '#F59E0B', backgroundColor: type === 'exercise' ? '#F3F0FF' : '#FFF7ED', padding: '2px 8px', borderRadius: '12px'}}>
+                                        {type === 'exercise' ? '⚡' : '🔥'} {opt.calories}
                                     </span>
                                 </div>
                             ))}

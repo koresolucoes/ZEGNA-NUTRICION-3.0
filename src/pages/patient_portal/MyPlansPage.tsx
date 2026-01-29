@@ -20,24 +20,41 @@ interface MyPlansPageProps {
 const WEEKDAYS = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
+// Helper to get images based on meal type
+const getMealImage = (type: string) => {
+    switch(type) {
+        case 'desayuno': return "https://images.unsplash.com/photo-1533089862017-ec326aa0538b?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80"; // Pancakes/Juice
+        case 'colacion_1': return "https://images.unsplash.com/photo-1490474418585-ba9bad8fd0ea?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80"; // Fruit
+        case 'comida': return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80"; // Healthy Bowl
+        case 'colacion_2': return "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80"; // Salad/Snack
+        case 'cena': return "https://images.unsplash.com/photo-1467003909585-2f8a7270028d?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80"; // Plated Dinner
+        default: return "https://images.unsplash.com/photo-1543353071-873f17a7a088?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80";
+    }
+};
+
+const getExerciseImage = (focus: string = "") => {
+    const f = focus.toLowerCase();
+    if (f.includes('cardio') || f.includes('correr')) return "https://images.unsplash.com/photo-1538805060512-e2196156e312?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80";
+    if (f.includes('fuerza') || f.includes('pesas') || f.includes('superior') || f.includes('inferior')) return "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80";
+    if (f.includes('yoga') || f.includes('flexibilidad')) return "https://images.unsplash.com/photo-1544367563-12123d896889?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80";
+    return "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80"; // Default Gym
+};
+
+
 const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs, onDataRefresh }) => {
-    // Generate dates for current week/month view (simplified to +/- 3 days from today for UI)
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'food' | 'exercise'>('food');
     
     // Swap Modal State
-    const [swappingMeal, setSwappingMeal] = useState<{ logId: string; column: string; content: string } | null>(null);
+    const [swappingItem, setSwappingItem] = useState<{ logId: string; column: string; content: string; type: 'food' | 'exercise'; table: 'diet_logs' | 'exercise_logs' } | null>(null);
     const [clinicId, setClinicId] = useState<string | null>(null);
     
     // Camera Upload State
     const [uploadingMeal, setUploadingMeal] = useState<{ type: string; log: DietLog } | null>(null);
 
-    // Fetch clinic ID for AI (Using the dietLog relationship would be cleaner, but simple fetch works for now)
     useEffect(() => {
         if (dietLogs.length > 0) {
              const fetchClinic = async () => {
-                 // Assuming dietLogs have person_id, we can find clinic. Or use context if available higher up.
-                 // For now, let's grab it from the person table using one of the logs
                  const { data } = await supabase.from('persons').select('clinic_id').eq('id', dietLogs[0].person_id).single();
                  if (data) setClinicId(data.clinic_id);
              };
@@ -48,7 +65,6 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs, onDataRefre
     const calendarDays = useMemo(() => {
         const days = [];
         const today = new Date();
-        // Generate a 7-day window centered on today
         for (let i = -3; i <= 3; i++) {
             const d = new Date(today);
             d.setDate(today.getDate() + i);
@@ -61,12 +77,25 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs, onDataRefre
     const currentDietLog = dietLogs.find(l => l.log_date === selectedLogDateStr);
     const currentExerciseLog = exerciseLogs.find(l => l.log_date === selectedLogDateStr);
 
-    const handleSwapClick = (column: string, content: string) => {
+    const handleSwapFood = (column: string, content: string) => {
         if (!currentDietLog) return;
-        setSwappingMeal({
+        setSwappingItem({
             logId: currentDietLog.id,
             column,
-            content
+            content,
+            type: 'food',
+            table: 'diet_logs'
+        });
+    };
+    
+    const handleSwapExercise = (content: string) => {
+        if (!currentExerciseLog) return;
+        setSwappingItem({
+            logId: currentExerciseLog.id,
+            column: 'enfoque', // We swap the focus/description for simple exercise changes
+            content,
+            type: 'exercise',
+            table: 'exercise_logs'
         });
     };
     
@@ -84,7 +113,7 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs, onDataRefre
                 <h2 style={{margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-color)'}}>{MONTHS[selectedDate.getMonth()]} {selectedDate.getFullYear()}</h2>
                 <div style={{display: 'flex', gap: '0.5rem', backgroundColor: '#F3F4F6', padding: '4px', borderRadius: '20px'}}>
                     <button onClick={() => setViewMode('food')} style={{padding: '6px 14px', borderRadius: '16px', border: 'none', backgroundColor: viewMode === 'food' ? '#10B981' : 'transparent', color: viewMode === 'food' ? 'white' : '#6B7280', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s'}}>Alimentación</button>
-                     <button onClick={() => setViewMode('exercise')} style={{padding: '6px 14px', borderRadius: '16px', border: 'none', backgroundColor: viewMode === 'exercise' ? '#10B981' : 'transparent', color: viewMode === 'exercise' ? 'white' : '#6B7280', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s'}}>Ejercicio</button>
+                     <button onClick={() => setViewMode('exercise')} style={{padding: '6px 14px', borderRadius: '16px', border: 'none', backgroundColor: viewMode === 'exercise' ? '#3B82F6' : 'transparent', color: viewMode === 'exercise' ? 'white' : '#6B7280', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s'}}>Ejercicio</button>
                 </div>
             </div>
             
@@ -121,7 +150,9 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs, onDataRefre
         </div>
     );
 
-    const MealVisualCard = ({ title, time, content, kCal, imageKeyword, mealColumn }: { title: string, time: string, content: string, kCal: string, imageKeyword: string, mealColumn: string }) => {
+    const VisualCard = ({ 
+        title, time, content, badgeText, badgeIcon, imageUrl, onSwap, onCamera, swapColor = '#10B981', type = 'food' 
+    }: { title: string, time: string, content: string, badgeText: string, badgeIcon: string, imageUrl: string, onSwap: () => void, onCamera?: () => void, swapColor?: string, type?: 'food' | 'exercise' }) => {
         if (!content) return null;
         
         return (
@@ -134,38 +165,39 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs, onDataRefre
                     {/* Gradient Overlay */}
                     <div style={{position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 50%)', zIndex: 1}}></div>
                     
-                    {/* Placeholder image */}
                     <img 
-                        src={`https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80`} 
+                        src={imageUrl} 
                         style={{width: '100%', height: '100%', objectFit: 'cover'}} 
                         alt={title}
                     />
                     
-                    {/* Kcal Badge */}
+                    {/* Badge */}
                     <div style={{
                         position: 'absolute', top: '1rem', left: '1rem', zIndex: 2,
                         backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
                         padding: '6px 14px', borderRadius: '20px',
                         display: 'flex', alignItems: 'center', gap: '6px'
                     }}>
-                        <span style={{color: '#F59E0B', fontSize: '1rem'}}>🔥</span>
-                        <span style={{color: 'white', fontSize: '0.85rem', fontWeight: 700}}>{kCal} Kcal</span>
+                        <span style={{color: '#F59E0B', fontSize: '1rem'}}>{badgeIcon}</span>
+                        <span style={{color: 'white', fontSize: '0.85rem', fontWeight: 700}}>{badgeText}</span>
                     </div>
                     
-                    {/* Upload Button */}
-                    <button 
-                        onClick={() => handleCameraClick(mealColumn)}
-                        style={{
-                            position: 'absolute', top: '1rem', right: '1rem', zIndex: 2,
-                            backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)',
-                            border: '1px solid rgba(255,255,255,0.4)', borderRadius: '50%',
-                            width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer', fontSize: '1.2rem'
-                        }}
-                        title="Subir foto"
-                    >
-                        📷
-                    </button>
+                    {/* Upload Button (Only for food) */}
+                    {onCamera && (
+                        <button 
+                            onClick={onCamera}
+                            style={{
+                                position: 'absolute', top: '1rem', right: '1rem', zIndex: 2,
+                                backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)',
+                                border: '1px solid rgba(255,255,255,0.4)', borderRadius: '50%',
+                                width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                cursor: 'pointer', fontSize: '1.2rem'
+                            }}
+                            title="Subir foto"
+                        >
+                            📷
+                        </button>
+                    )}
 
                     {/* Title Overlay */}
                     <div style={{position: 'absolute', bottom: '1.5rem', left: '1.5rem', zIndex: 2, right: '1.5rem'}}>
@@ -183,61 +215,42 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs, onDataRefre
 
                 <div style={{padding: '1.5rem'}}>
                     <div style={{marginBottom: '1.5rem'}}>
-                        <h4 style={{fontSize: '1rem', marginBottom: '0.5rem', color: '#1F2937', fontWeight: 700}}>Ingredientes</h4>
+                        <h4 style={{fontSize: '1rem', marginBottom: '0.5rem', color: '#1F2937', fontWeight: 700}}>{type === 'food' ? 'Ingredientes' : 'Detalles'}</h4>
                         <p style={{color: '#6B7280', fontSize: '0.95rem', lineHeight: 1.6, margin: 0}}>{content}</p>
                     </div>
 
-                    <div style={{display: 'flex', gap: '1rem', borderTop: '1px solid #F3F4F6', paddingTop: '1.25rem'}}>
-                        <div style={{flex: 1}}>
-                            <p style={{fontSize: '0.75rem', color: '#9CA3AF', margin: 0, fontWeight: 600, textTransform: 'uppercase'}}>Proteína</p>
-                            <p style={{fontWeight: 700, color: '#1F2937', margin: '2px 0 0 0', fontSize: '1.1rem'}}>25g</p>
+                    {type === 'food' && (
+                        <div style={{display: 'flex', gap: '1rem', borderTop: '1px solid #F3F4F6', paddingTop: '1.25rem'}}>
+                            <div style={{flex: 1}}>
+                                <p style={{fontSize: '0.75rem', color: '#9CA3AF', margin: 0, fontWeight: 600, textTransform: 'uppercase'}}>Proteína</p>
+                                <p style={{fontWeight: 700, color: '#1F2937', margin: '2px 0 0 0', fontSize: '1.1rem'}}>25g</p>
+                            </div>
+                            <div style={{flex: 1}}>
+                                <p style={{fontSize: '0.75rem', color: '#9CA3AF', margin: 0, fontWeight: 600, textTransform: 'uppercase'}}>Carbos</p>
+                                <p style={{fontWeight: 700, color: '#1F2937', margin: '2px 0 0 0', fontSize: '1.1rem'}}>45g</p>
+                            </div>
+                            <div style={{flex: 1}}>
+                                <p style={{fontSize: '0.75rem', color: '#9CA3AF', margin: 0, fontWeight: 600, textTransform: 'uppercase'}}>Grasas</p>
+                                <p style={{fontWeight: 700, color: '#1F2937', margin: '2px 0 0 0', fontSize: '1.1rem'}}>10g</p>
+                            </div>
                         </div>
-                        <div style={{flex: 1}}>
-                            <p style={{fontSize: '0.75rem', color: '#9CA3AF', margin: 0, fontWeight: 600, textTransform: 'uppercase'}}>Carbos</p>
-                            <p style={{fontWeight: 700, color: '#1F2937', margin: '2px 0 0 0', fontSize: '1.1rem'}}>45g</p>
-                        </div>
-                        <div style={{flex: 1}}>
-                            <p style={{fontSize: '0.75rem', color: '#9CA3AF', margin: 0, fontWeight: 600, textTransform: 'uppercase'}}>Grasas</p>
-                            <p style={{fontWeight: 700, color: '#1F2937', margin: '2px 0 0 0', fontSize: '1.1rem'}}>10g</p>
-                        </div>
-                        <div style={{flex: 1, textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end'}}>
-                             <div style={{
-                                width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#10B981', color: 'white', 
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(16, 185, 129, 0.3)'
-                            }}>✓</div>
-                        </div>
-                    </div>
+                    )}
                     
                     <button 
-                        onClick={() => handleSwapClick(mealColumn, content)}
+                        onClick={onSwap}
                         style={{
                             width: '100%', marginTop: '1.5rem', padding: '1rem', borderRadius: '16px',
-                            backgroundColor: '#10B981', color: 'white', border: 'none', fontWeight: 700, fontSize: '1rem',
-                            boxShadow: '0 8px 20px rgba(16, 185, 129, 0.25)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                            backgroundColor: swapColor, color: 'white', border: 'none', fontWeight: 700, fontSize: '1rem',
+                            boxShadow: `0 8px 20px ${swapColor}40`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
                             transition: 'transform 0.1s'
                         }}
                     >
-                        <span style={{fontSize: '1.2rem'}}>🔄</span> Intercambiar Opción
+                        <span style={{fontSize: '1.2rem'}}>🔄</span> Intercambiar {type === 'exercise' ? 'Rutina' : 'Opción'}
                     </button>
                 </div>
             </div>
         );
     };
-    
-    const ExerciseRow = ({ name, sets }: { name: string, sets: string }) => (
-        <div style={{display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.25rem', backgroundColor: 'white', borderRadius: '20px', marginBottom: '1rem', border: '1px solid #F3F4F6', boxShadow: '0 4px 6px -2px rgba(0,0,0,0.02)'}}>
-            <div style={{width: '56px', height: '56px', borderRadius: '14px', backgroundColor: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', color: '#4B5563'}}>
-                💪
-            </div>
-            <div style={{flex: 1}}>
-                <h4 style={{margin: 0, fontSize: '1rem', color: '#1F2937', fontWeight: 700}}>{name}</h4>
-                <p style={{margin: '4px 0 0 0', fontSize: '0.85rem', color: '#6B7280'}}>{sets}</p>
-            </div>
-            <div style={{border: '2px solid #E5E7EB', borderRadius: '20px', padding: '6px 14px', fontSize: '0.85rem', fontWeight: 700, color: '#4B5563'}}>
-                0 kg
-            </div>
-        </div>
-    );
     
     const CameraModal = () => (
         modalRoot ? createPortal(
@@ -268,15 +281,17 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs, onDataRefre
             
             {uploadingMeal && clinicId && <CameraModal />}
 
-            {swappingMeal && clinicId && (
+            {swappingItem && clinicId && (
                 <MealSwapModal 
                     isOpen={true} 
-                    onClose={() => setSwappingMeal(null)} 
-                    onSuccess={() => { setSwappingMeal(null); onDataRefresh(); }}
+                    onClose={() => setSwappingItem(null)} 
+                    onSuccess={() => { setSwappingItem(null); onDataRefresh(); }}
                     clinicId={clinicId}
-                    logId={swappingMeal.logId}
-                    mealColumn={swappingMeal.column}
-                    originalContent={swappingMeal.content}
+                    logId={swappingItem.logId}
+                    mealColumn={swappingItem.column}
+                    originalContent={swappingItem.content}
+                    type={swappingItem.type}
+                    tableName={swappingItem.table}
                 />
             )}
             
@@ -284,11 +299,11 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs, onDataRefre
                 {viewMode === 'food' ? (
                     currentDietLog ? (
                         <>
-                            <MealVisualCard title="Desayuno" time="8:00 AM" content={currentDietLog.desayuno || ''} kCal="450" imageKeyword="breakfast" mealColumn="desayuno" />
-                            {currentDietLog.colacion_1 && <MealVisualCard title="Comida 1: Pre-Entreno" time="11:00 AM" content={currentDietLog.colacion_1} kCal="200" imageKeyword="healthy snack" mealColumn="colacion_1" />}
-                            <MealVisualCard title="Comida" time="2:30 PM" content={currentDietLog.comida || ''} kCal="600" imageKeyword="healthy lunch" mealColumn="comida" />
-                            {currentDietLog.colacion_2 && <MealVisualCard title="Colación 2" time="6:00 PM" content={currentDietLog.colacion_2} kCal="150" imageKeyword="nuts" mealColumn="colacion_2" />}
-                            <MealVisualCard title="Cena" time="9:00 PM" content={currentDietLog.cena || ''} kCal="350" imageKeyword="healthy dinner" mealColumn="cena" />
+                            <VisualCard title="Desayuno" time="8:00 AM" content={currentDietLog.desayuno || ''} badgeText="450 Kcal" badgeIcon="🔥" imageUrl={getMealImage('desayuno')} onSwap={() => handleSwapFood('desayuno', currentDietLog.desayuno || '')} onCamera={() => handleCameraClick('desayuno')} />
+                            {currentDietLog.colacion_1 && <VisualCard title="Comida 1" time="11:00 AM" content={currentDietLog.colacion_1} badgeText="200 Kcal" badgeIcon="🔥" imageUrl={getMealImage('colacion_1')} onSwap={() => handleSwapFood('colacion_1', currentDietLog.colacion_1 || '')} onCamera={() => handleCameraClick('colacion_1')} />}
+                            <VisualCard title="Comida" time="2:30 PM" content={currentDietLog.comida || ''} badgeText="600 Kcal" badgeIcon="🔥" imageUrl={getMealImage('comida')} onSwap={() => handleSwapFood('comida', currentDietLog.comida || '')} onCamera={() => handleCameraClick('comida')} />
+                            {currentDietLog.colacion_2 && <VisualCard title="Colación 2" time="6:00 PM" content={currentDietLog.colacion_2} badgeText="150 Kcal" badgeIcon="🔥" imageUrl={getMealImage('colacion_2')} onSwap={() => handleSwapFood('colacion_2', currentDietLog.colacion_2 || '')} onCamera={() => handleCameraClick('colacion_2')} />}
+                            <VisualCard title="Cena" time="9:00 PM" content={currentDietLog.cena || ''} badgeText="350 Kcal" badgeIcon="🔥" imageUrl={getMealImage('cena')} onSwap={() => handleSwapFood('cena', currentDietLog.cena || '')} onCamera={() => handleCameraClick('cena')} />
                         </>
                     ) : (
                         <div style={{textAlign: 'center', padding: '4rem 2rem', color: '#9CA3AF', border: '2px dashed #E5E7EB', borderRadius: '24px'}}>
@@ -298,17 +313,41 @@ const MyPlansPage: FC<MyPlansPageProps> = ({ dietLogs, exerciseLogs, onDataRefre
                     )
                 ) : (
                     <div>
-                         <h3 style={{margin: '0 0 1.5rem 0', fontSize: '1.3rem', color: '#1F2937', fontWeight: 800}}>
-                             Entrenamiento de Hoy 
-                             <span style={{color: '#10B981', fontSize: '0.9rem', marginLeft: '0.75rem', backgroundColor: '#ECFDF5', padding: '4px 10px', borderRadius: '12px'}}>
-                                 {currentExerciseLog?.enfoque || 'Descanso'}
-                             </span>
-                         </h3>
-                         
-                         {currentExerciseLog && Array.isArray(currentExerciseLog.ejercicios) && currentExerciseLog.ejercicios.length > 0 ? (
-                             (currentExerciseLog.ejercicios as any[]).map((ex, i) => (
-                                 <ExerciseRow key={i} name={ex.nombre} sets={`${ex.series} series x ${ex.repeticiones}`} />
-                             ))
+                         {currentExerciseLog ? (
+                             <>
+                                <h3 style={{margin: '0 0 1.5rem 0', fontSize: '1.3rem', color: '#1F2937', fontWeight: 800}}>
+                                    Objetivo: <span style={{color: '#3B82F6'}}>{currentExerciseLog.enfoque || 'General'}</span>
+                                </h3>
+                                
+                                <VisualCard 
+                                    title="Rutina Principal" 
+                                    time="60 min" 
+                                    content={currentExerciseLog.enfoque || 'Entrenamiento del día'} 
+                                    badgeText="Fuerza/Cardio" 
+                                    badgeIcon="💪" 
+                                    imageUrl={getExerciseImage(currentExerciseLog.enfoque || '')} 
+                                    onSwap={() => handleSwapExercise(currentExerciseLog.enfoque || '')}
+                                    swapColor="#3B82F6"
+                                    type="exercise"
+                                />
+
+                                {Array.isArray(currentExerciseLog.ejercicios) && currentExerciseLog.ejercicios.length > 0 && (
+                                    <div style={{marginTop: '2rem'}}>
+                                        <h4 style={{fontSize: '1.1rem', marginBottom: '1rem', color: '#374151', fontWeight: 700}}>Detalle de Ejercicios</h4>
+                                        <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
+                                            {(currentExerciseLog.ejercicios as any[]).map((ex, i) => (
+                                                <div key={i} style={{backgroundColor: 'white', padding: '1.25rem', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: '1rem', border: '1px solid #F3F4F6'}}>
+                                                    <div style={{width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#EFF6FF', color: '#3B82F6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800}}>{i+1}</div>
+                                                    <div style={{flex: 1}}>
+                                                        <h5 style={{margin: 0, fontSize: '1rem', fontWeight: 700, color: '#1F2937'}}>{ex.nombre}</h5>
+                                                        <p style={{margin: '0.25rem 0 0 0', fontSize: '0.9rem', color: '#6B7280'}}>{ex.series} series x {ex.repeticiones}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                             </>
                          ) : (
                              <div style={{textAlign: 'center', padding: '3rem', backgroundColor: 'white', borderRadius: '24px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)'}}>
                                  <div style={{fontSize: '3rem', marginBottom: '0.5rem'}}>🧘</div>
