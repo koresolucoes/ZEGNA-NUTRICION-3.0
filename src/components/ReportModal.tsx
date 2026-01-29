@@ -1,6 +1,7 @@
+
 import React, { FC, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { PDFDownloadLink, PDFViewer } from '@react-pdf/renderer';
+import { PDFDownloadLink, PDFViewer, pdf } from '@react-pdf/renderer';
 import { styles } from '../constants';
 import { ICONS } from '../pages/AuthPage';
 import { Person, ConsultationWithLabs, DietLog, ExerciseLog, Allergy, MedicalHistory, Medication, LifestyleHabits, NutritionistProfile, Clinic } from '../types';
@@ -34,6 +35,7 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
         page4_welcome: true,
     });
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
+    const [isPrinting, setIsPrinting] = useState(false);
 
     const toggleOption = (key: keyof typeof options) => {
         setOptions(prev => ({ ...prev, [key]: !prev[key] }));
@@ -101,10 +103,43 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
         />
     );
 
+    const handlePrint = async () => {
+        setIsPrinting(true);
+        try {
+            const blob = await pdf(MyDocument).toBlob();
+            const url = URL.createObjectURL(blob);
+            
+            // Create an invisible iframe to handle printing
+            const iframe = document.createElement('iframe');
+            iframe.style.position = 'fixed';
+            iframe.style.width = '0px';
+            iframe.style.height = '0px';
+            iframe.style.border = 'none';
+            iframe.src = url;
+            document.body.appendChild(iframe);
+            
+            // Wait for the iframe to load the PDF
+            iframe.onload = () => {
+                iframe.contentWindow?.focus();
+                iframe.contentWindow?.print();
+                // Clean up after a delay
+                setTimeout(() => {
+                    document.body.removeChild(iframe);
+                    URL.revokeObjectURL(url);
+                }, 2000);
+            };
+        } catch (error) {
+            console.error("Error generating PDF for print:", error);
+            alert("Hubo un error al intentar imprimir. Intenta descargar el PDF.");
+        } finally {
+            setIsPrinting(false);
+        }
+    };
+
     const SelectableCard: FC<{ 
         id: keyof typeof options; 
         label: string; 
-        description: string;
+        description: string; 
         icon: React.ReactNode 
     }> = ({ id, label, description, icon }) => {
         const isSelected = options[id];
@@ -226,6 +261,14 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
                     <button onClick={() => setView('preview')} className="button-secondary" style={{padding: '0.75rem 1.5rem'}}>
                         👁️ Vista Previa
                     </button>
+                    <button 
+                        onClick={handlePrint} 
+                        disabled={isPrinting}
+                        className="button-secondary"
+                        style={{padding: '0.75rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem'}}
+                    >
+                        {ICONS.print} {isPrinting ? 'Preparando...' : 'Imprimir'}
+                    </button>
                     <PDFDownloadLink document={MyDocument} fileName={`Reporte_${person.full_name.replace(/\s/g, '_')}.pdf`}>
                         {({ loading }) => (
                             <button disabled={loading} className="button-primary" style={{minWidth: '160px', padding: '0.75rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'}}>
@@ -248,6 +291,24 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
                     <h2 style={{margin: 0, fontSize: '1.2rem'}}>Vista Previa del Documento</h2>
                 </div>
                 <div style={{display: 'flex', gap: '1rem'}}>
+                    <button 
+                        onClick={handlePrint} 
+                        disabled={isPrinting}
+                        style={{
+                            padding: '0.5rem 1rem', 
+                            fontSize: '0.9rem', 
+                            backgroundColor: 'rgba(255,255,255,0.1)', 
+                            color: 'white', 
+                            border: '1px solid rgba(255,255,255,0.2)',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                        }}
+                    >
+                         {ICONS.print} {isPrinting ? '...' : 'Imprimir'}
+                    </button>
                      <PDFDownloadLink document={MyDocument} fileName={`Reporte_${person.full_name}.pdf`}>
                         {({ loading }) => (
                             <button disabled={loading} className="button-primary" style={{padding: '0.5rem 1rem', fontSize: '0.9rem'}}>
