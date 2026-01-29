@@ -4,8 +4,10 @@ import { Person, NutritionistProfile, Clinic, ConsultationWithLabs, DietLog, Exe
 
 const styles = StyleSheet.create({
   page: {
-    padding: 30,
-    paddingBottom: 50,
+    paddingTop: 40,
+    paddingBottom: 60, // Space for footer
+    paddingLeft: 40,
+    paddingRight: 40,
     fontSize: 10,
     fontFamily: 'Helvetica',
     backgroundColor: '#ffffff',
@@ -18,11 +20,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
-    paddingBottom: 15,
+    paddingBottom: 10,
   },
   logo: {
-    width: 60,
-    height: 60,
+    width: 50,
+    height: 50,
     objectFit: 'contain',
     borderRadius: 8
   },
@@ -30,10 +32,10 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   clinicName: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 'bold',
     color: '#111827',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   clinicMeta: {
     fontSize: 8,
@@ -41,23 +43,23 @@ const styles = StyleSheet.create({
     marginBottom: 1
   },
   sectionTitle: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#0284C7',
-    marginTop: 15,
-    marginBottom: 10,
-    borderBottomWidth: 1,
+    marginTop: 10,
+    marginBottom: 15,
+    borderBottomWidth: 2,
     borderBottomColor: '#f3f4f6',
-    paddingBottom: 4,
+    paddingBottom: 6,
     textTransform: 'uppercase',
     letterSpacing: 0.5
   },
   subTitle: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 'bold',
     color: '#374151',
-    marginTop: 8,
-    marginBottom: 4,
+    marginTop: 10,
+    marginBottom: 6,
   },
   row: {
     flexDirection: 'row',
@@ -80,19 +82,24 @@ const styles = StyleSheet.create({
   },
   value: {
     fontSize: 10,
-    fontWeight: 'medium', // Helvetica uses 'medium' or numbers differently, usually normal/bold. React-pdf handles numeric weights mostly for registered fonts or standard bold.
+    fontWeight: 'medium',
     color: '#111827',
   },
   patientInfoBox: {
-    marginBottom: 20
+    marginBottom: 30,
+    padding: 10,
+    backgroundColor: '#f8fafc',
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#e2e8f0'
   },
   box: {
     backgroundColor: '#f9fafb',
     borderRadius: 6,
-    padding: 10,
+    padding: 12,
     borderWidth: 1,
     borderColor: '#f3f4f6',
-    marginBottom: 10
+    marginBottom: 15
   },
   table: {
     display: 'flex',
@@ -143,23 +150,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   chartContainer: {
-    marginVertical: 10,
-    height: 150,
+    marginVertical: 15,
+    height: 180,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center'
   },
   disclaimer: {
-    fontSize: 8,
+    fontSize: 9,
     color: '#6b7280',
     fontStyle: 'italic',
-    textAlign: 'justify'
+    textAlign: 'justify',
+    marginTop: 20
   },
   footer: {
     position: 'absolute',
-    bottom: 20,
-    left: 30,
-    right: 30,
+    bottom: 25,
+    left: 40,
+    right: 40,
     textAlign: 'center',
     fontSize: 8,
     color: '#9ca3af',
@@ -170,7 +178,7 @@ const styles = StyleSheet.create({
 });
 
 // --- CHART COMPONENT ---
-const PDFChart = ({ data, title, color = '#0284C7', width = 500, height = 150, unit = '' }: any) => {
+const PDFChart = ({ data, title, color = '#0284C7', width = 500, height = 180, unit = '' }: any) => {
   if (!data || data.length < 2) {
     return (
       <View style={styles.chartContainer}>
@@ -186,13 +194,11 @@ const PDFChart = ({ data, title, color = '#0284C7', width = 500, height = 150, u
   const values = data.map((d: any) => d.value);
   const minVal = Math.min(...values);
   const maxVal = Math.max(...values);
-  // Add some buffer to the range
   const buffer = (maxVal - minVal) * 0.1 || 1; 
   const yMin = Math.max(0, minVal - buffer);
   const yMax = maxVal + buffer;
   const range = yMax - yMin;
   
-  // Create points string for Polyline
   const points = data.map((d: any, i: number) => {
     const x = padding + (i / (data.length - 1)) * graphWidth;
     const y = height - padding - ((d.value - yMin) / range) * graphHeight;
@@ -203,31 +209,23 @@ const PDFChart = ({ data, title, color = '#0284C7', width = 500, height = 150, u
     <View style={{ marginBottom: 20, marginTop: 10 }}>
       <Text style={{ fontSize: 10, fontWeight: 'bold', marginBottom: 5, color: '#374151' }}>{title}</Text>
       <Svg width={width} height={height}>
-        {/* Y Axis Line */}
         <Line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="#e5e7eb" strokeWidth={1} />
-        {/* X Axis Line */}
         <Line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#e5e7eb" strokeWidth={1} />
-        
-        {/* Grid Lines (Horizontal) */}
         <Line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="#f3f4f6" strokeWidth={1} strokeDasharray="4 4" />
         <Line x1={padding} y1={height / 2} x2={width - padding} y2={height / 2} stroke="#f3f4f6" strokeWidth={1} strokeDasharray="4 4" />
 
-        {/* The Data Line */}
         <Polyline points={points} stroke={color} strokeWidth={2} fill="none" />
         
-        {/* Data Points and Labels */}
         {data.map((d: any, i: number) => {
            const x = padding + (i / (data.length - 1)) * graphWidth;
            const y = height - padding - ((d.value - yMin) / range) * graphHeight;
-           
-           // Show value label for first, last, and points that are peaks/troughs roughly
            const showLabel = i === 0 || i === data.length - 1 || data.length < 8;
 
            return (
              <G key={i}>
                 <Circle cx={x} cy={y} r={3} fill="#ffffff" stroke={color} strokeWidth={2} />
                 {showLabel && (
-                    <Text x={x - 10} y={y - 8} fontSize={8} fill="#4b5563">
+                    <Text x={x - 10} y={y - 8} style={{ fontSize: 8 }} fill="#4b5563">
                         {d.value.toFixed(1)}{unit}
                     </Text>
                 )}
@@ -235,11 +233,10 @@ const PDFChart = ({ data, title, color = '#0284C7', width = 500, height = 150, u
            )
         })}
         
-        {/* Dates on X Axis (First and Last) */}
-        <Text x={padding} y={height - 5} fontSize={8} fill="#9ca3af">
+        <Text x={padding} y={height - 5} style={{ fontSize: 8 }} fill="#9ca3af">
            {new Date(data[0].date).toLocaleDateString('es-MX', {month:'short', day:'numeric'})}
         </Text>
-        <Text x={width - padding - 40} y={height - 5} fontSize={8} fill="#9ca3af" textAnchor="end">
+        <Text x={width - padding - 40} y={height - 5} style={{ fontSize: 8 }} fill="#9ca3af" textAnchor="end">
            {new Date(data[data.length - 1].date).toLocaleDateString('es-MX', {month:'short', day:'numeric'})}
         </Text>
       </Svg>
@@ -277,19 +274,18 @@ const MedicalReportDocument: React.FC<MedicalReportDocumentProps> = ({
       return `${age} AÑOS`;
   };
 
-  // Prepare Chart Data
   const sortedConsultations = [...consultations].sort((a, b) => new Date(a.consultation_date).getTime() - new Date(b.consultation_date).getTime());
   const weightData = sortedConsultations.filter(c => c.weight_kg != null).map(c => ({ date: c.consultation_date, value: c.weight_kg! }));
   const imcData = sortedConsultations.filter(c => c.imc != null).map(c => ({ date: c.consultation_date, value: c.imc! }));
 
-  // Get Latest Plans
   const latestDiet = dietLogs[0];
   const latestExercise = exerciseLogs[0];
 
   return (
     <Document>
-      <Page size="A4" style={styles.page} wrap>
-        {/* HEADER */}
+      <Page size="A4" style={styles.page}>
+        
+        {/* HEADER (Repeats on every page if needed, but here mostly for page 1 unless logic added) */}
         <View style={styles.header} fixed>
           <View style={{flexDirection: 'row', alignItems: 'center', gap: 10}}>
              {clinic?.logo_url && (
@@ -308,7 +304,7 @@ const MedicalReportDocument: React.FC<MedicalReportDocumentProps> = ({
           </View>
         </View>
 
-        {/* PATIENT INFO */}
+        {/* PATIENT INFO (Only on first page naturally) */}
         <View style={styles.patientInfoBox} wrap={false}>
           <View style={styles.row}>
             <View style={styles.col2}>
@@ -380,9 +376,9 @@ const MedicalReportDocument: React.FC<MedicalReportDocumentProps> = ({
           </View>
         )}
 
-        {/* SECTION 2: GRÁFICOS */}
+        {/* SECTION 2: GRÁFICOS (New Page) */}
         {options.page2_charts && (
-           <View>
+           <View break>
               <Text style={styles.sectionTitle}>Análisis de Progreso</Text>
               
               <View style={{flexDirection: 'row', gap: 10, flexWrap: 'wrap'}}>
@@ -396,7 +392,7 @@ const MedicalReportDocument: React.FC<MedicalReportDocumentProps> = ({
            </View>
         )}
         
-        {/* SECTION 3: PLANES ACTUALES */}
+        {/* SECTION 3: PLANES ACTUALES (New Page) */}
         {options.page3_tables && (
             <View break>
                 <Text style={styles.sectionTitle}>Plan Actual</Text>
@@ -466,17 +462,18 @@ const MedicalReportDocument: React.FC<MedicalReportDocumentProps> = ({
             </View>
         )}
 
-        {/* SECTION 4: CIERRE */}
+        {/* SECTION 4: CIERRE (New Page) */}
         {options.page4_welcome && (
-          <View wrap={false} style={{marginTop: 30}}>
+          <View break style={{marginTop: 30}}>
+            <Text style={styles.sectionTitle}>Comentarios Finales</Text>
             <View style={{ borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 20 }}>
                 <Text style={styles.disclaimer}>
                 Este reporte es un resumen de tu estado actual y progreso. Recuerda que la constancia es la clave para obtener resultados sostenibles. Si tienes dudas sobre tu plan o mediciones, por favor contáctanos.
                 </Text>
             </View>
 
-            <View style={{ marginTop: 50, alignItems: 'center' }}>
-              <View style={{ borderBottomWidth: 1, borderBottomColor: '#000', width: 180, marginBottom: 8 }} />
+            <View style={{ marginTop: 80, alignItems: 'center' }}>
+              <View style={{ borderBottomWidth: 1, borderBottomColor: '#000', width: 200, marginBottom: 8 }} />
               <Text style={{ fontWeight: 'bold', fontSize: 10, color: '#111827' }}>{nutritionistProfile?.full_name || 'Nutriólogo'}</Text>
               <Text style={{ fontSize: 9, color: '#4b5563' }}>{nutritionistProfile?.professional_title || 'Especialista en Nutrición'}</Text>
               {nutritionistProfile?.license_number && (
