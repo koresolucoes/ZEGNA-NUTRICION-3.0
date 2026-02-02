@@ -48,8 +48,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     color: '#0284C7',
-    marginTop: 20,
-    marginBottom: 10,
+    marginTop: 15,
+    marginBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#0284C7', // Blue underline
     paddingBottom: 4,
@@ -57,11 +57,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5
   },
   subTitle: {
-    fontSize: 11,
+    fontSize: 10, // Reduced font size slightly
     fontWeight: 'bold',
     color: '#374151',
-    marginTop: 10,
-    marginBottom: 6,
+    marginTop: 5, // Reduced margin
+    marginBottom: 4,
   },
   // Metrics Grid
   metricsContainer: {
@@ -116,8 +116,8 @@ const styles = StyleSheet.create({
   table: {
     display: 'flex',
     width: 'auto',
-    marginTop: 5,
-    marginBottom: 15,
+    marginTop: 2,
+    marginBottom: 8, // Reduced spacing between tables
     borderRadius: 4,
     borderWidth: 1,
     borderColor: '#f3f4f6',
@@ -125,21 +125,21 @@ const styles = StyleSheet.create({
   },
   tableRow: {
     flexDirection: 'row',
-    minHeight: 24,
+    minHeight: 20, // Compact rows
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',
   },
   tableHeaderRow: {
     flexDirection: 'row',
-    minHeight: 24,
+    minHeight: 20, // Compact header
     alignItems: 'center',
     backgroundColor: '#f9fafb', // Light gray header bg
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
   },
   tableCol: {
-    padding: '6 8',
+    padding: '4 6', // Compact padding
   },
   tableCellHeader: {
     fontSize: 8,
@@ -477,7 +477,7 @@ const MedicalReportDocument: React.FC<MedicalReportDocumentProps> = ({
                 {/* Diet Plans - Iterate over all future logs */}
                 {dietLogs.length > 0 ? (
                     dietLogs.map((diet, index) => (
-                        <View key={index} break={index > 0} style={{marginBottom: 20}}>
+                        <View key={index} wrap={false} style={{marginBottom: 10}}>
                             <Text style={styles.subTitle}>
                                 Plan de Alimentación ({new Date(diet.log_date).toLocaleDateString('es-MX', {weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC'})})
                             </Text>
@@ -528,7 +528,7 @@ const MedicalReportDocument: React.FC<MedicalReportDocumentProps> = ({
                     <View style={{marginTop: 10}}>
                          <Text style={{...styles.sectionTitle, borderBottomColor: '#F59E0B', color: '#F59E0B'}}>RUTINAS DE EJERCICIO</Text>
                          {exerciseLogs.map((exercise, index) => (
-                             <View key={index} style={{marginBottom: 15}} wrap={false}>
+                             <View key={index} style={{marginBottom: 10}} wrap={false}>
                                  <Text style={styles.subTitle}>
                                      Rutina ({new Date(exercise.log_date).toLocaleDateString('es-MX', {weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC'})}) - {exercise.enfoque || 'General'}
                                  </Text>
