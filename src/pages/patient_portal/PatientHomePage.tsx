@@ -68,18 +68,40 @@ const PatientHomePage: FC<{
 
                 const { temperature_2m, weather_code, is_day } = data.current;
                 
-                // WMO Weather Code Mapping
+                // WMO Weather Code Mapping (Improved for accuracy)
                 let condition = 'Despejado';
                 let icon = is_day ? '☀️' : '🌙';
                 
-                if (weather_code >= 1 && weather_code <= 3) { condition = 'Nublado'; icon = '☁️'; }
-                else if (weather_code >= 45 && weather_code <= 48) { condition = 'Niebla'; icon = '🌫️'; }
-                else if (weather_code >= 51 && weather_code <= 67) { condition = 'Lluvia'; icon = '🌧️'; }
-                else if (weather_code >= 71) { condition = 'Nieve'; icon = '❄️'; }
-                else if (weather_code >= 95) { condition = 'Tormenta'; icon = '⚡'; }
+                // Detailed mapping to avoid overlap issues
+                if (weather_code === 0) {
+                     condition = 'Despejado'; 
+                     icon = is_day ? '☀️' : '🌙';
+                }
+                else if (weather_code >= 1 && weather_code <= 3) { 
+                    condition = 'Nublado'; 
+                    icon = '☁️'; 
+                }
+                else if (weather_code >= 45 && weather_code <= 48) { 
+                    condition = 'Niebla'; 
+                    icon = '🌫️'; 
+                }
+                else if ((weather_code >= 51 && weather_code <= 67) || (weather_code >= 80 && weather_code <= 82)) { 
+                    // Drizzle, Rain, and Rain Showers
+                    condition = 'Lluvia'; 
+                    icon = '🌧️'; 
+                }
+                else if ((weather_code >= 71 && weather_code <= 77) || (weather_code >= 85 && weather_code <= 86)) { 
+                    // Snow fall and Snow showers
+                    condition = 'Nieve'; 
+                    icon = '❄️'; 
+                }
+                else if (weather_code >= 95) { 
+                    // Thunderstorm (Slight or heavy)
+                    condition = 'Tormenta'; 
+                    icon = '⚡'; 
+                }
 
                 // Reverse Geocoding (Using a free reliable API or fallback)
-                // For this demo, we'll try to get city name via another free API if available, or just generic
                 let locationName = 'Tu Ubicación';
                 try {
                     const geoRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=es`);
@@ -366,9 +388,9 @@ const PatientHomePage: FC<{
 
     const getMealImage = () => {
         const h = new Date().getHours();
-        if (h < 11) return "https://images.unsplash.com/photo-1493770348161-369560ae357d?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Breakfast
-        if (h < 16) return "https://images.unsplash.com/photo-1543353071-087f9bcbd111?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Lunch
-        return "https://images.unsplash.com/photo-1467003909585-2f8a7270028d?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Dinner
+        if (h < 11) return "https://images.unsplash.com/photo-1494390248081-4e521a5940db?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Breakfast
+        if (h < 16) return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Lunch
+        return "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Dinner
     };
 
     return (
@@ -446,7 +468,6 @@ const PatientHomePage: FC<{
                 <PlanCard 
                     title={todaysExerciseLog ? (todaysExerciseLog.enfoque || 'Rutina') : 'Descanso'} 
                     subtitle="Ejercicio" 
-                    // Using reliable exercise image
                     image="https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
                     onClick={() => onNavigate('plans')}
                     color="#3B82F6"

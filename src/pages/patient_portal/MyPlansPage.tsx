@@ -23,11 +23,11 @@ const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 
 // Helper to get images based on meal type - Updated with reliable URLs
 const getMealImage = (type: string) => {
     switch(type) {
-        case 'desayuno': return "https://images.unsplash.com/photo-1493770348161-369560ae357d?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Oatmeal/Healthy Breakfast
-        case 'colacion_1': return "https://images.unsplash.com/photo-1606787366850-de6330128bfc?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Fruit Bowl
-        case 'comida': return "https://images.unsplash.com/photo-1543353071-087f9bcbd111?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Healthy Lunch/Salad
-        case 'colacion_2': return "https://images.unsplash.com/photo-1505253758473-96b701d8fe52?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Tea/Snack
-        case 'cena': return "https://images.unsplash.com/photo-1467003909585-2f8a7270028d?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Plated Dinner
+        case 'desayuno': return "https://images.unsplash.com/photo-1494390248081-4e521a5940db?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Healthy Breakfast
+        case 'colacion_1': return "https://images.unsplash.com/photo-1601050690597-df0568f70950?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Fruit Bowl
+        case 'comida': return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Healthy Lunch/Salad
+        case 'colacion_2': return "https://images.unsplash.com/photo-1490474418585-ba9bad8fd0ea?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Healthy Snack
+        case 'cena': return "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Chicken Dinner
         default: return "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Generic Healthy
     }
 };
