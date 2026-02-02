@@ -10,7 +10,7 @@ interface PatientPortalFABProps {
 const PatientPortalFAB: FC<PatientPortalFABProps> = ({ onOpenChat, isMobile }) => {
     const fabStyle: React.CSSProperties = {
         position: 'fixed',
-        bottom: isMobile ? '90px' : '2rem', // Higher on mobile to clear the bottom nav
+        bottom: isMobile ? '100px' : '2rem', // Increased bottom margin to clear the new floating nav
         right: '1.5rem',
         zIndex: 1050,
     };

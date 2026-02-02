@@ -25,6 +25,7 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
     
     // Data states
     const [person, setPerson] = useState<Person | null>(null);
+    const [clinicInfo, setClinicInfo] = useState<{name: string, logo_url: string | null}>({ name: 'Zegna Nutrición', logo_url: null });
     const [dietLogs, setDietLogs] = useState<DietLog[]>([]);
     const [exerciseLogs, setExerciseLogs] = useState<ExerciseLog[]>([]);
     const [checkins, setCheckins] = useState<DailyCheckin[]>([]);
@@ -63,13 +64,16 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
     }, []);
     
     useEffect(() => {
-        const fetchClinicTheme = async () => {
+        const fetchClinicDetails = async () => {
             if (person?.clinic_id) {
-                const { data: clinicData } = await supabase.from('clinics').select('theme').eq('id', person.clinic_id).single();
-                if (clinicData) setTheme(clinicData.theme || 'default');
+                const { data: clinicData } = await supabase.from('clinics').select('name, logo_url, theme').eq('id', person.clinic_id).single();
+                if (clinicData) {
+                    setTheme(clinicData.theme || 'default');
+                    setClinicInfo({ name: clinicData.name, logo_url: clinicData.logo_url });
+                }
             } else { setTheme('default'); }
         };
-        fetchClinicTheme();
+        fetchClinicDetails();
     }, [person, setTheme]);
 
 
@@ -148,7 +152,7 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
                 
                 {/* Main Scrollable Container */}
                 <div style={{
-                    paddingBottom: isMobile ? '110px' : '40px', // Extra padding for bottom bar
+                    paddingBottom: isMobile ? '120px' : '40px', // Extra padding for bottom floating bar
                     minHeight: '100vh',
                     backgroundColor: 'var(--background-color)'
                 }}>
@@ -196,84 +200,188 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
         );
     };
     
-    // --- Modern Tab Bar Components ---
-    const BottomNavItem: FC<{ viewName: PatientPortalView; icon: React.ReactNode; label: string }> = ({ viewName, icon, label }) => {
-        const isActive = view === viewName;
-        return (
-            <button
-                onClick={() => setView(viewName)}
+    // --- Visual Components ---
+
+    const SectionLabel: FC<{ label: string }> = ({ label }) => (
+        <div style={{
+            padding: '1.5rem 1rem 0.5rem 1rem',
+            fontSize: '0.65rem',
+            fontWeight: 700,
+            color: 'var(--text-light)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            opacity: 0.6
+        }}>
+            {label}
+        </div>
+    );
+
+    const PatientProfileWidget = () => (
+        <div style={{
+            padding: '1rem',
+            marginTop: 'auto', 
+            borderTop: '1px solid var(--border-color)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            backgroundColor: 'var(--surface-color)', 
+            transition: 'background-color 0.2s',
+        }}>
+            <img 
+                src={person?.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${session.user.email}`} 
+                alt="Profile" 
+                style={{width: '40px', height: '40px', borderRadius: '10px', border: '1px solid var(--border-color)', objectFit: 'cover', flexShrink: 0}}
+            />
+            <div style={{flex: 1, minWidth: 0}}>
+                <p style={{margin: 0, fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-color)'}}>
+                    {person?.full_name || 'Paciente'}
+                </p>
+                <p style={{margin: 0, fontSize: '0.75rem', color: 'var(--text-light)'}}>
+                    Cuenta Personal
+                </p>
+            </div>
+            <button 
+                onClick={(e) => { e.stopPropagation(); handleLogout(); }}
                 style={{
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
                     background: 'transparent',
                     border: 'none',
-                    color: isActive ? 'var(--primary-color)' : 'var(--text-light)',
-                    padding: '8px 0',
+                    color: 'var(--text-light)',
+                    padding: '0.5rem',
+                    borderRadius: '8px',
                     cursor: 'pointer',
-                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                    position: 'relative',
-                    opacity: isActive ? 1 : 0.7
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}
+                title="Cerrar Sesión"
+                className="nav-item-hover"
             >
-                <div style={{
-                    fontSize: '1.5rem', 
-                    marginBottom: '2px',
-                    transform: isActive ? 'translateY(-2px)' : 'none',
-                    transition: 'transform 0.2s'
-                }}>
-                    {icon}
-                </div>
-                <span style={{ 
-                    fontSize: '0.65rem', 
-                    fontWeight: 600,
-                    opacity: isActive ? 1 : 0.8
-                }}>
-                    {label}
-                </span>
-                {isActive && (
-                    <div style={{
-                        position: 'absolute',
-                        top: '0',
-                        width: '40%',
-                        height: '3px',
-                        backgroundColor: 'var(--primary-color)',
-                        borderRadius: '0 0 4px 4px',
-                        boxShadow: '0 2px 8px var(--primary-color)'
-                    }} />
-                )}
+                {ICONS.logout}
             </button>
-        );
-    };
+        </div>
+    );
 
     const DesktopNavItem: FC<{ viewName: PatientPortalView; icon: React.ReactNode; label: string }> = ({ viewName, icon, label }) => {
          const isActive = view === viewName;
          return (
-             <button
+             <div
                  onClick={() => setView(viewName)}
                  className="nav-item-hover"
                  style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.75rem',
-                    padding: '0.75rem 1.25rem',
-                    borderRadius: '12px',
-                    border: 'none',
-                    background: isActive ? 'var(--surface-hover-color)' : 'transparent',
-                    color: isActive ? 'var(--primary-color)' : 'var(--text-color)',
-                    fontWeight: isActive ? 700 : 500,
+                    gap: '0.8rem',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '8px',
                     cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    fontSize: '0.95rem'
+                    backgroundColor: isActive ? 'var(--primary-light)' : 'transparent',
+                    color: isActive ? 'var(--primary-color)' : 'var(--text-color)',
+                    fontWeight: isActive ? 600 : 500,
+                    fontSize: '0.95rem',
+                    transition: 'all 0.2s ease',
+                    margin: '0 0.5rem 2px 0.5rem'
                  }}
              >
-                 <span style={{fontSize: '1.2rem'}}>{icon}</span>
+                 <span style={{
+                     fontSize: '1.2rem',
+                     display: 'flex', 
+                     alignItems: 'center',
+                     justifyContent: 'center',
+                     width: '20px',
+                     color: isActive ? 'var(--primary-color)' : 'var(--text-light)'
+                 }}>{icon}</span>
                  {label}
-             </button>
+             </div>
          )
     }
+
+    // Modern Floating Mobile Navigation
+    const MobileNavBar = () => {
+        const navItems = [
+            { id: 'home', label: 'Hoy', icon: ICONS.home },
+            { id: 'plans', label: 'Plan', icon: ICONS.clipboard }, // Changed from book
+            { id: 'appointments', label: 'Citas', icon: ICONS.calendar },
+            { id: 'files', label: 'Archivos', icon: ICONS.folder }, // Changed from file
+            { id: 'notifications', label: 'Perfil', icon: ICONS.user },
+        ];
+
+        return (
+            <nav style={{
+                position: 'fixed',
+                bottom: '20px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '90%',
+                maxWidth: '400px',
+                height: '70px',
+                backgroundColor: '#FFFFFF', // Changed to White
+                borderRadius: '35px',
+                display: 'flex',
+                justifyContent: 'space-around',
+                alignItems: 'center',
+                padding: '0 10px',
+                zIndex: 1000,
+                boxShadow: '0 10px 40px -10px rgba(0, 0, 0, 0.1)', // Updated Shadow for better visibility on white
+                border: '1px solid rgba(0, 0, 0, 0.05)' // Subtle border
+            }}>
+                {navItems.map((item) => {
+                    const isActive = view === item.id;
+                    return (
+                        <button
+                            key={item.id}
+                            onClick={() => setView(item.id as PatientPortalView)}
+                            style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: 'transparent',
+                                border: 'none',
+                                color: isActive ? 'var(--primary-color)' : '#94A3B8', // Primary color vs Slate Gray
+                                padding: '0',
+                                cursor: 'pointer',
+                                width: '60px',
+                                height: '100%',
+                                position: 'relative'
+                            }}
+                        >
+                            {/* Active Indicator */}
+                            {isActive && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '8px',
+                                    width: '4px',
+                                    height: '4px',
+                                    borderRadius: '50%',
+                                    backgroundColor: 'var(--primary-color)',
+                                    boxShadow: '0 0 10px rgba(var(--primary-rgb), 0.5)'
+                                }} />
+                            )}
+                            
+                            <div style={{
+                                fontSize: '1.4rem',
+                                marginBottom: isActive ? '2px' : '0',
+                                transform: isActive ? 'translateY(2px)' : 'none',
+                                transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                            }}>
+                                {item.icon}
+                            </div>
+                            
+                            {isActive && (
+                                <span style={{ 
+                                    fontSize: '0.65rem', 
+                                    fontWeight: 600,
+                                    opacity: 1,
+                                    transform: 'translateY(-2px)',
+                                    animation: 'fadeIn 0.3s ease-out'
+                                }}>
+                                    {item.label}
+                                </span>
+                            )}
+                        </button>
+                    );
+                })}
+            </nav>
+        );
+    };
 
     return (
         <div style={{...styles.patientPortalLayout, flexDirection: 'column'}}>
@@ -282,10 +390,9 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
             {/* Desktop Navbar (Sidebar Style) */}
             {!isMobile && (
                 <aside style={{
-                    width: '280px',
+                    width: '260px',
                     backgroundColor: 'var(--surface-color)',
                     borderRight: '1px solid var(--border-color)',
-                    padding: '2rem 1.5rem',
                     display: 'flex',
                     flexDirection: 'column',
                     position: 'fixed',
@@ -294,69 +401,63 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
                     bottom: 0,
                     zIndex: 1000
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '3rem', paddingLeft: '0.5rem' }}>
-                         <img 
-                            src={person?.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${person?.full_name || '?'}&radius=50`} 
-                            alt="Avatar" 
-                            style={{width: '48px', height: '48px', borderRadius: '12px', objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}}
-                        />
-                        <div>
-                            <h2 style={{fontSize: '1rem', margin: 0, color: 'var(--text-color)', fontWeight: 700}}>{person?.full_name?.split(' ')[0]}</h2>
-                            <p style={{margin: 0, fontSize: '0.8rem', color: 'var(--text-light)'}}>Portal Paciente</p>
+                    {/* Clinic Brand Header */}
+                    <div style={{ 
+                         padding: '1.5rem 1rem', 
+                         marginBottom: '0.5rem', 
+                         borderBottom: '1px solid var(--border-color)',
+                         display: 'flex',
+                         alignItems: 'center',
+                         gap: '0.75rem'
+                     }}>
+                        <div style={{
+                            width: '40px', 
+                            height: '40px', 
+                            borderRadius: '10px', 
+                            background: 'linear-gradient(135deg, var(--primary-color), var(--primary-dark))',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: 'white', fontSize: '1.2rem', fontWeight: 800,
+                            boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
+                            flexShrink: 0
+                        }}>
+                             {clinicInfo.logo_url ? <img src={clinicInfo.logo_url} alt="Logo" style={{width: '100%', height: '100%', objectFit: 'cover', borderRadius: '10px'}} /> : (clinicInfo.name.charAt(0) || 'C')}
+                        </div>
+                        <div style={{ overflow: 'hidden' }}>
+                            <h2 style={{ color: 'var(--text-color)', fontSize: '1rem', fontWeight: 700, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {clinicInfo.name}
+                            </h2>
+                            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-light)' }}>Portal Paciente</p>
                         </div>
                     </div>
                     
-                    <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
+                    <nav style={{ flex: 1, overflowY: 'auto', paddingBottom: '1rem', display: 'flex', flexDirection: 'column' }} className="hide-scrollbar">
+                        <SectionLabel label="NAVEGACIÓN" />
                         <DesktopNavItem viewName="home" icon={ICONS.home} label="Inicio" />
-                        <DesktopNavItem viewName="plans" icon={ICONS.book} label="Mis Planes" />
+                        <DesktopNavItem viewName="plans" icon={ICONS.clipboard} label="Mis Planes" />
                         <DesktopNavItem viewName="progress" icon={ICONS.activity} label="Mi Progreso" />
-                        <DesktopNavItem viewName="files" icon={ICONS.file} label="Archivos" />
                         <DesktopNavItem viewName="appointments" icon={ICONS.calendar} label="Citas" />
-                        <div style={{height: '1px', backgroundColor: 'var(--border-color)', margin: '1rem 0'}}></div>
+                        
+                        <SectionLabel label="GESTIÓN" />
+                        <DesktopNavItem viewName="files" icon={ICONS.folder} label="Archivos" />
                         <DesktopNavItem viewName="notifications" icon={ICONS.settings} label="Mi Cuenta" />
                     </nav>
 
-                    <button onClick={handleLogout} style={{background: 'var(--surface-hover-color)', border: 'none', color: 'var(--error-color)', padding: '1rem', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 600, marginTop: 'auto'}} className="nav-item-hover">
-                        {ICONS.logout} Cerrar Sesión
-                    </button>
+                    <PatientProfileWidget />
                 </aside>
             )}
             
             <main style={{ 
                 flex: 1, 
                 maxWidth: '100%', 
-                marginLeft: isMobile ? 0 : '280px',
-                width: isMobile ? '100%' : 'calc(100% - 280px)',
+                marginLeft: isMobile ? 0 : '260px',
+                width: isMobile ? '100%' : 'calc(100% - 260px)',
                 position: 'relative'
             }}>
                 {renderContent()}
             </main>
 
-            {/* Mobile Bottom Tab Bar (App-like) */}
-            {isMobile && (
-                <nav style={{
-                    position: 'fixed',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: '85px',
-                    backgroundColor: 'rgba(255, 255, 255, 0.9)', // Glassmorphism base (adjust for dark mode via theme vars)
-                    backdropFilter: 'blur(12px)',
-                    WebkitBackdropFilter: 'blur(12px)',
-                    borderTop: '1px solid rgba(0,0,0,0.05)',
-                    display: 'flex',
-                    justifyContent: 'space-around',
-                    paddingBottom: '20px', // Safe area for iPhone home bar
-                    zIndex: 1000,
-                    boxShadow: '0 -5px 20px rgba(0,0,0,0.03)'
-                }}>
-                    <BottomNavItem viewName="home" icon={ICONS.home} label="Hoy" />
-                    <BottomNavItem viewName="plans" icon={ICONS.book} label="Plan" />
-                    <BottomNavItem viewName="progress" icon={ICONS.activity} label="Progreso" />
-                    <BottomNavItem viewName="appointments" icon={ICONS.calendar} label="Citas" />
-                    <BottomNavItem viewName="notifications" icon={ICONS.settings} label="Perfil" />
-                </nav>
-            )}
+            {/* Mobile Bottom Tab Bar (Floating Island Style) */}
+            {isMobile && <MobileNavBar />}
         </div>
     );
 };

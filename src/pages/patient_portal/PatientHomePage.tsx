@@ -11,6 +11,7 @@ import MealImageAnalyzer from '../../components/patient_portal/MealImageAnalyzer
 import ConsentRequestModal from '../../components/patient_portal/ConsentRequestModal';
 import SmartJournalFeed from '../../components/patient_portal/SmartJournalFeed';
 import { createPortal } from 'react-dom';
+import DailyCheckinForm from '../../components/patient_portal/DailyCheckinForm';
 
 const modalRoot = document.getElementById('modal-root');
 
@@ -43,47 +44,81 @@ const PatientHomePage: FC<{
     const [pendingConsents, setPendingConsents] = useState<PopulatedReferralConsentRequest[]>([]);
     const [viewingConsent, setViewingConsent] = useState<PopulatedReferralConsentRequest | null>(null);
     const [uploadingMealType, setUploadingMealType] = useState<string | null>(null);
-    const [weather, setWeather] = useState<{ temp: number | null, condition: string, icon: string }>({ temp: null, condition: 'Cargando...', icon: '...' });
     
+    // Weather State - Initialized with loading state
+    const [weather, setWeather] = useState<{ temp: number | null, condition: string, icon: string, location: string }>({ temp: null, condition: 'Cargando...', icon: '...', location: 'Localizando...' });
+    const [geoError, setGeoError] = useState<string | null>(null);
+
     // Journal State
     const [journalEntries, setJournalEntries] = useState<PatientJournalEntry[]>([]);
     const [loadingJournal, setLoadingJournal] = useState(true);
 
-    // Weather Fetch Effect
+    // Wearable Mock State (Simulated connection status from localStorage for demo continuity)
+    const [wearableStats, setWearableStats] = useState({ steps: 0, connected: false });
+
+    // --- REAL WEATHER IMPLEMENTATION ---
     useEffect(() => {
         const fetchWeather = async (lat: number, lon: number) => {
             try {
-                const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&timezone=auto`);
+                // Using Open-Meteo (Free, No API Key required for demo)
+                const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,is_day&timezone=auto`);
                 const data = await response.json();
-                const { temperature_2m, weather_code } = data.current;
                 
-                let condition = 'Soleado';
-                let icon = '☀️';
+                if (!data.current) throw new Error("No weather data");
+
+                const { temperature_2m, weather_code, is_day } = data.current;
                 
-                // Simple WMO Code Mapping
-                if (weather_code >= 1 && weather_code <= 3) { condition = 'Nublado'; icon = '⛅'; }
+                // WMO Weather Code Mapping
+                let condition = 'Despejado';
+                let icon = is_day ? '☀️' : '🌙';
+                
+                if (weather_code >= 1 && weather_code <= 3) { condition = 'Nublado'; icon = '☁️'; }
                 else if (weather_code >= 45 && weather_code <= 48) { condition = 'Niebla'; icon = '🌫️'; }
                 else if (weather_code >= 51 && weather_code <= 67) { condition = 'Lluvia'; icon = '🌧️'; }
                 else if (weather_code >= 71) { condition = 'Nieve'; icon = '❄️'; }
                 else if (weather_code >= 95) { condition = 'Tormenta'; icon = '⚡'; }
 
-                setWeather({ temp: Math.round(temperature_2m), condition, icon });
+                // Reverse Geocoding (Using a free reliable API or fallback)
+                // For this demo, we'll try to get city name via another free API if available, or just generic
+                let locationName = 'Tu Ubicación';
+                try {
+                    const geoRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=es`);
+                    const geoData = await geoRes.json();
+                    if (geoData.city || geoData.locality) {
+                        locationName = geoData.city || geoData.locality;
+                    }
+                } catch(e) { /* Ignore reverse geocoding error */ }
+
+                setWeather({ temp: Math.round(temperature_2m), condition, icon, location: locationName });
             } catch (err) {
                 console.error("Weather fetch failed", err);
-                setWeather({ temp: 24, condition: 'Despejado (Est.)', icon: '☀️' });
+                setWeather({ temp: null, condition: 'No disponible', icon: '❓', location: 'Error de conexión' });
             }
         };
 
-        if (navigator.geolocation) {
+        if ("geolocation" in navigator) {
             navigator.geolocation.getCurrentPosition(
-                (pos) => fetchWeather(pos.coords.latitude, pos.coords.longitude),
-                (err) => {
-                    console.warn("Geolocation denied/error", err);
-                    setWeather({ temp: 25, condition: 'General', icon: '☀️' });
+                (position) => {
+                    fetchWeather(position.coords.latitude, position.coords.longitude);
+                    setGeoError(null);
+                },
+                (error) => {
+                    console.warn("Geolocation Error:", error);
+                    setGeoError("Permiso denegado");
+                    setWeather({ temp: 24, condition: 'General', icon: '🌤️', location: 'Ubicación General' }); // Fallback
                 }
             );
         } else {
-             setWeather({ temp: 25, condition: 'General', icon: '☀️' });
+            setGeoError("No soportado");
+             setWeather({ temp: 24, condition: 'General', icon: '🌤️', location: 'Ubicación General' });
+        }
+        
+        // Check local storage for wearable simulation
+        const appleConnected = localStorage.getItem('apple_health_connected') === 'true';
+        const googleConnected = localStorage.getItem('google_fit_connected') === 'true';
+        if (appleConnected || googleConnected) {
+            // In a real app, we would fetch fresh data from the API here
+            setWearableStats({ steps: 8432, connected: true });
         }
     }, []);
 
@@ -162,7 +197,6 @@ const PatientHomePage: FC<{
         let totalCalories = 2000; // Default goal
         let completedCalories = 0;
         
-        // Approximate calculation based on meals eaten (if marked) or time of day for visualization
         if (todaysDietLog?.completed) {
             completedCalories = totalCalories;
         } else {
@@ -293,7 +327,43 @@ const PatientHomePage: FC<{
         </div>
     );
 
-    // Get images for cards based on time of day - Updated with reliable URLs
+    const WearableCard = () => (
+        <div 
+            onClick={() => onNavigate('progress')}
+            className="card-hover"
+            style={{
+                backgroundColor: 'white', borderRadius: '24px', padding: '1rem 1.5rem',
+                boxShadow: '0 4px 15px -3px rgba(0,0,0,0.05)', marginBottom: '1.5rem',
+                border: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                cursor: 'pointer'
+            }}
+        >
+            <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+                <div style={{
+                    width: '48px', height: '48px', borderRadius: '12px',
+                    background: wearableStats.connected ? 'linear-gradient(135deg, #F43F5E, #FB7185)' : '#F3F4F6',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '1.5rem', color: wearableStats.connected ? 'white' : '#9CA3AF'
+                }}>
+                    {wearableStats.connected ? '⌚' : '🔗'}
+                </div>
+                <div>
+                    <h4 style={{margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-color)'}}>
+                        {wearableStats.connected ? 'Apple Watch / Google Fit' : 'Conectar Dispositivo'}
+                    </h4>
+                    <p style={{margin: 0, fontSize: '0.8rem', color: 'var(--text-light)'}}>
+                        {wearableStats.connected ? `${wearableStats.steps.toLocaleString()} pasos hoy` : 'Sincroniza tus pasos y actividad'}
+                    </p>
+                </div>
+            </div>
+            {wearableStats.connected ? (
+                <div style={{color: '#10B981', fontWeight: 700, fontSize: '0.9rem'}}>ON</div>
+            ) : (
+                <div style={{color: 'var(--primary-color)', fontSize: '1.2rem'}}>➜</div>
+            )}
+        </div>
+    );
+
     const getMealImage = () => {
         const h = new Date().getHours();
         if (h < 11) return "https://images.unsplash.com/photo-1493770348161-369560ae357d?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Breakfast
@@ -321,19 +391,23 @@ const PatientHomePage: FC<{
                         Bienvenido de nuevo 👋
                     </p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'white', padding: '0.5rem 1rem', borderRadius: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-                    <span style={{ fontSize: '1.5rem' }}>{weather.icon}</span>
-                    <div>
-                        <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem' }}>{weather.temp !== null ? `${weather.temp}°C` : '--'}</p>
-                        <p style={{ margin: 0, fontSize: '0.7rem', color: '#6B7280' }}>{weather.condition}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'white', padding: '0.5rem 1rem', borderRadius: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                        <span style={{ fontSize: '1.5rem' }}>{weather.icon}</span>
+                        <div>
+                            <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem' }}>{weather.temp !== null ? `${weather.temp}°C` : '--'}</p>
+                            <p style={{ margin: 0, fontSize: '0.7rem', color: '#6B7280' }}>{weather.condition}</p>
+                        </div>
                     </div>
+                    {geoError && <span style={{fontSize: '0.65rem', color: 'var(--error-color)'}}>{geoError}</span>}
+                    {weather.location && !geoError && <span style={{fontSize: '0.65rem', color: '#9CA3AF'}}>📍 {weather.location}</span>}
                 </div>
             </div>
 
             {/* CALORIE PROGRESS CARD */}
             <div style={{ 
                 backgroundColor: 'white', borderRadius: '24px', padding: '1.5rem', 
-                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)', marginBottom: '2rem',
+                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)', marginBottom: '1.5rem',
                 border: '1px solid #F3F4F6'
             }}>
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem'}}>
@@ -347,6 +421,9 @@ const PatientHomePage: FC<{
                     total={calorieStats.total} 
                 />
             </div>
+            
+            {/* WEARABLE CARD */}
+            <WearableCard />
 
             {/* SHORTCUTS SCROLL */}
             <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: '1rem', marginBottom: '1.5rem' }} className="hide-scrollbar">

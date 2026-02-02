@@ -1,10 +1,12 @@
 
-import React, { FC, useMemo, useState } from 'react';
+import React, { FC, useMemo, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../../supabase';
 import { ConsultationWithLabs, GamificationLog, DailyCheckin } from '../../types';
 import ProgressChart from '../../components/shared/ProgressChart';
 import { styles } from '../../constants';
 import { ICONS } from '../AuthPage';
+import SkeletonLoader from '../../components/shared/SkeletonLoader';
 
 interface MyProgressPageProps {
     consultations: ConsultationWithLabs[];
@@ -13,8 +15,20 @@ interface MyProgressPageProps {
     onDataRefresh: () => void;
 }
 
+const modalRoot = document.getElementById('modal-root');
+
 const MyProgressPage: FC<MyProgressPageProps> = ({ consultations, gamificationLogs, checkins, onDataRefresh }) => {
     const [viewRange, setViewRange] = useState<'1m' | '3m' | 'all'>('3m');
+    const [connectedApps, setConnectedApps] = useState<{ apple: boolean; google: boolean }>({ apple: false, google: false });
+    const [showWipModal, setShowWipModal] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    // Init from local storage for demo persistence
+    useEffect(() => {
+        const apple = localStorage.getItem('apple_health_connected') === 'true';
+        const google = localStorage.getItem('google_fit_connected') === 'true';
+        setConnectedApps({ apple, google });
+    }, []);
 
     // Filter and sort data for charts
     const sortedConsultations = useMemo(() => 
@@ -47,13 +61,73 @@ const MyProgressPage: FC<MyProgressPageProps> = ({ consultations, gamificationLo
             startWeight,
             currentWeight,
             diff: Math.abs(diff).toFixed(1),
+            realDiffValue: diff, // Valor numérico real para lógica
             trend: isLoss ? 'down' : 'up',
             startDate: new Date(start.consultation_date).toLocaleDateString('es-MX', {month: 'short', year: 'numeric'}),
             currentDate: new Date(current.consultation_date).toLocaleDateString('es-MX', {month: 'short', day: 'numeric'})
         };
     }, [sortedConsultations]);
 
-    const totalPoints = gamificationLogs.reduce((acc, l) => acc + l.points_awarded, 0);
+    // --- LOGIC REFACOR: Semantic Points ---
+    const { totalPoints, nutritionPoints, fitnessPoints, checkinStreak } = useMemo(() => {
+        const total = gamificationLogs.reduce((acc, l) => acc + l.points_awarded, 0);
+        
+        // Puntos específicos por categoría según el 'reason' guardado en BD
+        const nutrition = gamificationLogs
+            .filter(l => l.reason.toLowerCase().includes('plan alimenticio') || l.reason.toLowerCase().includes('dieta'))
+            .reduce((acc, l) => acc + l.points_awarded, 0);
+
+        const fitness = gamificationLogs
+            .filter(l => l.reason.toLowerCase().includes('ejercicio') || l.reason.toLowerCase().includes('actividad'))
+            .reduce((acc, l) => acc + l.points_awarded, 0);
+
+        // Cálculo de Racha (Streak) basado en checkins
+        let currentStreak = 0;
+        if (checkins.length > 0) {
+            const uniqueDates = [...new Set(checkins.map(c => c.checkin_date))].sort((a, b) => new Date(b as string).getTime() - new Date(a as string).getTime());
+            
+            // Comprobamos si el último checkin fue hoy o ayer
+            const todayStr = new Date().toISOString().split('T')[0];
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+            if (uniqueDates[0] === todayStr || uniqueDates[0] === yesterdayStr) {
+                currentStreak = 1;
+                let lastDate = new Date(uniqueDates[0] as string);
+                
+                for (let i = 1; i < uniqueDates.length; i++) {
+                    const thisDate = new Date(uniqueDates[i] as string);
+                    const diffTime = Math.abs(lastDate.getTime() - thisDate.getTime());
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                    
+                    if (diffDays === 1) {
+                        currentStreak++;
+                        lastDate = thisDate;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        return { totalPoints: total, nutritionPoints: nutrition, fitnessPoints: fitness, checkinStreak: currentStreak };
+    }, [gamificationLogs, checkins]);
+
+    const handleConnect = (provider: 'apple' | 'google') => {
+        const isConnected = connectedApps[provider];
+        if (isConnected) {
+            // Disconnect (Simulated)
+            setConnectedApps(prev => {
+                const newState = { ...prev, [provider]: false };
+                localStorage.setItem(`${provider}_${provider === 'apple' ? 'health' : 'fit'}_connected`, 'false');
+                return newState;
+            });
+        } else {
+            // Show WIP Modal instead of connecting
+            setShowWipModal(true);
+        }
+    };
 
     const StatCard = ({ label, value, color, icon }: { label: string, value: string, color: string, icon: string }) => (
         <div style={{
@@ -70,28 +144,65 @@ const MyProgressPage: FC<MyProgressPageProps> = ({ consultations, gamificationLo
         </div>
     );
 
-    const AchievementCard = ({ title, points, icon, unlocked }: { title: string, points: number, icon: string, unlocked: boolean }) => (
+    const AchievementCard = ({ title, requirement, progress, icon, unlocked }: { title: string, requirement: string, progress: string, icon: string, unlocked: boolean }) => (
         <div style={{
-            backgroundColor: unlocked ? 'white' : '#F3F4F6', 
+            backgroundColor: unlocked ? 'white' : '#F9FAFB', 
             borderRadius: '16px', padding: '1rem',
-            border: unlocked ? '1px solid #E5E7EB' : '1px dashed #D1D5DB',
+            border: unlocked ? '1px solid #10B981' : '1px dashed #D1D5DB',
             display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
-            opacity: unlocked ? 1 : 0.6,
-            boxShadow: unlocked ? '0 4px 6px rgba(0,0,0,0.05)' : 'none'
+            opacity: unlocked ? 1 : 0.7,
+            boxShadow: unlocked ? '0 4px 10px rgba(16, 185, 129, 0.1)' : 'none',
+            position: 'relative',
+            overflow: 'hidden'
         }}>
-            <div style={{fontSize: '2.5rem', marginBottom: '0.5rem', filter: unlocked ? 'none' : 'grayscale(100%)'}}>
+            {unlocked && (
+                <div style={{position: 'absolute', top: 5, right: 5, color: '#10B981', fontSize: '0.8rem'}}>✓</div>
+            )}
+            <div style={{fontSize: '2rem', marginBottom: '0.5rem', filter: unlocked ? 'none' : 'grayscale(100%)'}}>
                 {icon}
             </div>
             <h4 style={{margin: '0 0 0.25rem 0', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-color)'}}>{title}</h4>
-            <span style={{fontSize: '0.75rem', fontWeight: 600, color: unlocked ? '#10B981' : 'var(--text-light)', backgroundColor: unlocked ? '#ECFDF5' : 'transparent', padding: '2px 8px', borderRadius: '10px'}}>
-                {unlocked ? `+${points} pts` : 'Bloqueado'}
+            
+            <p style={{margin: 0, fontSize: '0.7rem', color: 'var(--text-light)', marginBottom: '0.5rem'}}>
+                {requirement}
+            </p>
+
+            <span style={{
+                fontSize: '0.7rem', 
+                fontWeight: 600, 
+                color: unlocked ? '#047857' : 'var(--text-light)', 
+                backgroundColor: unlocked ? '#D1FAE5' : '#E5E7EB', 
+                padding: '2px 8px', 
+                borderRadius: '10px'
+            }}>
+                {unlocked ? '¡Completado!' : progress}
             </span>
         </div>
     );
 
     return (
-        <div className="fade-in" style={{ maxWidth: '600px', margin: '0 auto', padding: '1rem 1rem 4rem 1rem' }}>
+        <div className="fade-in" style={{ maxWidth: '800px', margin: '0 auto', padding: '1rem' }}>
             
+            {showWipModal && modalRoot && createPortal(
+                <div style={{...styles.modalOverlay, zIndex: 2000}}>
+                    <div style={{...styles.modalContent, maxWidth: '400px', textAlign: 'center', padding: '2rem', borderRadius: '24px'}} className="fade-in">
+                        <div style={{fontSize: '3rem', marginBottom: '1rem'}}>🚧</div>
+                        <h3 style={{margin: '0 0 0.5rem 0', fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-color)'}}>Funcionalidad Futura</h3>
+                        <p style={{color: 'var(--text-light)', marginBottom: '2rem', lineHeight: 1.5, fontSize: '0.95rem'}}>
+                            La integración nativa con <strong>Apple Health</strong> y <strong>Google Fit</strong> está actualmente en desarrollo. Pronto podrás sincronizar tus datos de actividad automáticamente.
+                        </p>
+                        <button 
+                            onClick={() => setShowWipModal(false)} 
+                            className="button-primary" 
+                            style={{width: '100%', padding: '0.8rem', justifyContent: 'center', fontSize: '1rem', borderRadius: '12px'}}
+                        >
+                            Entendido
+                        </button>
+                    </div>
+                </div>,
+                modalRoot
+            )}
+
             {/* Header / Range Selector */}
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem'}}>
                 <h1 style={{margin: 0, fontSize: '1.5rem', fontWeight: 800}}>Mi Progreso</h1>
@@ -120,7 +231,7 @@ const MyProgressPage: FC<MyProgressPageProps> = ({ consultations, gamificationLo
                     <div>
                         <p style={{margin: 0, color: 'var(--text-light)', fontSize: '0.9rem'}}>Peso Actual</p>
                         <h2 style={{margin: 0, fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-color)'}}>
-                            {stats?.currentWeight} <span style={{fontSize: '1rem', fontWeight: 500}}>kg</span>
+                            {stats?.currentWeight || '-'} <span style={{fontSize: '1rem', fontWeight: 500}}>kg</span>
                         </h2>
                     </div>
                     {stats && (
@@ -136,53 +247,153 @@ const MyProgressPage: FC<MyProgressPageProps> = ({ consultations, gamificationLo
                         </div>
                     )}
                 </div>
-                <ProgressChart title="" data={weightData} unit="kg" color="#10B981" />
+                {weightData.length > 1 ? (
+                    <ProgressChart title="" data={weightData} unit="kg" color="#10B981" />
+                ) : (
+                    <div style={{textAlign: 'center', padding: '2rem', color: 'var(--text-light)'}}>
+                        <p>Registra más consultas para ver tu gráfica de peso.</p>
+                    </div>
+                )}
             </div>
 
-            {/* Transformation Summary */}
-            {stats && (
-                <div style={{marginBottom: '2.5rem'}}>
-                    <h3 style={{margin: '0 0 1rem 0', fontSize: '1.1rem', fontWeight: 700}}>Transformación</h3>
-                    <div style={{
-                        display: 'flex', backgroundColor: '#1F2937', borderRadius: '24px', padding: '1.5rem', color: 'white',
-                        position: 'relative', overflow: 'hidden'
-                    }}>
-                        <div style={{flex: 1, position: 'relative', zIndex: 1}}>
-                            <p style={{margin: 0, fontSize: '0.8rem', opacity: 0.7}}>ANTES ({stats.startDate})</p>
-                            <p style={{margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 700}}>{stats.startWeight}kg</p>
+            {/* WEARABLES SECTION */}
+            <div style={{marginBottom: '2.5rem'}}>
+                <h3 style={{margin: '0 0 1rem 0', fontSize: '1.1rem', fontWeight: 700}}>Dispositivos y Apps</h3>
+                
+                <div style={{backgroundColor: 'white', borderRadius: '24px', padding: '1.5rem', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', border: '1px solid var(--border-color)'}}>
+                    
+                    {/* Apple Health */}
+                    <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem'}}>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+                             <div style={{width: '48px', height: '48px', borderRadius: '12px', backgroundColor: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', color: '#EF4444'}}>❤️</div>
+                             <div>
+                                 <h4 style={{margin: 0, fontSize: '1rem', fontWeight: 700}}>Apple Health</h4>
+                                 <p style={{margin: 0, fontSize: '0.8rem', color: 'var(--text-light)'}}>Sincronizar pasos y actividad</p>
+                             </div>
                         </div>
-                        
-                        <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 1rem'}}>
-                            <div style={{width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>➜</div>
-                        </div>
+                        <button 
+                            onClick={() => handleConnect('apple')}
+                            style={{
+                                padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid',
+                                borderColor: connectedApps.apple ? '#10B981' : '#E5E7EB',
+                                backgroundColor: connectedApps.apple ? '#ECFDF5' : 'transparent',
+                                color: connectedApps.apple ? '#047857' : 'var(--text-color)',
+                                fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer'
+                            }}
+                        >
+                            {connectedApps.apple ? 'Conectado' : 'Conectar'}
+                        </button>
+                    </div>
 
-                        <div style={{flex: 1, textAlign: 'right', position: 'relative', zIndex: 1}}>
-                            <p style={{margin: 0, fontSize: '0.8rem', opacity: 0.7}}>AHORA</p>
-                            <p style={{margin: '0.25rem 0 0 0', fontSize: '1.4rem', fontWeight: 700, color: '#38BDF8'}}>{stats.currentWeight}kg</p>
+                    {/* Google Fit */}
+                    <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+                             <div style={{width: '48px', height: '48px', borderRadius: '12px', backgroundColor: '#E0F2FE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', color: '#0284C7'}}>👟</div>
+                             <div>
+                                 <h4 style={{margin: 0, fontSize: '1rem', fontWeight: 700}}>Google Fit</h4>
+                                 <p style={{margin: 0, fontSize: '0.8rem', color: 'var(--text-light)'}}>Sincronizar movimiento</p>
+                             </div>
                         </div>
+                        <button 
+                            onClick={() => handleConnect('google')}
+                            style={{
+                                padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid',
+                                borderColor: connectedApps.google ? '#10B981' : '#E5E7EB',
+                                backgroundColor: connectedApps.google ? '#ECFDF5' : 'transparent',
+                                color: connectedApps.google ? '#047857' : 'var(--text-color)',
+                                fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer'
+                            }}
+                        >
+                            {connectedApps.google ? 'Conectado' : 'Conectar'}
+                        </button>
                     </div>
                 </div>
-            )}
+            </div>
 
-            {/* Achievements Section */}
+            {/* Achievements Section - REFACTORED LOGIC */}
             <div>
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem'}}>
-                    <h3 style={{margin: 0, fontSize: '1.1rem', fontWeight: 700}}>Logros</h3>
+                    <h3 style={{margin: 0, fontSize: '1.1rem', fontWeight: 700}}>Logros Desbloqueables</h3>
                     <span style={{fontSize: '0.9rem', color: 'var(--primary-color)', fontWeight: 600}}>Ver todos</span>
                 </div>
                 
-                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
-                    <StatCard label="Racha Actual" value={`${gamificationLogs.length > 0 ? '5' : '0'}`} icon="🔥" color="#F59E0B" />
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem'}}>
+                    <StatCard label="Nivel Actual" value={`${gamificationLogs.length > 0 ? 'Bronce' : 'Novato'}`} icon="🏆" color="#F59E0B" />
                     <StatCard label="Puntos Totales" value={`${totalPoints}`} icon="⭐" color="#8B5CF6" />
                 </div>
 
-                <div style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginTop: '1rem'}}>
-                    <AchievementCard title="Inicio" points={100} icon="🚀" unlocked={totalPoints >= 100} />
-                    <AchievementCard title="-5kg" points={500} icon="⚖️" unlocked={totalPoints >= 500} />
-                    <AchievementCard title="Racha 7" points={300} icon="🔥" unlocked={totalPoints >= 300} />
-                    <AchievementCard title="Gym Pro" points={1000} icon="💪" unlocked={totalPoints >= 1000} />
-                    <AchievementCard title="Chef" points={200} icon="👨‍🍳" unlocked={totalPoints >= 200} />
-                    <AchievementCard title="Hidratado" points={150} icon="💧" unlocked={totalPoints >= 150} />
+                <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem', marginTop: '1rem'}}>
+                    {/* Inicio: Logro base */}
+                    <AchievementCard 
+                        title="Inicio" 
+                        requirement="Acumula 100 puntos totales"
+                        progress={`${totalPoints}/100`}
+                        icon="🚀" 
+                        unlocked={totalPoints >= 100} 
+                    />
+                    
+                    {/* -5kg: Basado en diferencia real de peso */}
+                    <AchievementCard 
+                        title="-5kg" 
+                        requirement="Bajar 5kg de peso inicial"
+                        progress={stats?.realDiffValue ? `${Math.abs(stats.realDiffValue).toFixed(1)}/5 kg` : '0/5 kg'}
+                        icon="⚖️" 
+                        unlocked={stats ? (stats.trend === 'down' && Math.abs(stats.realDiffValue) >= 5) : false} 
+                    />
+                    
+                    {/* Racha: Basado en días consecutivos */}
+                    <AchievementCard 
+                        title="Racha 7" 
+                        requirement="7 días seguidos de Check-in"
+                        progress={`${checkinStreak}/7 días`}
+                        icon="🔥" 
+                        unlocked={checkinStreak >= 7} 
+                    />
+                    
+                    {/* Gym Pro: Basado en puntos de EJERCICIO */}
+                    <AchievementCard 
+                        title="Gym Pro" 
+                        requirement="500 puntos de Ejercicio"
+                        progress={`${fitnessPoints}/500 pts`}
+                        icon="💪" 
+                        unlocked={fitnessPoints >= 500} 
+                    />
+                    
+                    {/* Chef: Basado en puntos de NUTRICIÓN */}
+                    <AchievementCard 
+                        title="Chef" 
+                        requirement="500 puntos de Nutrición"
+                        progress={`${nutritionPoints}/500 pts`}
+                        icon="👨‍🍳" 
+                        unlocked={nutritionPoints >= 500} 
+                    />
+                    
+                    {/* Constante: Basado en checkins generales */}
+                    <AchievementCard 
+                        title="Constante" 
+                        requirement="20 días de registro"
+                        progress={`${checkins.length}/20 días`}
+                        icon="📅" 
+                        unlocked={checkins.length >= 20} 
+                    />
+                </div>
+
+                {/* Recent Activity Log */}
+                <h4 style={{marginTop: '2rem', marginBottom: '1rem', fontSize: '1rem', color: 'var(--text-light)', textTransform: 'uppercase'}}>Historial de Puntos</h4>
+                <div style={{backgroundColor: 'white', borderRadius: '16px', padding: '1rem', border: '1px solid var(--border-color)', maxHeight: '300px', overflowY: 'auto'}}>
+                    {gamificationLogs.length > 0 ? (
+                        gamificationLogs.map(log => (
+                            <div key={log.id} style={{display: 'flex', justifyContent: 'space-between', padding: '0.75rem 0', borderBottom: '1px solid #F3F4F6'}}>
+                                <div>
+                                    <p style={{margin: 0, fontWeight: 600}}>{log.reason}</p>
+                                    <p style={{margin: 0, fontSize: '0.8rem', color: 'var(--text-light)'}}>{new Date(log.created_at).toLocaleDateString()}</p>
+                                </div>
+                                <span style={{color: '#10B981', fontWeight: 700}}>+{log.points_awarded} pts</span>
+                            </div>
+                        ))
+                    ) : (
+                        <p style={{textAlign: 'center', color: 'var(--text-light)', fontStyle: 'italic'}}>Aún no has ganado puntos.</p>
+                    )}
                 </div>
             </div>
 

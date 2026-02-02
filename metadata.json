@@ -1,5 +1,7 @@
 {
   "name": "Zegna 3.0",
   "description": "ERP de gestion de clinicas nutricion con IA",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "geolocation"
+  ]
 }
