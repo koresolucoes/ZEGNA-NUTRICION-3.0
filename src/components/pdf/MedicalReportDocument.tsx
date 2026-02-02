@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Image, Svg, Line, Polyline, Circle, G } from '@react-pdf/renderer';
 import { Person, NutritionistProfile, Clinic, ConsultationWithLabs, DietLog, ExerciseLog } from '../../types';
@@ -284,9 +285,6 @@ const MedicalReportDocument: React.FC<MedicalReportDocumentProps> = ({
   // Get historical data for the table (most recent first)
   const historyData = [...consultations].sort((a, b) => new Date(b.consultation_date).getTime() - new Date(a.consultation_date).getTime()).slice(0, 6);
 
-  const latestDiet = dietLogs[0];
-  const latestExercise = exerciseLogs[0];
-
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -471,71 +469,82 @@ const MedicalReportDocument: React.FC<MedicalReportDocumentProps> = ({
            </View>
         )}
         
-        {/* SECTION 3: PLAN ACTUAL (New Page) */}
+        {/* SECTION 3: PLANES FUTUROS (New Page) */}
         {options.page3_tables && (
             <View break>
-                <Text style={styles.sectionTitle}>PLAN ACTUAL</Text>
+                <Text style={styles.sectionTitle}>PLAN DE ALIMENTACIÓN Y EJERCICIO</Text>
                 
-                {/* Dieta */}
-                {latestDiet ? (
-                    <View style={{marginBottom: 20}}>
-                        <Text style={styles.subTitle}>Plan de Alimentación ({new Date(latestDiet.log_date).toLocaleDateString()})</Text>
-                        <View style={styles.table}>
-                            <View style={styles.tableHeaderRow}>
-                                <View style={{...styles.tableCol, width: '25%'}}><Text style={styles.tableCellHeader}>TIEMPO</Text></View>
-                                <View style={{...styles.tableCol, width: '75%'}}><Text style={styles.tableCellHeader}>MENÚ</Text></View>
+                {/* Diet Plans - Iterate over all future logs */}
+                {dietLogs.length > 0 ? (
+                    dietLogs.map((diet, index) => (
+                        <View key={index} break={index > 0} style={{marginBottom: 20}}>
+                            <Text style={styles.subTitle}>
+                                Plan de Alimentación ({new Date(diet.log_date).toLocaleDateString('es-MX', {weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC'})})
+                            </Text>
+                            <View style={styles.table}>
+                                <View style={styles.tableHeaderRow}>
+                                    <View style={{...styles.tableCol, width: '25%'}}><Text style={styles.tableCellHeader}>TIEMPO</Text></View>
+                                    <View style={{...styles.tableCol, width: '75%'}}><Text style={styles.tableCellHeader}>MENÚ</Text></View>
+                                </View>
+                                {diet.desayuno && (
+                                    <View style={styles.tableRow}>
+                                        <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCell, fontWeight: 'bold'}}>Desayuno</Text></View>
+                                        <View style={{...styles.tableCol, width: '75%'}}><Text style={{...styles.tableCell, textAlign: 'left'}}>{diet.desayuno}</Text></View>
+                                    </View>
+                                )}
+                                {diet.colacion_1 && (
+                                    <View style={styles.tableRow}>
+                                        <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCell, fontWeight: 'bold'}}>Colación 1</Text></View>
+                                        <View style={{...styles.tableCol, width: '75%'}}><Text style={{...styles.tableCell, textAlign: 'left'}}>{diet.colacion_1}</Text></View>
+                                    </View>
+                                )}
+                                {diet.comida && (
+                                    <View style={styles.tableRow}>
+                                        <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCell, fontWeight: 'bold'}}>Comida</Text></View>
+                                        <View style={{...styles.tableCol, width: '75%'}}><Text style={{...styles.tableCell, textAlign: 'left'}}>{diet.comida}</Text></View>
+                                    </View>
+                                )}
+                                {diet.colacion_2 && (
+                                    <View style={styles.tableRow}>
+                                        <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCell, fontWeight: 'bold'}}>Colación 2</Text></View>
+                                        <View style={{...styles.tableCol, width: '75%'}}><Text style={{...styles.tableCell, textAlign: 'left'}}>{diet.colacion_2}</Text></View>
+                                    </View>
+                                )}
+                                {diet.cena && (
+                                    <View style={styles.tableRow}>
+                                        <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCell, fontWeight: 'bold'}}>Cena</Text></View>
+                                        <View style={{...styles.tableCol, width: '75%'}}><Text style={{...styles.tableCell, textAlign: 'left'}}>{diet.cena}</Text></View>
+                                    </View>
+                                )}
                             </View>
-                            {latestDiet.desayuno && (
-                                <View style={styles.tableRow}>
-                                    <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCell, fontWeight: 'bold'}}>Desayuno</Text></View>
-                                    <View style={{...styles.tableCol, width: '75%'}}><Text style={{...styles.tableCell, textAlign: 'left'}}>{latestDiet.desayuno}</Text></View>
-                                </View>
-                            )}
-                            {latestDiet.colacion_1 && (
-                                <View style={styles.tableRow}>
-                                    <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCell, fontWeight: 'bold'}}>Colación 1</Text></View>
-                                    <View style={{...styles.tableCol, width: '75%'}}><Text style={{...styles.tableCell, textAlign: 'left'}}>{latestDiet.colacion_1}</Text></View>
-                                </View>
-                            )}
-                            {latestDiet.comida && (
-                                <View style={styles.tableRow}>
-                                    <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCell, fontWeight: 'bold'}}>Comida</Text></View>
-                                    <View style={{...styles.tableCol, width: '75%'}}><Text style={{...styles.tableCell, textAlign: 'left'}}>{latestDiet.comida}</Text></View>
-                                </View>
-                            )}
-                            {latestDiet.colacion_2 && (
-                                <View style={styles.tableRow}>
-                                    <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCell, fontWeight: 'bold'}}>Colación 2</Text></View>
-                                    <View style={{...styles.tableCol, width: '75%'}}><Text style={{...styles.tableCell, textAlign: 'left'}}>{latestDiet.colacion_2}</Text></View>
-                                </View>
-                            )}
-                            {latestDiet.cena && (
-                                <View style={styles.tableRow}>
-                                    <View style={{...styles.tableCol, width: '25%'}}><Text style={{...styles.tableCell, fontWeight: 'bold'}}>Cena</Text></View>
-                                    <View style={{...styles.tableCol, width: '75%'}}><Text style={{...styles.tableCell, textAlign: 'left'}}>{latestDiet.cena}</Text></View>
-                                </View>
-                            )}
                         </View>
-                    </View>
+                    ))
                 ) : (
-                    <Text style={{fontSize: 9, color: '#6b7280', fontStyle: 'italic', marginBottom: 10}}>Sin plan de alimentación registrado recientemente.</Text>
+                    <Text style={{fontSize: 9, color: '#6b7280', fontStyle: 'italic', marginBottom: 10}}>Sin planes de alimentación próximos.</Text>
                 )}
 
-                {/* Ejercicio */}
-                {latestExercise ? (
+                {/* Exercise Plans - Iterate over all future logs */}
+                {exerciseLogs.length > 0 ? (
                     <View style={{marginTop: 10}}>
-                         <Text style={styles.subTitle}>Rutina de Ejercicio ({latestExercise.enfoque || 'General'})</Text>
-                         <View style={{...styles.patientInfoBox, backgroundColor: '#ffffff', borderColor: '#e5e7eb', borderWidth: 1}}>
-                            {Array.isArray(latestExercise.ejercicios) && latestExercise.ejercicios.length > 0 ? (
-                                (latestExercise.ejercicios as any[]).map((ex, idx) => (
-                                    <Text key={idx} style={{fontSize: 9, marginBottom: 4}}>
-                                        • <Text style={{fontWeight: 'bold'}}>{ex.nombre}</Text>: {ex.series} series, {ex.repeticiones} reps.
-                                    </Text>
-                                ))
-                            ) : (
-                                <Text style={{fontSize: 9}}>Descanso o actividad libre.</Text>
-                            )}
-                         </View>
+                         <Text style={{...styles.sectionTitle, borderBottomColor: '#F59E0B', color: '#F59E0B'}}>RUTINAS DE EJERCICIO</Text>
+                         {exerciseLogs.map((exercise, index) => (
+                             <View key={index} style={{marginBottom: 15}} wrap={false}>
+                                 <Text style={styles.subTitle}>
+                                     Rutina ({new Date(exercise.log_date).toLocaleDateString('es-MX', {weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC'})}) - {exercise.enfoque || 'General'}
+                                 </Text>
+                                 <View style={{...styles.patientInfoBox, backgroundColor: '#ffffff', borderColor: '#e5e7eb', borderWidth: 1}}>
+                                    {Array.isArray(exercise.ejercicios) && exercise.ejercicios.length > 0 ? (
+                                        (exercise.ejercicios as any[]).map((ex, idx) => (
+                                            <Text key={idx} style={{fontSize: 9, marginBottom: 4}}>
+                                                • <Text style={{fontWeight: 'bold'}}>{ex.nombre}</Text>: {ex.series} series, {ex.repeticiones} reps.
+                                            </Text>
+                                        ))
+                                    ) : (
+                                        <Text style={{fontSize: 9}}>Descanso o actividad libre.</Text>
+                                    )}
+                                 </View>
+                             </View>
+                         ))}
                     </View>
                 ) : null}
             </View>

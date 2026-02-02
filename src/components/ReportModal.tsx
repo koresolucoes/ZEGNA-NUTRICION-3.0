@@ -62,6 +62,21 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
         return { filteredConsultations: fConsultations };
     }, [dateRange, consultations]);
 
+    // Filter plans to show everything from today onwards, sorted chronologically
+    const { futureDietLogs, futureExerciseLogs } = useMemo(() => {
+        const today = new Date().toISOString().split('T')[0];
+        
+        const fDietLogs = dietLogs
+            .filter(log => log.log_date >= today)
+            .sort((a, b) => new Date(a.log_date).getTime() - new Date(b.log_date).getTime());
+
+        const fExerciseLogs = exerciseLogs
+            .filter(log => log.log_date >= today)
+            .sort((a, b) => new Date(a.log_date).getTime() - new Date(b.log_date).getTime());
+
+        return { futureDietLogs: fDietLogs, futureExerciseLogs: fExerciseLogs };
+    }, [dietLogs, exerciseLogs]);
+
     const reportData = useMemo(() => {
         const sortedConsults = [...filteredConsultations].sort((a, b) => new Date(b.consultation_date).getTime() - new Date(a.consultation_date).getTime());
         const current = sortedConsults[0];
@@ -96,8 +111,8 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
             nutritionistProfile={nutritionistProfile}
             clinic={clinic}
             consultations={filteredConsultations}
-            dietLogs={dietLogs}
-            exerciseLogs={exerciseLogs}
+            dietLogs={futureDietLogs}
+            exerciseLogs={futureExerciseLogs}
             reportData={reportData}
             options={options}
         />
@@ -109,24 +124,39 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
             const blob = await pdf(MyDocument).toBlob();
             const url = URL.createObjectURL(blob);
             
+            // Clean up any previous print iframes to avoid DOM clutter
+            const oldFrame = document.getElementById('printing-frame');
+            if (oldFrame) {
+                document.body.removeChild(oldFrame);
+            }
+            
             // Create an invisible iframe to handle printing
             const iframe = document.createElement('iframe');
+            iframe.id = 'printing-frame';
+            // Styling to keep it hidden but technically "visible" for WebKit browsers (Mac)
             iframe.style.position = 'fixed';
+            iframe.style.right = '0';
+            iframe.style.bottom = '0';
             iframe.style.width = '0px';
             iframe.style.height = '0px';
-            iframe.style.border = 'none';
+            iframe.style.border = '0';
             iframe.src = url;
+            
             document.body.appendChild(iframe);
             
             // Wait for the iframe to load the PDF
             iframe.onload = () => {
-                iframe.contentWindow?.focus();
-                iframe.contentWindow?.print();
-                // Clean up after a delay
+                if (iframe.contentWindow) {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                }
+                
+                // CRITICAL FIX: Do NOT remove the iframe immediately.
+                // On Windows, removing the iframe while the print dialog is open causes the dialog to close.
+                // We revoke the URL to save memory, but leave the empty 0x0 iframe until next print or page refresh.
                 setTimeout(() => {
-                    document.body.removeChild(iframe);
                     URL.revokeObjectURL(url);
-                }, 2000);
+                }, 60000); // Revoke URL after 1 minute
             };
         } catch (error) {
             console.error("Error generating PDF for print:", error);
