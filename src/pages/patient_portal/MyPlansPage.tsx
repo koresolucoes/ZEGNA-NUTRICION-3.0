@@ -20,24 +20,24 @@ interface MyPlansPageProps {
 const WEEKDAYS = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
-// Helper to get images based on meal type
+// Helper to get images based on meal type - Updated with reliable URLs
 const getMealImage = (type: string) => {
     switch(type) {
-        case 'desayuno': return "https://images.unsplash.com/photo-1533089862017-ec326aa0538b?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80"; // Pancakes/Juice
-        case 'colacion_1': return "https://images.unsplash.com/photo-1490474418585-ba9bad8fd0ea?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80"; // Fruit
-        case 'comida': return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80"; // Healthy Bowl
-        case 'colacion_2': return "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80"; // Salad/Snack
-        case 'cena': return "https://images.unsplash.com/photo-1467003909585-2f8a7270028d?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80"; // Plated Dinner
-        default: return "https://images.unsplash.com/photo-1543353071-873f17a7a088?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80";
+        case 'desayuno': return "https://images.unsplash.com/photo-1493770348161-369560ae357d?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Oatmeal/Healthy Breakfast
+        case 'colacion_1': return "https://images.unsplash.com/photo-1606787366850-de6330128bfc?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Fruit Bowl
+        case 'comida': return "https://images.unsplash.com/photo-1543353071-087f9bcbd111?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Healthy Lunch/Salad
+        case 'colacion_2': return "https://images.unsplash.com/photo-1505253758473-96b701d8fe52?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Tea/Snack
+        case 'cena': return "https://images.unsplash.com/photo-1467003909585-2f8a7270028d?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Plated Dinner
+        default: return "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Generic Healthy
     }
 };
 
 const getExerciseImage = (focus: string = "") => {
     const f = focus.toLowerCase();
-    if (f.includes('cardio') || f.includes('correr')) return "https://images.unsplash.com/photo-1538805060512-e2196156e312?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80";
-    if (f.includes('fuerza') || f.includes('pesas') || f.includes('superior') || f.includes('inferior')) return "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80";
-    if (f.includes('yoga') || f.includes('flexibilidad')) return "https://images.unsplash.com/photo-1544367563-12123d896889?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80";
-    return "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80"; // Default Gym
+    if (f.includes('cardio') || f.includes('correr')) return "https://images.unsplash.com/photo-1538805060512-e2196156e312?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Running
+    if (f.includes('fuerza') || f.includes('pesas') || f.includes('superior') || f.includes('inferior')) return "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Gym Weights
+    if (f.includes('yoga') || f.includes('flexibilidad')) return "https://images.unsplash.com/photo-1544367563-12123d896889?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Yoga
+    return "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Default Gym
 };
 
 

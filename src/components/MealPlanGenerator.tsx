@@ -40,10 +40,16 @@ const MealPlanGenerator: FC<MealPlanGeneratorProps> = ({ person, lastConsultatio
     const [error, setError] = useState<string | null>(null);
     const [generatedPlan, setGeneratedPlan] = useState<any | null>(null);
     const [thinkingMessage, setThinkingMessage] = useState('');
+    
+    // Conflict State
+    const [conflictDates, setConflictDates] = useState<string[]>([]);
+    const [isOverwriting, setIsOverwriting] = useState(false);
+
     const intervalRef = useRef<number | null>(null);
 
     const generatePlan = async () => {
         setError(null);
+        setConflictDates([]); // Reset conflicts
         if (!healthGoal) {
             setError("Por favor, define el objetivo de salud principal para generar el plan.");
             return;
@@ -175,17 +181,73 @@ const MealPlanGenerator: FC<MealPlanGeneratorProps> = ({ person, lastConsultatio
             }
         }
     };
-
-    const savePlanToLog = async () => {
+    
+    // New Function: Initiate Save (Checks for conflicts)
+    const initiateSavePlan = async () => {
         if (!generatedPlan) return;
         setLoading(true);
         setError(null);
+        
+        try {
+             // Calculate the dates that will be used
+            const today = new Date();
+            const tomorrowUTC = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + 1));
+            
+            const datesToCheck: string[] = [];
+            for (let i = 0; i < generatedPlan.plan_semanal.length; i++) {
+                const planDate = new Date(tomorrowUTC);
+                planDate.setUTCDate(tomorrowUTC.getUTCDate() + i);
+                datesToCheck.push(planDate.toISOString().split('T')[0]);
+            }
+            
+            // Check for existing plans in database
+            const { data: existingLogs, error: checkError } = await supabase
+                .from('diet_logs')
+                .select('log_date')
+                .eq('person_id', person.id)
+                .in('log_date', datesToCheck);
+                
+            if (checkError) throw checkError;
+            
+            if (existingLogs && existingLogs.length > 0) {
+                // Conflict found!
+                const conflicts = existingLogs.map(l => l.log_date);
+                setConflictDates(conflicts);
+                setLoading(false);
+                return;
+            }
+            
+            // No conflicts, proceed to save directly
+            await executeSave(false);
+
+        } catch (err: any) {
+            setError(err.message);
+            setLoading(false);
+        }
+    };
+
+    // New Function: Execute Save (Handles Overwrite)
+    const executeSave = async (overwrite: boolean) => {
+        if (!generatedPlan) return;
+        setIsOverwriting(true);
+        setLoading(true);
 
         try {
+             // If overwriting, delete existing logs first
+            if (overwrite && conflictDates.length > 0) {
+                const { error: deleteError } = await supabase
+                    .from('diet_logs')
+                    .delete()
+                    .eq('person_id', person.id)
+                    .in('log_date', conflictDates);
+                
+                if (deleteError) throw new Error(`Error eliminando planes anteriores: ${deleteError.message}`);
+            }
+
             // 1. Create a summary log entry for activity feed
             const summaryLogPayload = {
                 log_type: 'Plan Alimenticio (IA)',
-                description: `Se generó un plan alimenticio detallado de ${numDays} días. Objetivo: ${healthGoal}.`,
+                description: `Se generó un plan alimenticio detallado de ${numDays} días. Objetivo: ${healthGoal}.${overwrite ? ' (Sobreescribió planes existentes)' : ''}`,
                 // FIX: Use person_id for the unified schema
                 person_id: person.id,
                 log_time: new Date().toISOString(),
@@ -236,6 +298,8 @@ const MealPlanGenerator: FC<MealPlanGeneratorProps> = ({ person, lastConsultatio
              setError(`Error al guardar el plan: ${err.message}`);
         } finally {
              setLoading(false);
+             setIsOverwriting(false);
+             setConflictDates([]);
         }
     }
 
@@ -247,7 +311,43 @@ const MealPlanGenerator: FC<MealPlanGeneratorProps> = ({ person, lastConsultatio
                     <button onClick={onClose} style={{...styles.iconButton, border: 'none'}}>{ICONS.close}</button>
                 </div>
                 <div style={styles.modalBody}>
-                    {!generatedPlan && !loading && (
+                    {conflictDates.length > 0 && (
+                        <div style={{
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)', 
+                            border: '1px solid #F59E0B', 
+                            borderRadius: '12px', 
+                            padding: '1.5rem', 
+                            marginBottom: '1.5rem',
+                            textAlign: 'center'
+                        }}>
+                            <div style={{fontSize: '3rem', marginBottom: '0.5rem'}}>⚠️</div>
+                            <h3 style={{margin: '0 0 0.5rem 0', color: '#B45309'}}>Conflicto de Fechas Detectado</h3>
+                            <p style={{marginBottom: '1rem', color: '#92400E'}}>
+                                Ya existen planes registrados para <strong>{conflictDates.length}</strong> de los días seleccionados.
+                                <br />
+                                <span style={{fontSize: '0.9rem'}}>Fechas afectadas: {conflictDates.map(d => new Date(d).toLocaleDateString('es-MX', {day: 'numeric', month: 'short'})).join(', ')}.</span>
+                            </p>
+                            <div style={{display: 'flex', justifyContent: 'center', gap: '1rem'}}>
+                                <button 
+                                    onClick={() => setConflictDates([])} 
+                                    className="button-secondary"
+                                    style={{backgroundColor: 'white'}}
+                                >
+                                    Cancelar y Revisar
+                                </button>
+                                <button 
+                                    onClick={() => executeSave(true)} 
+                                    className="button-primary"
+                                    style={{backgroundColor: '#F59E0B', border: 'none'}}
+                                    disabled={isOverwriting}
+                                >
+                                    {isOverwriting ? 'Sobreescribiendo...' : 'Sobreescribir Existentes'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {!generatedPlan && !loading && conflictDates.length === 0 && (
                         <>
                             <p style={{marginTop: 0, color: 'var(--text-light)'}}>Se generará un plan con <strong>medidas exactas y porciones</strong> para <strong>{person.full_name}</strong>.</p>
 
@@ -299,7 +399,7 @@ const MealPlanGenerator: FC<MealPlanGeneratorProps> = ({ person, lastConsultatio
 
                     {error && <p style={{...styles.error, whiteSpace: 'pre-wrap'}}>{error}</p>}
                     
-                    {generatedPlan && generatedPlan.plan_semanal && !loading &&(
+                    {generatedPlan && generatedPlan.plan_semanal && !loading && conflictDates.length === 0 && (
                         <div style={{maxHeight: '45vh', overflowY: 'auto', paddingRight: '1rem'}}>
                             <h3 style={{color: 'var(--primary-dark)', fontSize: '1.1rem'}}>Plan Semanal Sugerido</h3>
                             {generatedPlan.plan_semanal.map((day: any, index: number) => (
@@ -317,11 +417,11 @@ const MealPlanGenerator: FC<MealPlanGeneratorProps> = ({ person, lastConsultatio
                 </div>
                 <div style={styles.modalFooter}>
                     <button onClick={onClose} className="button-secondary">Cancelar</button>
-                    {generatedPlan ? (
-                         <button onClick={savePlanToLog} disabled={loading}>{loading ? 'Guardando...' : 'Guardar Plan'}</button>
-                    ) : (
+                    {generatedPlan && conflictDates.length === 0 ? (
+                         <button onClick={initiateSavePlan} disabled={loading}>{loading ? 'Guardando...' : 'Guardar Plan'}</button>
+                    ) : !generatedPlan && conflictDates.length === 0 ? (
                          <button onClick={generatePlan} disabled={loading || !healthGoal}>{loading ? 'Generando...' : 'Generar Plan'}</button>
-                    )}
+                    ) : null}
                 </div>
             </div>
         </div>

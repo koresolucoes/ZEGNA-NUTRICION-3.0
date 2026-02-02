@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useEffect, FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../supabase';
@@ -65,7 +66,7 @@ const DailyCheckinFormModal: FC<DailyCheckinFormModalProps> = ({ isOpen, onClose
         setLoading(true);
         setError(null);
         try {
-            if (!checkinToEdit) throw new Error("No check-in provided to edit.");
+            if (!checkinToEdit) throw new Error("No check-in provided.");
 
             const payload = {
                 mood_rating: formData.mood_rating,
@@ -73,12 +74,35 @@ const DailyCheckinFormModal: FC<DailyCheckinFormModalProps> = ({ isOpen, onClose
                 notes: formData.notes || null,
             };
             
-            const { error: dbError } = await supabase
-                .from('daily_checkins')
-                .update(payload)
-                .eq('id', checkinToEdit.id);
+            if (checkinToEdit.id) {
+                const { error: dbError } = await supabase
+                    .from('daily_checkins')
+                    .update(payload)
+                    .eq('id', checkinToEdit.id);
 
-            if (dbError) throw dbError;
+                if (dbError) throw dbError;
+            } else {
+                 if (!checkinToEdit.person_id) throw new Error("Error interno: ID de paciente no disponible.");
+                 
+                 const { data: insertedData, error: dbError } = await supabase
+                    .from('daily_checkins')
+                    .insert({
+                        ...payload,
+                        person_id: checkinToEdit.person_id,
+                        checkin_date: formData.checkin_date
+                    })
+                    .select()
+                    .single();
+
+                if (dbError) throw dbError;
+
+                if (insertedData) {
+                     await supabase.rpc('award_daily_checkin_points', {
+                        p_person_id: checkinToEdit.person_id,
+                        p_checkin_id: insertedData.id,
+                    });
+                }
+            }
             
             onSave();
         } catch (err: any) {
@@ -95,7 +119,7 @@ const DailyCheckinFormModal: FC<DailyCheckinFormModalProps> = ({ isOpen, onClose
             <form onSubmit={handleSubmit} style={{...styles.modalContent, maxWidth: '500px'}}>
                 <div style={styles.modalHeader}>
                     <h2 style={styles.modalTitle}>
-                        Editar Registro del Día
+                        {checkinToEdit?.id ? 'Editar Registro del Día' : 'Nuevo Registro'}
                         <span style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-light)', fontWeight: 400, marginTop: '0.25rem' }}>
                             {new Date(formData.checkin_date.replace(/-/g, '/')).toLocaleDateString('es-MX', { dateStyle: 'full' })}
                         </span>
@@ -119,7 +143,7 @@ const DailyCheckinFormModal: FC<DailyCheckinFormModalProps> = ({ isOpen, onClose
                 </div>
                 <div style={styles.modalFooter}>
                     <button type="button" onClick={onClose} className="button-secondary" disabled={loading}>Cancelar</button>
-                    <button type="submit" disabled={loading}>{loading ? 'Guardando...' : 'Guardar Cambios'}</button>
+                    <button type="submit" disabled={loading}>{loading ? 'Guardando...' : 'Guardar'}</button>
                 </div>
             </form>
         </div>,

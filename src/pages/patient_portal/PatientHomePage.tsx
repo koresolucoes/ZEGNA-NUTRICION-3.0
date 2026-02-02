@@ -8,7 +8,6 @@ import DailyCheckinFormModal from '../../components/patient_portal/DailyCheckinF
 import { supabase } from '../../supabase';
 import { styles } from '../../constants';
 import MealImageAnalyzer from '../../components/patient_portal/MealImageAnalyzer';
-import DailyCheckinForm from '../../components/patient_portal/DailyCheckinForm';
 import ConsentRequestModal from '../../components/patient_portal/ConsentRequestModal';
 import SmartJournalFeed from '../../components/patient_portal/SmartJournalFeed';
 import { createPortal } from 'react-dom';
@@ -20,9 +19,6 @@ const getLocalDateString = (date: Date) => {
     const localDate = new Date(date.getTime() - (offset * 60 * 1000));
     return localDate.toISOString().split('T')[0];
 };
-
-// Mock weather data since we don't have an API key
-const MOCK_WEATHER = { temp: 24, condition: 'Soleado', icon: '☀️' };
 
 const PatientHomePage: FC<{ 
     user: User; 
@@ -36,7 +32,9 @@ const PatientHomePage: FC<{
     onDataRefresh: () => void;
     isMobile: boolean;
     isAiEnabled: boolean;
-}> = ({ user, person, dietLogs, exerciseLogs, checkins, consultations, appointments, servicePlans, onDataRefresh, isMobile, isAiEnabled }) => {
+    onNavigate: (view: string) => void;
+    onOpenAiChat: () => void;
+}> = ({ user, person, dietLogs, exerciseLogs, checkins, consultations, appointments, servicePlans, onDataRefresh, isMobile, isAiEnabled, onNavigate, onOpenAiChat }) => {
     
     const [editingCheckin, setEditingCheckin] = useState<DailyCheckin | null>(null);
     const [deletingCheckin, setDeletingCheckin] = useState<DailyCheckin | null>(null);
@@ -45,10 +43,49 @@ const PatientHomePage: FC<{
     const [pendingConsents, setPendingConsents] = useState<PopulatedReferralConsentRequest[]>([]);
     const [viewingConsent, setViewingConsent] = useState<PopulatedReferralConsentRequest | null>(null);
     const [uploadingMealType, setUploadingMealType] = useState<string | null>(null);
+    const [weather, setWeather] = useState<{ temp: number | null, condition: string, icon: string }>({ temp: null, condition: 'Cargando...', icon: '...' });
     
     // Journal State
     const [journalEntries, setJournalEntries] = useState<PatientJournalEntry[]>([]);
     const [loadingJournal, setLoadingJournal] = useState(true);
+
+    // Weather Fetch Effect
+    useEffect(() => {
+        const fetchWeather = async (lat: number, lon: number) => {
+            try {
+                const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&timezone=auto`);
+                const data = await response.json();
+                const { temperature_2m, weather_code } = data.current;
+                
+                let condition = 'Soleado';
+                let icon = '☀️';
+                
+                // Simple WMO Code Mapping
+                if (weather_code >= 1 && weather_code <= 3) { condition = 'Nublado'; icon = '⛅'; }
+                else if (weather_code >= 45 && weather_code <= 48) { condition = 'Niebla'; icon = '🌫️'; }
+                else if (weather_code >= 51 && weather_code <= 67) { condition = 'Lluvia'; icon = '🌧️'; }
+                else if (weather_code >= 71) { condition = 'Nieve'; icon = '❄️'; }
+                else if (weather_code >= 95) { condition = 'Tormenta'; icon = '⚡'; }
+
+                setWeather({ temp: Math.round(temperature_2m), condition, icon });
+            } catch (err) {
+                console.error("Weather fetch failed", err);
+                setWeather({ temp: 24, condition: 'Despejado (Est.)', icon: '☀️' });
+            }
+        };
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => fetchWeather(pos.coords.latitude, pos.coords.longitude),
+                (err) => {
+                    console.warn("Geolocation denied/error", err);
+                    setWeather({ temp: 25, condition: 'General', icon: '☀️' });
+                }
+            );
+        } else {
+             setWeather({ temp: 25, condition: 'General', icon: '☀️' });
+        }
+    }, []);
 
     const fetchJournal = useCallback(async () => {
         setLoadingJournal(true);
@@ -125,33 +162,14 @@ const PatientHomePage: FC<{
         let totalCalories = 2000; // Default goal
         let completedCalories = 0;
         
-        // Try to infer total calories from DietPlanHistory if available (not passed to this component directly, so using approximation or passed logic)
-        // For now, let's use a standard 2000 or derive from profile if we had it.
-        
-        // Calculate "completed" portion based on completed meals (proxy for calories)
-        let mealCount = 0;
-        if (todaysDietLog) {
-            if (todaysDietLog.desayuno) mealCount++;
-            if (todaysDietLog.comida) mealCount++;
-            if (todaysDietLog.cena) mealCount++;
-            if (todaysDietLog.colacion_1) mealCount++;
-            if (todaysDietLog.colacion_2) mealCount++;
-        }
-        
-        // Mock progress based on time of day if specific log completion isn't fully granular in DB yet (DB stores 'completed' boolean for whole log, not per meal)
-        // But we want to show a nice circle. Let's assume:
-        // 1. If diet log marked complete = 100%
-        // 2. Else based on current time (just for visualization "consumed so far")
-        
+        // Approximate calculation based on meals eaten (if marked) or time of day for visualization
         if (todaysDietLog?.completed) {
             completedCalories = totalCalories;
         } else {
              const hour = new Date().getHours();
-             // Rough estimation of calorie burn/intake by time of day
              if (hour > 8) completedCalories += totalCalories * 0.2; // Breakfast
              if (hour > 14) completedCalories += totalCalories * 0.4; // Lunch
              if (hour > 20) completedCalories += totalCalories * 0.3; // Dinner
-             // Cap at current progress
         }
         
         const percentage = Math.min(100, (completedCalories / totalCalories) * 100);
@@ -275,12 +293,12 @@ const PatientHomePage: FC<{
         </div>
     );
 
-    // Get images for cards based on time of day
+    // Get images for cards based on time of day - Updated with reliable URLs
     const getMealImage = () => {
         const h = new Date().getHours();
-        if (h < 11) return "https://images.unsplash.com/photo-1533089862017-ec326aa0538b?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80"; // Breakfast
-        if (h < 16) return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80"; // Lunch
-        return "https://images.unsplash.com/photo-1467003909585-2f8a7270028d?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80"; // Dinner
+        if (h < 11) return "https://images.unsplash.com/photo-1493770348161-369560ae357d?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Breakfast
+        if (h < 16) return "https://images.unsplash.com/photo-1543353071-087f9bcbd111?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Lunch
+        return "https://images.unsplash.com/photo-1467003909585-2f8a7270028d?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"; // Dinner
     };
 
     return (
@@ -304,10 +322,10 @@ const PatientHomePage: FC<{
                     </p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'white', padding: '0.5rem 1rem', borderRadius: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-                    <span style={{ fontSize: '1.5rem' }}>{MOCK_WEATHER.icon}</span>
+                    <span style={{ fontSize: '1.5rem' }}>{weather.icon}</span>
                     <div>
-                        <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem' }}>{MOCK_WEATHER.temp}°C</p>
-                        <p style={{ margin: 0, fontSize: '0.7rem', color: '#6B7280' }}>{MOCK_WEATHER.condition}</p>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem' }}>{weather.temp !== null ? `${weather.temp}°C` : '--'}</p>
+                        <p style={{ margin: 0, fontSize: '0.7rem', color: '#6B7280' }}>{weather.condition}</p>
                     </div>
                 </div>
             </div>
@@ -333,9 +351,9 @@ const PatientHomePage: FC<{
             {/* SHORTCUTS SCROLL */}
             <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: '1rem', marginBottom: '1.5rem' }} className="hide-scrollbar">
                 <ShortcutButton icon="📷" label="Subir Foto" onClick={() => setUploadingMealType('Comida')} color="#8B5CF6" />
-                <ShortcutButton icon="💧" label="Agua" onClick={() => alert('Registro de agua próximamente')} color="#3B82F6" />
-                <ShortcutButton icon="📝" label="Diario" onClick={() => setEditingCheckin(todaysCheckin || { checkin_date: new Date().toISOString() } as any)} color="#F59E0B" />
-                <ShortcutButton icon="💬" label="Chat IA" onClick={() => {}} color="#10B981" />
+                <ShortcutButton icon="📝" label="Diario" onClick={() => setEditingCheckin(todaysCheckin || { checkin_date: todayStr, person_id: person.id } as any)} color="#F59E0B" />
+                <ShortcutButton icon="💬" label="Chat IA" onClick={onOpenAiChat} color="#10B981" />
+                <ShortcutButton icon="📋" label="Ver Planes" onClick={() => onNavigate('plans')} color="#3B82F6" />
             </div>
 
             {/* TODAYS PLAN CARDS */}
@@ -345,14 +363,15 @@ const PatientHomePage: FC<{
                     title={todaysDietLog ? 'Ver Comidas' : 'Sin Plan'} 
                     subtitle="Alimentación" 
                     image={getMealImage()}
-                    onClick={() => {/* Navigate or Scroll to Meals */}}
+                    onClick={() => onNavigate('plans')}
                     color="#F59E0B"
                 />
                 <PlanCard 
                     title={todaysExerciseLog ? (todaysExerciseLog.enfoque || 'Rutina') : 'Descanso'} 
                     subtitle="Ejercicio" 
-                    image="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80"
-                    onClick={() => {/* Navigate or Scroll to Exercise */}}
+                    // Using reliable exercise image
+                    image="https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
+                    onClick={() => onNavigate('plans')}
                     color="#3B82F6"
                 />
             </div>
