@@ -930,6 +930,7 @@ export type Database = {
           colacion_2: string | null
           comida: string | null
           completed: boolean | null
+          completed_meals: Json | null
           created_at: string
           created_by_user_id: string | null
           desayuno: string | null
@@ -943,6 +944,7 @@ export type Database = {
           colacion_2?: string | null
           comida?: string | null
           completed?: boolean | null
+          completed_meals?: Json | null
           created_at?: string
           created_by_user_id?: string | null
           desayuno?: string | null
@@ -956,6 +958,7 @@ export type Database = {
           colacion_2?: string | null
           comida?: string | null
           completed?: boolean | null
+          completed_meals?: Json | null
           created_at?: string
           created_by_user_id?: string | null
           desayuno?: string | null

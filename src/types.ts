@@ -1,4 +1,5 @@
 
+
 import { Database, Json } from './database.types';
 
 // Core Types
@@ -65,6 +66,7 @@ export type LabResult = Database['public']['Tables']['lab_results']['Row'];
 export type Log = Database['public']['Tables']['logs']['Row'];
 export type DietLog = Database['public']['Tables']['diet_logs']['Row'] & {
     completed?: boolean;
+    completed_meals?: Json | null; // Stores array of completed meal keys ['desayuno', 'comida']
 };
 export type ExerciseLog = Database['public']['Tables']['exercise_logs']['Row'] & {
     completed?: boolean;

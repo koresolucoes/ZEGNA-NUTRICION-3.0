@@ -297,9 +297,9 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
     const MobileNavBar = () => {
         const navItems = [
             { id: 'home', label: 'Hoy', icon: ICONS.home },
-            { id: 'plans', label: 'Plan', icon: ICONS.clipboard }, // Changed from book
+            { id: 'plans', label: 'Plan', icon: ICONS.clipboard }, 
+            { id: 'progress', label: 'Progreso', icon: ICONS.activity }, // Restored Progress
             { id: 'appointments', label: 'Citas', icon: ICONS.calendar },
-            { id: 'files', label: 'Archivos', icon: ICONS.folder }, // Changed from file
             { id: 'notifications', label: 'Perfil', icon: ICONS.user },
         ];
 
@@ -312,15 +312,15 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
                 width: '90%',
                 maxWidth: '400px',
                 height: '70px',
-                backgroundColor: '#FFFFFF', // Changed to White
+                backgroundColor: '#FFFFFF', 
                 borderRadius: '35px',
                 display: 'flex',
                 justifyContent: 'space-around',
                 alignItems: 'center',
                 padding: '0 10px',
                 zIndex: 1000,
-                boxShadow: '0 10px 40px -10px rgba(0, 0, 0, 0.1)', // Updated Shadow for better visibility on white
-                border: '1px solid rgba(0, 0, 0, 0.05)' // Subtle border
+                boxShadow: '0 10px 40px -10px rgba(0, 0, 0, 0.1)', 
+                border: '1px solid rgba(0, 0, 0, 0.05)' 
             }}>
                 {navItems.map((item) => {
                     const isActive = view === item.id;
@@ -335,7 +335,7 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
                                 justifyContent: 'center',
                                 background: 'transparent',
                                 border: 'none',
-                                color: isActive ? 'var(--primary-color)' : '#94A3B8', // Primary color vs Slate Gray
+                                color: isActive ? 'var(--primary-color)' : '#94A3B8',
                                 padding: '0',
                                 cursor: 'pointer',
                                 width: '60px',

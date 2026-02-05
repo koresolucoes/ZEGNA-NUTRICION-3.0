@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useEffect, useCallback, useMemo, useRef, FormEvent } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
@@ -234,6 +235,7 @@ const AgendaPage: FC<{ user: User; isMobile: boolean }> = ({ user, isMobile }) =
 
     return (
         <div className="fade-in">
+             <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
             {modalState.isOpen && modalRoot && createPortal(
                 <AppointmentFormModal 
                     isOpen={modalState.isOpen}
@@ -263,7 +265,20 @@ const AgendaPage: FC<{ user: User; isMobile: boolean }> = ({ user, isMobile }) =
             )}
             <div style={{...styles.pageHeader, paddingBottom: 0, borderBottom: 'none'}}>
                 <h1>Agenda</h1>
-                <button onClick={() => handleOpenModal(null, { start: new Date(), end: new Date(new Date().getTime() + 60 * 60000) })}>{ICONS.add} Nueva Cita</button>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <button
+                        onClick={() => fetchAgendaData()}
+                        className="button-secondary"
+                        disabled={loading}
+                        title="Actualizar datos"
+                        style={{ padding: '0.7rem' }}
+                    >
+                        <span style={{ animation: loading ? 'spin 1s linear infinite' : 'none', display: 'flex' }}>
+                            {ICONS.refresh}
+                        </span>
+                    </button>
+                    <button onClick={() => handleOpenModal(null, { start: new Date(), end: new Date(new Date().getTime() + 60 * 60000) })}>{ICONS.add} Nueva Cita</button>
+                </div>
             </div>
             <Header />
             {loading && <SkeletonLoader type="card" count={1} />}
