@@ -5,7 +5,10 @@ import { Page, Text, View, Document, StyleSheet } from '@react-pdf/renderer';
 // Define styles for the PDF
 const styles = StyleSheet.create({
   page: {
-    padding: 30,
+    paddingTop: 30,
+    paddingLeft: 30,
+    paddingRight: 30,
+    paddingBottom: 80, // Increased bottom padding to prevent overlap with footer
     fontSize: 10,
     fontFamily: 'Helvetica',
     backgroundColor: '#ffffff',
@@ -97,7 +100,7 @@ const AuditReportDocument: React.FC<AuditReportDocumentProps> = ({ logs, clinicN
     <Page size="A4" orientation="landscape" style={styles.page}>
       
       {/* Header */}
-      <View style={styles.header}>
+      <View style={styles.header} fixed>
         <View>
             <Text style={styles.title}>Reporte de Auditoría</Text>
             <Text style={styles.subtitle}>{clinicName}</Text>
@@ -110,7 +113,7 @@ const AuditReportDocument: React.FC<AuditReportDocumentProps> = ({ logs, clinicN
       </View>
 
       {/* Table Header */}
-      <View style={[styles.table, styles.tableHeader, styles.tableRow]}>
+      <View style={[styles.table, styles.tableHeader, styles.tableRow]} fixed>
         <View style={[styles.tableCol, styles.colDate]}>
           <Text style={styles.cellText}>FECHA Y HORA</Text>
         </View>
@@ -130,7 +133,7 @@ const AuditReportDocument: React.FC<AuditReportDocumentProps> = ({ logs, clinicN
 
       {/* Table Body */}
       {logs.map((log, index) => (
-        <View key={index} style={[styles.table, styles.tableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f9fafb' }]}>
+        <View key={index} style={[styles.table, styles.tableRow, { backgroundColor: index % 2 === 0 ? '#ffffff' : '#f9fafb' }]} wrap={false}>
           <View style={[styles.tableCol, styles.colDate]}>
             <Text style={styles.cellText}>
                 {new Date(log.created_at).toLocaleString('es-MX')}
