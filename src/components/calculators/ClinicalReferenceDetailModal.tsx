@@ -1,4 +1,5 @@
 
+
 import React, { FC, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { styles } from '../../constants';
@@ -35,7 +36,6 @@ const ClinicalReferenceDetailModal: FC<ClinicalReferenceDetailModalProps> = ({ r
                 }
             }
         } else if (lastConsultation.lab_results?.[0] && item.key in lastConsultation.lab_results[0]) {
-            // Safe access with type assertion or keyof check
              const labResults = lastConsultation.lab_results[0] as any;
              patientValue = labResults[item.key];
         } else if (item.key in lastConsultation) {
@@ -61,47 +61,63 @@ const ClinicalReferenceDetailModal: FC<ClinicalReferenceDetailModalProps> = ({ r
 
     const modalContent = (
          <div style={styles.modalOverlay}>
-            <div style={{...styles.modalContent, maxWidth: '600px'}} className="fade-in">
+            <div style={{...styles.modalContent, maxWidth: '700px', maxHeight: '90vh', display: 'flex', flexDirection: 'column'}} className="fade-in">
                 <div style={styles.modalHeader}>
                     <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-                        {reference.icon_svg && <span style={{ color: 'var(--primary-color)' }} dangerouslySetInnerHTML={{ __html: reference.icon_svg }} />}
+                        {reference.icon_svg && <span style={{ color: 'var(--primary-color)', width: '32px' }} dangerouslySetInnerHTML={{ __html: reference.icon_svg }} />}
                         <div>
-                             <h2 style={{...styles.modalTitle, margin: 0}}>{reference.title}</h2>
+                             <h2 style={{...styles.modalTitle, margin: 0, fontSize: '1.2rem'}}>{reference.title}</h2>
                              {reference.source && <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.9rem', color: 'var(--text-light)' }}>Fuente: {reference.source}</p>}
                         </div>
                     </div>
                     <button onClick={onClose} style={{...styles.iconButton, border: 'none'}}>{ICONS.close}</button>
                 </div>
-                <div style={styles.modalBody}>
-                    <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                
+                <div style={{...styles.modalBody, flex: 1, overflowY: 'auto', padding: '1.5rem'}}>
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
                         {contentArray.map((item, index) => {
                             const patientData = getPatientValue(item);
                             return (
-                                <li key={index} style={{ padding: '1rem', backgroundColor: 'var(--surface-hover-color)', borderRadius: '8px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span style={{ fontWeight: 500 }}>{item.label}</span>
-                                        <span style={{ fontWeight: 600, fontSize: '1.1rem', color: 'var(--text-color)' }}>{item.value}</span>
+                                <div key={index} style={{ 
+                                    padding: '1rem', 
+                                    backgroundColor: 'var(--surface-color)', 
+                                    borderRadius: '12px',
+                                    border: '1px solid var(--border-color)',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                                        <div style={{flex: 1}}>
+                                            <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-color)', display: 'block', marginBottom: '0.25rem' }}>{item.label}</span>
+                                            <span style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--primary-color)' }}>{item.value}</span>
+                                        </div>
+                                        
+                                        {selectedPerson && patientData.value !== null && (
+                                            <div style={{ textAlign: 'right', padding: '0.5rem', backgroundColor: patientData.isOutOfRange ? 'var(--error-bg)' : 'var(--surface-hover-color)', borderRadius: '8px', border: `1px solid ${patientData.isOutOfRange ? 'var(--error-color)' : 'transparent'}` }}>
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', display: 'block', textTransform: 'uppercase' }}>Paciente</span>
+                                                <span style={{
+                                                    fontWeight: 'bold',
+                                                    color: patientData.isOutOfRange ? 'var(--error-color)' : 'var(--text-color)',
+                                                    fontSize: '1.1rem',
+                                                }}>
+                                                    {patientData.value}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
-                                    {selectedPerson && patientData.value !== null && (
-                                        <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)', textAlign: 'right' }}>
-                                            <span style={{ fontSize: '0.9rem', color: 'var(--text-light)'}}>Dato del Paciente: </span>
-                                            <span style={{
-                                                fontWeight: 'bold',
-                                                color: patientData.isOutOfRange ? 'var(--error-color)' : 'var(--primary-color)',
-                                                fontSize: '1.1rem',
-                                                marginLeft: '0.5rem'
-                                            }}>
-                                                {patientData.value} {patientData.isOutOfRange && '⚠️'}
-                                            </span>
+                                    
+                                    {item.note && (
+                                        <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px dashed var(--border-color)', fontSize: '0.9rem', color: 'var(--text-light)', fontStyle: 'italic', display: 'flex', gap: '0.5rem' }}>
+                                            <span>ℹ️</span>
+                                            <span>{item.note}</span>
                                         </div>
                                     )}
-                                </li>
+                                </div>
                             );
                         })}
-                    </ul>
+                    </div>
                 </div>
                 <div style={styles.modalFooter}>
-                    <button onClick={onClose} className="button-secondary">Cerrar</button>
+                    <button onClick={onClose} className="button-secondary">Cerrar Ficha</button>
                 </div>
             </div>
         </div>

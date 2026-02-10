@@ -1,4 +1,5 @@
 
+
 import React, { FC, useState, useMemo, useCallback } from 'react';
 import { supabase } from '../../supabase';
 import { styles } from '../../constants';
@@ -7,6 +8,7 @@ import { ClinicalReference, ConsultationWithLabs, Person, ClinicalReferenceConte
 import ReferenceFormModal from './ReferenceFormModal';
 import ConfirmationModal from '../shared/ConfirmationModal';
 import ClinicalReferenceDetailModal from './ClinicalReferenceDetailModal';
+import HelpTooltip from './tools/shared/HelpTooltip';
 
 interface ClinicalReferencesProps {
     references: ClinicalReference[];
@@ -15,17 +17,6 @@ interface ClinicalReferencesProps {
     onNavigateToToolTab: (tab: string, subTab?: string) => void;
     onDataRefresh: () => void;
 }
-
-const toolLabels: { [key: string]: string } = {
-    energia: 'Requerimientos Energéticos',
-    antropometria: 'Antropometría y Riesgo',
-    renal: 'Función Renal',
-    diabetes: 'Diabetes',
-    poblaciones: 'Poblaciones Específicas',
-    soporte: 'Soporte Nutricional',
-    tamizaje: 'Tamizaje',
-    pediatria: 'Pediatría',
-};
 
 const ClinicalReferences: FC<ClinicalReferencesProps> = ({ references, selectedPerson, lastConsultation, onNavigateToToolTab, onDataRefresh }) => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -84,7 +75,6 @@ const ClinicalReferences: FC<ClinicalReferencesProps> = ({ references, selectedP
     }, [lastConsultation]);
 
     const handleEdit = (ref: ClinicalReference) => {
-        // Check if it's a default reference
         if (ref.id.startsWith('default-')) return;
         setEditingReference(ref);
         setFormModalOpen(true);
@@ -121,13 +111,6 @@ const ClinicalReferences: FC<ClinicalReferencesProps> = ({ references, selectedP
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
                     {filteredReferences.map(ref => {
                          const contentArray = (Array.isArray(ref.content) ? ref.content : []) as ClinicalReferenceContentItem[];
-                         
-                         let toolKey: string | null | undefined = ref.linked_tool;
-                         if (!toolKey) {
-                             if (ref.category === 'Diabetes') toolKey = 'diabetes';
-                             else if (ref.category === 'Renal') toolKey = 'renal';
-                         }
-                         const showButton = !!toolKey;
                          const isSystemDefault = ref.id.startsWith('default-');
 
                          return (
@@ -145,8 +128,10 @@ const ClinicalReferences: FC<ClinicalReferencesProps> = ({ references, selectedP
                                             const patientData = getPatientValue(item);
                                             return (
                                                 <li key={index} style={{ marginBottom: '0.75rem', fontSize: '0.9rem' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                        <span style={{color: 'var(--text-light)'}}>{item.label}</span>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
+                                                            <span style={{color: 'var(--text-light)'}}>{item.label}</span>
+                                                        </div>
                                                         <span style={{ fontWeight: 600 }}>{item.value}</span>
                                                     </div>
                                                     {selectedPerson && patientData.value !== null && (
@@ -157,24 +142,19 @@ const ClinicalReferences: FC<ClinicalReferencesProps> = ({ references, selectedP
                                                 </li>
                                             );
                                         })}
-                                        {contentArray.length > 3 && <li style={{fontSize: '0.8rem', color: 'var(--text-light)', fontStyle: 'italic'}}>+ {contentArray.length - 3} más...</li>}
                                     </ul>
+                                    <div style={{marginTop: '0.5rem', textAlign: 'center'}}>
+                                         <button className="button-secondary" style={{width: '100%', fontSize: '0.85rem', padding: '0.5rem'}}>Ver Ficha Completa</button>
+                                    </div>
                                 </div>
-                                <div style={{padding: '0.75rem 1.25rem', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--surface-hover-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                                     {showButton ? (
-                                        <button onClick={(e) => { e.stopPropagation(); onNavigateToToolTab('tools', toolKey || undefined); }} style={{background: 'none', border: 'none', color: 'var(--primary-color)', fontWeight: 600, fontSize: '0.85rem', padding: 0, cursor: 'pointer'}}>
-                                            Ir a Calculadora →
-                                        </button>
-                                     ) : <div></div>}
-                                     
-                                     {/* Hide actions for default references */}
-                                     {!isSystemDefault && ref.user_id && (
+                                {!isSystemDefault && ref.user_id && (
+                                    <div style={{padding: '0.5rem 1.25rem', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--surface-hover-color)', display: 'flex', justifyContent: 'flex-end', alignItems: 'center'}}>
                                         <div style={{display: 'flex', gap: '0.5rem'}}>
                                             <button onClick={(e) => { e.stopPropagation(); handleEdit(ref); }} style={{...styles.iconButton, width: '28px', height: '28px', padding: '4px'}} title="Editar">{ICONS.edit}</button>
                                             <button onClick={(e) => { e.stopPropagation(); setDeletingReference(ref); }} style={{...styles.iconButton, color: 'var(--error-color)', width: '28px', height: '28px', padding: '4px'}} title="Eliminar">{ICONS.delete}</button>
                                         </div>
-                                     )}
-                                </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     )}
@@ -195,7 +175,7 @@ const ClinicalReferences: FC<ClinicalReferencesProps> = ({ references, selectedP
                     height: '56px', 
                     borderRadius: '50%', 
                     backgroundColor: 'var(--primary-color)', 
-                    color: 'white',
+                    color: 'white', 
                     display: 'flex', 
                     alignItems: 'center', 
                     justifyContent: 'center', 

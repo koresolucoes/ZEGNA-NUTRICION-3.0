@@ -253,6 +253,7 @@ export type ClinicalReferenceContentItem = {
     key?: string;
     check?: 'high' | 'low';
     threshold?: number | number[];
+    note?: string; // Additional info for tooltip/modal
 };
 
 export type ClinicalReference = Database['public']['Tables']['clinical_references']['Row'] & {
