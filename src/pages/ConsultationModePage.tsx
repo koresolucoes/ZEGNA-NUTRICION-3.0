@@ -55,23 +55,36 @@ const areDatesEqual = (d1: Date, d2: Date) =>
     d1.getMonth() === d2.getMonth() && 
     d1.getDate() === d2.getDate();
 
-// Helper to parse YYYY-MM-DD as local date to avoid timezone shifts
-const parseLocalDate = (dateStr: string) => {
+// Helper to parse dates robustly across Safari/iOS/Windows
+const safeParseDate = (dateStr: string | null | undefined): Date => {
     if (!dateStr) return new Date();
     
-    // Check if it's a simple date string (YYYY-MM-DD)
-    // This manual parsing forces the date to be interpreted in the local timezone at 00:00:00
-    // preventing any UTC offsets from shifting the day displayed (e.g. 27th instead of 28th).
-    const parts = dateStr.split('-');
-    if (parts.length === 3 && !dateStr.includes('T')) {
-        const year = parseInt(parts[0], 10);
-        const month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
-        const day = parseInt(parts[2], 10);
-        return new Date(year, month, day);
+    try {
+        // 1. Handle YYYY-MM-DD explicitly to prevent timezone shifts (local midnight)
+        if (dateStr.length === 10 && dateStr.includes('-') && !dateStr.includes(':')) {
+            const parts = dateStr.split('-');
+            const year = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1; 
+            const day = parseInt(parts[2], 10);
+            const d = new Date(year, month, day);
+            if (!isNaN(d.getTime())) return d;
+        }
+
+        // 2. Fix SQL-like timestamps for Safari (replace space with T)
+        // Safari fails on "2023-01-01 12:00:00", needs "2023-01-01T12:00:00"
+        const safeStr = dateStr.replace(' ', 'T');
+        const d = new Date(safeStr);
+
+        // 3. Check for Invalid Date
+        if (isNaN(d.getTime())) {
+            console.warn('Fecha inválida detectada:', dateStr);
+            return new Date(); // Fallback to now to prevent crash
+        }
+        return d;
+    } catch (e) {
+        console.error('Error parseando fecha:', e);
+        return new Date();
     }
-    
-    // Fallback for full ISO strings or other formats (which new Date handles appropriately usually)
-    return new Date(dateStr);
 };
 
 // Define Modal Component outside to prevent re-rendering flicker
@@ -265,11 +278,11 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
 
     const timeline = useMemo(() => {
         const combined = [
-            ...consultations.map(c => ({ ...c, type: 'consultation', date: parseLocalDate(c.consultation_date) })),
-            ...logs.map(l => ({ ...l, type: 'log', date: new Date(l.log_time || l.created_at) })),
-            ...dietLogs.map(d => ({ ...d, type: 'diet', date: parseLocalDate(d.log_date) })), 
-            ...exerciseLogs.map(e => ({ ...e, type: 'exercise', date: parseLocalDate(e.log_date) })),
-            ...planHistory.map(p => ({ ...p, type: 'diet_plan_history', date: new Date(p.created_at) })), 
+            ...consultations.map(c => ({ ...c, type: 'consultation', date: safeParseDate(c.consultation_date) })),
+            ...logs.map(l => ({ ...l, type: 'log', date: safeParseDate(l.log_time || l.created_at) })),
+            ...dietLogs.map(d => ({ ...d, type: 'diet', date: safeParseDate(d.log_date) })), 
+            ...exerciseLogs.map(e => ({ ...e, type: 'exercise', date: safeParseDate(e.log_date) })),
+            ...planHistory.map(p => ({ ...p, type: 'diet_plan_history', date: safeParseDate(p.created_at) })), 
         ];
         
         return combined
