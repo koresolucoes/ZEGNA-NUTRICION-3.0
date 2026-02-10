@@ -463,10 +463,11 @@ export default async function handler(req: any, res: any) {
         systemInstruction += `\n\nEstás conversando con un usuario no registrado. Puedes proporcionar información general sobre la clínica, pero no puedes acceder o proporcionar datos de ningún paciente.`;
     }
     
-    // 8. First call to Gemini API (Using updated 2.5 Flash model)
+    // 8. First call to Gemini API
     // UPDATED: Use GEMINI_API_KEY
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    const modelName = 'gemini-2.5-flash';
+    // Use the user-selected model or fallback
+    const modelName = agent.model_name || 'gemini-3-flash-preview';
 
     // Construct user message with optional media
     const userParts: any[] = [{ text: messageBody }];

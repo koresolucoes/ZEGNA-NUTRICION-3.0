@@ -43,9 +43,8 @@ export default async function handler(req: any, res: any) {
       return res.status(500).json({ error: 'API key not configured on the server.' });
     }
     
-    // Force usage of gemini-2.5-flash to prevent 429 Resource Exhausted errors on Free Tier
-    // This overrides the database setting temporarily to ensure reliability
-    const model = 'gemini-2.5-flash';
+    // Use the model selected by the user, or fallback to gemini-3-flash-preview
+    const model = agent?.model_name || 'gemini-3-flash-preview';
     
     const ai = new GoogleGenAI({ apiKey: apiKey });
 

@@ -89,10 +89,11 @@ export default async function handler(req: any, res: any) {
             return res.status(200).json({ message: 'Agente inactivo, cola limpiada.' });
         }
 
-        // --- Inicio de la Lógica de IA (Gemini 2.5 Flash) ---
+        // --- Inicio de la Lógica de IA ---
         // UPDATED: Use GEMINI_API_KEY
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
-        const modelName = 'gemini-2.5-flash';
+        // Use the user-selected model or fallback
+        const modelName = agent.model_name || 'gemini-3-flash-preview';
         
         // INCREASED HISTORY LIMIT FOR MEMORY
         const { data: history, error: historyError } = await supabaseAdmin

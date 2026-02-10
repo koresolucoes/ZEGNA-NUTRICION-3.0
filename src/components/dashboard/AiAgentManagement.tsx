@@ -13,7 +13,7 @@ const AiAgentManagement: FC = () => {
     const [wappConnection, setWappConnection] = useState<Partial<WhatsappConnection>>({ provider: 'twilio', is_active: false });
     const [agent, setAgent] = useState<Partial<AiAgent>>({ 
         model_provider: 'gemini', 
-        model_name: 'gemini-2.5-flash',
+        model_name: 'gemini-3-flash-preview',
         provider_api_key: '',
         system_prompt: 'Eres una secretaria virtual...',
         patient_system_prompt: 'Eres un asistente de nutrición...',
@@ -258,13 +258,14 @@ const AiAgentManagement: FC = () => {
                             <div>
                                 <label style={labelStyle}>Versión del Modelo</label>
                                 <div className="select-wrapper">
-                                    <select name="model_name" value={agent.model_name || 'gemini-2.5-flash'} onChange={e => setAgent({...agent, model_name: e.target.value})} style={inputStyle}>
-                                        <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recomendado)</option>
-                                        <option value="gemini-1.5-flash">Gemini 1.5 Flash (Legacy)</option>
+                                    <select name="model_name" value={agent.model_name || 'gemini-3-flash-preview'} onChange={e => setAgent({...agent, model_name: e.target.value})} style={inputStyle}>
+                                        <option value="gemini-3-flash-preview">Gemini 3 Flash Preview (Recomendado - Velocidad)</option>
+                                        <option value="gemini-3-pro-preview">Gemini 3 Pro Preview (Alta Capacidad - Razonamiento)</option>
+                                        <option value="gemini-2.5-flash">Gemini 2.5 Flash (Estable)</option>
                                     </select>
                                 </div>
                                 <p style={{fontSize: '0.8rem', color: 'var(--text-light)', marginTop: '0.5rem'}}>
-                                    Recomendamos <strong>Gemini 2.5 Flash</strong> por su rapidez y eficiencia en la capa gratuita.
+                                    <strong>Gemini 3 Flash</strong> es ideal para respuestas rápidas. Usa <strong>Pro</strong> para casos clínicos complejos.
                                 </p>
                             </div>
                         </div>
