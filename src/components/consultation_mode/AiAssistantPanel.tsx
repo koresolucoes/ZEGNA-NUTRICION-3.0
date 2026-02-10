@@ -29,6 +29,50 @@ const quickPrompts = [
     "Explicar lab. recientes"
 ];
 
+// Componente para renderizar formato básico (Negritas y Listas)
+const MarkdownRenderer: FC<{ content: string }> = ({ content }) => {
+    // Dividir por líneas para manejar párrafos y listas
+    const lines = content.split('\n');
+
+    return (
+        <div style={{ lineHeight: '1.6', fontSize: '0.95rem' }}>
+            {lines.map((line, i) => {
+                const trimmedLine = line.trim();
+                
+                // Detectar items de lista (* o -)
+                const isListItem = trimmedLine.startsWith('* ') || trimmedLine.startsWith('- ');
+                const cleanLine = isListItem ? trimmedLine.substring(2) : line;
+
+                // Procesar negritas (**texto**)
+                const parts = cleanLine.split(/(\*\*.*?\*\*)/g);
+                const formattedLine = parts.map((part, j) => {
+                    if (part.startsWith('**') && part.endsWith('**')) {
+                        return <strong key={j} style={{ fontWeight: 700, color: 'var(--text-color)' }}>{part.slice(2, -2)}</strong>;
+                    }
+                    return part;
+                });
+
+                // Renderizar según tipo
+                if (isListItem) {
+                    return (
+                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', marginLeft: '0.5rem', marginBottom: '0.25rem' }}>
+                            <span style={{ marginRight: '0.5rem', color: 'var(--primary-color)', fontWeight: 'bold' }}>•</span>
+                            <span>{formattedLine}</span>
+                        </div>
+                    );
+                }
+
+                // Espacio para líneas vacías
+                if (!trimmedLine) {
+                    return <div key={i} style={{ height: '0.6rem' }} />;
+                }
+
+                return <div key={i} style={{ marginBottom: '0.25rem' }}>{formattedLine}</div>;
+            })}
+        </div>
+    );
+};
+
 const AiAssistantPanel: FC<AiAssistantPanelProps> = ({
     messages, aiLoading, chatEndRef, handleAiSubmit,
     aiContext, setAiContext, userInput, setUserInput, aiInputRef
@@ -78,7 +122,11 @@ const AiAssistantPanel: FC<AiAssistantPanelProps> = ({
                             boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
                             border: msg.role === 'model' ? '1px solid var(--border-color)' : 'none'
                         }}>
-                           {msg.role === 'user' ? <AiUserMessage text={msg.content} context={msg.context || null} /> : msg.content}
+                           {msg.role === 'user' ? (
+                               <AiUserMessage text={msg.content} context={msg.context || null} />
+                           ) : (
+                               <MarkdownRenderer content={msg.content} />
+                           )}
                         </div>
                     </div>
                 ))}
