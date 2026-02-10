@@ -8,7 +8,7 @@ interface CatalogCardProps {
     description?: string;
     avatarSrc?: string | null;
     avatarSeed?: string; // Fallback text for Dicebear if url is null
-    headerGradientSeed: string; // String to determine gradient color
+    headerGradientSeed: string; // Kept for interface compatibility but ignored for neutral look
     overlayBadge?: string; // Text for the glassmorphism badge
     actions?: React.ReactNode;
     onClick?: () => void;
@@ -30,35 +30,20 @@ const CatalogCard: FC<CatalogCardProps> = ({
     onImageClick
 }) => {
 
-    const getGradient = (name: string) => {
-        const gradients = [
-            'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)', // Indigo
-            'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)', // Blue
-            'linear-gradient(135deg, #06B6D4 0%, #0891B2 100%)', // Cyan
-            'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)', // Purple
-            'linear-gradient(135deg, #EC4899 0%, #DB2777 100%)', // Pink
-            'linear-gradient(135deg, #14B8A6 0%, #0D9488 100%)', // Teal
-            'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)', // Amber
-        ];
-        const index = (name?.length || 0) % gradients.length;
-        return gradients[index];
-    };
-
     const glassBadgeStyle: React.CSSProperties = {
         position: 'absolute', 
         top: '12px', 
         right: '12px', 
-        background: 'rgba(255, 255, 255, 0.2)',
+        background: 'rgba(0, 0, 0, 0.05)',
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
-        border: '1px solid rgba(255, 255, 255, 0.3)',
-        color: 'white', 
+        border: '1px solid rgba(0, 0, 0, 0.05)',
+        color: 'var(--text-color)', 
         padding: '4px 12px', 
         borderRadius: '20px', 
         fontSize: '0.7rem', 
         fontWeight: 700, 
         letterSpacing: '0.5px',
-        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
         zIndex: 5,
         textTransform: 'uppercase'
     };
@@ -80,8 +65,13 @@ const CatalogCard: FC<CatalogCardProps> = ({
                 cursor: onClick ? 'pointer' : 'default'
             }}
         >
-            {/* Header Gradient */}
-            <div style={{height: '100px', background: getGradient(headerGradientSeed), position: 'relative'}}>
+            {/* Header Gradient - Neutralized */}
+            <div style={{
+                height: '100px', 
+                backgroundColor: 'var(--surface-hover-color)',
+                borderBottom: '1px solid var(--border-color)',
+                position: 'relative'
+            }}>
                 {overlayBadge && (
                     <span style={glassBadgeStyle}>
                         {overlayBadge}
@@ -92,13 +82,13 @@ const CatalogCard: FC<CatalogCardProps> = ({
             {/* Body Content */}
             <div style={{padding: '0 1.5rem 1.5rem 1.5rem', marginTop: '-50px', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center'}}>
                 <img 
-                    src={avatarSrc || `https://api.dicebear.com/8.x/initials/svg?seed=${avatarSeed || '?'}&radius=50`} 
+                    src={avatarSrc || `https://api.dicebear.com/8.x/initials/svg?seed=${avatarSeed || '?'}&radius=50&backgroundColor=e5e7eb`} 
                     alt="Avatar" 
                     onClick={(e) => { if(onImageClick) { e.stopPropagation(); onImageClick(); } }}
                     style={{
                         width: '90px', height: '90px', borderRadius: '50%', 
                         border: '4px solid var(--surface-color)', backgroundColor: 'var(--surface-color)',
-                        objectFit: 'cover', boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
+                        objectFit: 'cover', boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
                         position: 'relative', zIndex: 10,
                         cursor: onImageClick ? 'pointer' : 'default'
                     }}
@@ -110,8 +100,9 @@ const CatalogCard: FC<CatalogCardProps> = ({
                 
                 {subtitle && (
                     <span style={{
-                        fontSize: '0.8rem', color: 'var(--primary-color)', backgroundColor: 'var(--primary-light)',
-                        padding: '2px 10px', borderRadius: '12px', fontWeight: 600, marginBottom: '0.75rem', display: 'inline-block'
+                        fontSize: '0.8rem', color: 'var(--text-light)', backgroundColor: 'var(--surface-hover-color)',
+                        padding: '2px 10px', borderRadius: '12px', fontWeight: 600, marginBottom: '0.75rem', display: 'inline-block',
+                        border: '1px solid var(--border-color)'
                     }}>
                         {subtitle}
                     </span>
