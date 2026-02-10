@@ -1,11 +1,13 @@
 
-import React, { FC, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { FC, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '../supabase';
 import { styles } from '../constants';
 import { ICONS } from './AuthPage';
 import { useClinic } from '../contexts/ClinicContext';
 import { Log, TeamMember } from '../types';
 import SkeletonLoader from '../components/shared/SkeletonLoader';
+import { pdf } from '@react-pdf/renderer';
+import AuditReportDocument from '../components/pdf/AuditReportDocument';
 
 interface ExtendedLog extends Log {
     person_name?: string;
@@ -20,10 +22,12 @@ const AuditPage: FC<{ isMobile: boolean }> = ({ isMobile }) => {
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
+    const [exportMenuOpen, setExportMenuOpen] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [hasMore, setHasMore] = useState(true);
     const [page, setPage] = useState(0);
     const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+    const exportMenuRef = useRef<HTMLDivElement>(null);
 
     // Filters
     const [startDate, setStartDate] = useState('');
@@ -41,6 +45,16 @@ const AuditPage: FC<{ isMobile: boolean }> = ({ isMobile }) => {
         }, 500);
         return () => clearTimeout(handler);
     }, [searchTerm]);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+                setExportMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     // Log Types options
     const logTypes = ['all', 'Nota de Consulta', 'Plan Alimenticio (IA)', 'Rutina de Ejercicio (IA)', 'AUDITORÍA', 'General'];
@@ -137,11 +151,26 @@ const AuditPage: FC<{ isMobile: boolean }> = ({ isMobile }) => {
         fetchLogs(true);
     };
 
-    const handleExport = async () => {
+    // --- EXPORT FUNCTIONS ---
+    
+    const downloadFile = (blob: Blob, filename: string) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
+    const handleExport = async (format: 'csv' | 'json' | 'excel' | 'pdf') => {
         if (!clinic) return;
         setIsExporting(true);
+        setExportMenuOpen(false); // Close menu immediately
+        
         try {
-            // Fetch ALL matching records without pagination for export
+            // Fetch ALL matching records without pagination
             const query = buildQuery();
             const { data, error } = await query;
             
@@ -151,38 +180,82 @@ const AuditPage: FC<{ isMobile: boolean }> = ({ isMobile }) => {
                 return;
             }
 
-            // Generate CSV
-            const headers = ['ID Registro', 'Fecha', 'Hora', 'Tipo de Actividad', 'Descripción', 'Paciente', 'Profesional Responsable'];
-            const csvRows = [headers.join(',')];
+            // Prepare Data
+            const preparedData = data.map((item: any) => ({
+                id: item.id,
+                created_at: item.created_at,
+                log_type: item.log_type,
+                description: item.description,
+                person_name: item.persons?.full_name || 'Desconocido',
+                professional_name: teamMembers.find(t => t.user_id === item.created_by_user_id)?.full_name || 'Usuario del Sistema'
+            }));
 
-            data.forEach((item: any) => {
-                const date = new Date(item.created_at);
-                const professionalName = teamMembers.find(t => t.user_id === item.created_by_user_id)?.full_name || 'Usuario del Sistema';
-                
-                // Escape quotes for CSV
-                const description = item.description ? `"${item.description.replace(/"/g, '""')}"` : '""';
-                
-                const row = [
-                    item.id,
-                    date.toLocaleDateString('es-MX'),
-                    date.toLocaleTimeString('es-MX'),
-                    item.log_type,
-                    description,
-                    item.persons?.full_name || 'Desconocido',
-                    professionalName
-                ];
-                csvRows.push(row.join(','));
-            });
+            const fileName = `auditoria_${new Date().toISOString().split('T')[0]}`;
 
-            const csvString = csvRows.join('\n');
-            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `auditoria_clinica_${new Date().toISOString().split('T')[0]}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            if (format === 'csv') {
+                const headers = ['ID Registro', 'Fecha', 'Hora', 'Tipo de Actividad', 'Descripción', 'Paciente', 'Profesional Responsable'];
+                const csvRows = [headers.join(',')];
+
+                preparedData.forEach((item) => {
+                    const date = new Date(item.created_at);
+                    const desc = item.description ? `"${item.description.replace(/"/g, '""')}"` : '""';
+                    const row = [
+                        item.id,
+                        date.toLocaleDateString('es-MX'),
+                        date.toLocaleTimeString('es-MX'),
+                        item.log_type,
+                        desc,
+                        item.person_name,
+                        item.professional_name
+                    ];
+                    csvRows.push(row.join(','));
+                });
+
+                // Add BOM for Excel compatibility with special chars
+                const csvString = '\uFEFF' + csvRows.join('\n');
+                const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+                downloadFile(blob, `${fileName}.csv`);
+
+            } else if (format === 'json') {
+                const jsonString = JSON.stringify(preparedData, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                downloadFile(blob, `${fileName}.json`);
+
+            } else if (format === 'excel') {
+                // Generate a simple HTML table for Excel (Excel can open HTML tables saved as .xls)
+                let tableHtml = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"></head><body><table>';
+                // Header
+                tableHtml += '<thead><tr><th>Fecha</th><th>Hora</th><th>Tipo</th><th>Descripción</th><th>Paciente</th><th>Usuario</th></tr></thead><tbody>';
+                // Rows
+                preparedData.forEach((item) => {
+                    const d = new Date(item.created_at);
+                    tableHtml += `<tr>
+                        <td>${d.toLocaleDateString('es-MX')}</td>
+                        <td>${d.toLocaleTimeString('es-MX')}</td>
+                        <td>${item.log_type}</td>
+                        <td>${item.description}</td>
+                        <td>${item.person_name}</td>
+                        <td>${item.professional_name}</td>
+                    </tr>`;
+                });
+                tableHtml += '</tbody></table></body></html>';
+
+                const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel' });
+                downloadFile(blob, `${fileName}.xls`);
+
+            } else if (format === 'pdf') {
+                const dateRangeText = startDate || endDate ? 
+                    `${startDate || 'Inicio'} a ${endDate || 'Hoy'}` : 
+                    'Histórico Completo';
+
+                const doc = <AuditReportDocument 
+                    logs={preparedData} 
+                    clinicName={clinic.name} 
+                    dateRange={dateRangeText} 
+                />;
+                const blob = await pdf(doc).toBlob();
+                downloadFile(blob, `${fileName}.pdf`);
+            }
 
         } catch (err: any) {
             console.error("Export error:", err);
@@ -216,6 +289,39 @@ const AuditPage: FC<{ isMobile: boolean }> = ({ isMobile }) => {
         return ICONS.file;
     };
 
+    const ExportMenu = () => (
+        <div ref={exportMenuRef} style={{position: 'relative'}}>
+            <button 
+                onClick={() => setExportMenuOpen(!exportMenuOpen)} 
+                disabled={isExporting || loading}
+                className="button-secondary"
+                style={{display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: '140px', justifyContent: 'center'}}
+            >
+                {isExporting ? 'Procesando...' : <>{ICONS.download} Exportar</>}
+                <span style={{fontSize: '0.8rem'}}>▼</span>
+            </button>
+            {exportMenuOpen && (
+                <div className="fade-in" style={{
+                    position: 'absolute',
+                    top: '110%',
+                    right: 0,
+                    backgroundColor: 'var(--surface-color)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    zIndex: 100,
+                    minWidth: '160px',
+                    overflow: 'hidden'
+                }}>
+                    <button onClick={() => handleExport('pdf')} style={{display: 'block', width: '100%', padding: '0.8rem 1rem', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-color)', fontSize: '0.9rem'}} className="nav-item-hover">📄 PDF (Reporte)</button>
+                    <button onClick={() => handleExport('excel')} style={{display: 'block', width: '100%', padding: '0.8rem 1rem', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-color)', fontSize: '0.9rem'}} className="nav-item-hover">📊 Excel (.xls)</button>
+                    <button onClick={() => handleExport('csv')} style={{display: 'block', width: '100%', padding: '0.8rem 1rem', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-color)', fontSize: '0.9rem'}} className="nav-item-hover">📝 CSV (Datos)</button>
+                    <button onClick={() => handleExport('json')} style={{display: 'block', width: '100%', padding: '0.8rem 1rem', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-color)', fontSize: '0.9rem'}} className="nav-item-hover">💻 JSON (Raw)</button>
+                </div>
+            )}
+        </div>
+    );
+
     return (
         <div className="fade-in" style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '4rem' }}>
             <div style={{...styles.pageHeader, alignItems: 'flex-start'}}>
@@ -225,14 +331,7 @@ const AuditPage: FC<{ isMobile: boolean }> = ({ isMobile }) => {
                         Registro histórico de todas las acciones realizadas en la clínica (NOM-004).
                     </p>
                 </div>
-                <button 
-                    onClick={handleExport} 
-                    disabled={isExporting || loading}
-                    className="button-secondary"
-                    style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}
-                >
-                    {isExporting ? 'Exportando...' : <>{ICONS.download} Exportar CSV</>}
-                </button>
+                <ExportMenu />
             </div>
 
             {/* Filters Bar */}
