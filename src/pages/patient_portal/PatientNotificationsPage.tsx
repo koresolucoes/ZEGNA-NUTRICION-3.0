@@ -156,11 +156,16 @@ const PatientNotificationsPage: FC<PatientNotificationsPageProps> = ({ person, u
             {/* Profile Header */}
             <div style={{textAlign: 'center', marginBottom: '2.5rem', paddingTop: '1rem'}}>
                 <div style={{position: 'relative', display: 'inline-block', marginBottom: '1rem'}}>
-                    <img 
-                        src={person.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${person.full_name}&radius=50`} 
-                        alt="Avatar" 
-                        style={{width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover', border: '4px solid var(--surface-color)', boxShadow: '0 8px 20px rgba(0,0,0,0.1)'}} 
-                    />
+                     <div style={{
+                        width: '100px', height: '100px', borderRadius: '50%', 
+                        background: 'linear-gradient(135deg, var(--primary-light) 0%, var(--surface-color) 100%)',
+                        color: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontWeight: 800, fontSize: '2.5rem', flexShrink: 0,
+                        border: '4px solid var(--surface-color)',
+                        boxShadow: '0 8px 20px rgba(0,0,0,0.1)'
+                    }}>
+                        {person.full_name ? person.full_name.charAt(0).toUpperCase() : '?'}
+                    </div>
                     <div style={{position: 'absolute', bottom: 0, right: 0, backgroundColor: '#10B981', width: '24px', height: '24px', borderRadius: '50%', border: '4px solid var(--background-color)'}}></div>
                 </div>
                 <h1 style={{fontSize: '1.8rem', fontWeight: 800, margin: '0 0 0.5rem 0', color: 'var(--text-color)'}}>{person.full_name}</h1>

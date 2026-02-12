@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useEffect, FormEvent } from 'react';
 import { supabase, Database } from '../supabase';
 import { styles } from '../constants';
@@ -24,7 +25,6 @@ const AfiliadoFormPage: FC<AfiliadoFormPageProps> = ({ afiliadoToEditId, onBack,
         notes: '',
         gender: 'female' as 'female' | 'male',
         birth_date: '',
-        avatar_url: '',
         curp: '',
         address: '',
         emergency_contact_name: '',
@@ -33,8 +33,6 @@ const AfiliadoFormPage: FC<AfiliadoFormPageProps> = ({ afiliadoToEditId, onBack,
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [avatarFile, setAvatarFile] = useState<File | null>(null);
-    const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [servicePlans, setServicePlans] = useState<PatientServicePlan[]>([]);
 
     useEffect(() => {
@@ -56,14 +54,12 @@ const AfiliadoFormPage: FC<AfiliadoFormPageProps> = ({ afiliadoToEditId, onBack,
                     notes: data.notes || '',
                     gender: data.gender === 'male' ? 'male' : 'female',
                     birth_date: data.birth_date || '',
-                    avatar_url: data.avatar_url || '',
                     curp: data.curp || '',
                     address: data.address || '',
                     emergency_contact_name: data.emergency_contact_name || '',
                     emergency_contact_phone: data.emergency_contact_phone || '',
                     family_history: data.family_history || '',
                 });
-                setAvatarPreview(data.avatar_url || null);
             }
             setLoading(false);
         };
@@ -121,18 +117,6 @@ const AfiliadoFormPage: FC<AfiliadoFormPageProps> = ({ afiliadoToEditId, onBack,
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value as any }));
-    };
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            setAvatarFile(file);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setAvatarPreview(reader.result as string);
-            };
-            reader.readAsDataURL(file);
-        }
     };
 
     const handleSetSubscriptionDuration = (value: number, unit: 'month' | 'year' | null) => {
@@ -215,8 +199,7 @@ const AfiliadoFormPage: FC<AfiliadoFormPageProps> = ({ afiliadoToEditId, onBack,
         };
 
         try {
-            let personId = afiliadoToEditId;
-            // Step 1: Insert or Update person data (without avatar)
+            // Step 1: Insert or Update person data
             if (afiliadoToEditId) {
                 const { error: dbError } = await supabase.from('persons').update(payload).eq('id', afiliadoToEditId);
                 if (dbError) throw dbError;
@@ -227,40 +210,11 @@ const AfiliadoFormPage: FC<AfiliadoFormPageProps> = ({ afiliadoToEditId, onBack,
                     clinic_id: clinic.id,
                     created_by_user_id: session.user.id
                 };
-                const { data: newPerson, error: dbError } = await supabase.from('persons').insert(dataToInsert).select('id').single();
+                const { error: dbError } = await supabase.from('persons').insert(dataToInsert);
                 if (dbError) throw dbError;
-                if (!newPerson) throw new Error("Fallo al crear el afiliado.");
-                personId = newPerson.id;
             }
 
-            if (!personId) throw new Error("ID de afiliado no disponible para subir avatar.");
-            
-            // Step 2: Upload avatar if a new file was selected
-            if (avatarFile) {
-                const fileExt = avatarFile.name.split('.').pop();
-                const filePath = `patient-avatars/${personId}/avatar.${fileExt}`;
-
-                const { error: uploadError } = await supabase.storage
-                    .from('avatars')
-                    .upload(filePath, avatarFile, { upsert: true });
-                if (uploadError) throw uploadError;
-
-                const { data: urlData } = supabase.storage
-                    .from('avatars')
-                    .getPublicUrl(filePath);
-                
-                const newAvatarUrl = `${urlData.publicUrl}?t=${new Date().getTime()}`;
-
-                // Step 3: Update person record with the new avatar URL
-                const { error: avatarUpdateError } = await supabase
-                    .from('persons')
-                    .update({ avatar_url: newAvatarUrl })
-                    .eq('id', personId);
-                
-                if (avatarUpdateError) throw avatarUpdateError;
-            }
-
-            // Step 4: If this came from a referral, update the referral status
+            // Step 2: If this came from a referral, update the referral status
             if (referralData?.id) {
                 const { error: rpcError } = await supabase.rpc('update_referral_status', {
                     p_referral_id: referralData.id,
@@ -281,6 +235,10 @@ const AfiliadoFormPage: FC<AfiliadoFormPageProps> = ({ afiliadoToEditId, onBack,
     const sectionHeaderStyle: React.CSSProperties = { color: 'var(--primary-color)', fontSize: '1.1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem', marginTop: '2rem' };
     const pageTitle = afiliadoToEditId ? 'Editar Afiliado' : referralData ? 'Aceptar Referido y Crear Afiliado' : 'Agregar Afiliado';
 
+    const getInitials = (name: string) => {
+        return name ? name.trim().charAt(0).toUpperCase() : '?';
+    };
+
     return (
         <div className="fade-in" style={{ paddingBottom: '7rem' }}>
             <div style={styles.pageHeader}>
@@ -298,19 +256,21 @@ const AfiliadoFormPage: FC<AfiliadoFormPageProps> = ({ afiliadoToEditId, onBack,
 
                  <h3 style={sectionHeaderStyle}>Datos Personales</h3>
                 <div style={{display: 'flex', gap: '2rem', alignItems: 'center', marginBottom: '1.5rem'}}>
-                    <img
-                        src={avatarPreview || `https://api.dicebear.com/8.x/initials/svg?seed=${formData.full_name || '?'}&radius=50`}
-                        alt="Vista previa del avatar"
-                        style={{width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover'}}
-                    />
+                    <div style={{
+                        width: '80px', height: '80px', borderRadius: '50%', 
+                        background: 'linear-gradient(135deg, var(--primary-light) 0%, var(--surface-color) 100%)',
+                        color: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontWeight: 800, fontSize: '2rem', flexShrink: 0,
+                        border: '1px solid var(--primary-light)',
+                        boxShadow: '0 4px 10px rgba(0,0,0,0.05)'
+                    }}>
+                        {getInitials(formData.full_name)}
+                    </div>
                     <div style={{flex: 1}}>
-                        <label htmlFor="avatar">Foto de Perfil</label>
-                        <input id="avatar" name="avatar" type="file" onChange={handleFileChange} accept="image/*" />
+                        <label htmlFor="full_name">Nombre del Afiliado *</label>
+                        <input id="full_name" name="full_name" type="text" value={formData.full_name} onChange={handleChange} required />
                     </div>
                 </div>
-
-                <label htmlFor="full_name">Nombre del Afiliado *</label>
-                <input id="full_name" name="full_name" type="text" value={formData.full_name} onChange={handleChange} required />
                 
                 <div style={{display: 'flex', gap: '1rem'}}>
                     <div style={{flex: 2}}>

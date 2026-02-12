@@ -119,19 +119,6 @@ const ClientsPage: FC<{ isMobile: boolean; onViewDetails: (personId: string) => 
     // --- RENDER HELPERS ---
 
     const ClientAvatar: FC<{ person: Person, size?: number, fontSize?: string }> = ({ person, size = 64, fontSize = '1.8rem' }) => {
-        if (person.avatar_url) {
-            return (
-                 <img 
-                    src={person.avatar_url} 
-                    alt={person.full_name} 
-                    style={{
-                        width: `${size}px`, height: `${size}px`, minWidth: `${size}px`, borderRadius: '50%', objectFit: 'cover', aspectRatio: '1/1', objectPosition: 'center',
-                        border: '1px solid var(--border-color)', flexShrink: 0
-                    }} 
-                />
-            );
-        }
-
         return (
             <div style={{
                 width: `${size}px`, height: `${size}px`, minWidth: `${size}px`, borderRadius: '50%', 

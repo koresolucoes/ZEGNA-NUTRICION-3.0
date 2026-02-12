@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useEffect, useCallback, useMemo } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
@@ -119,9 +120,14 @@ const WaitingQueuePage: FC<WaitingQueuePageProps> = ({ user, isMobile, navigate 
     const waiting = appointments.filter(a => a.status === 'checked-in').sort((a,b) => new Date(a.check_in_time!).getTime() - new Date(b.check_in_time!).getTime());
     const inConsultation = appointments.filter(a => a.status === 'called' || a.status === 'in-consultation');
     
+    const getInitials = (name: string) => {
+        return name.trim().charAt(0).toUpperCase();
+    };
+
     // -- Render Components --
     const AppointmentCard: FC<{ appt: AppointmentWithPerson; type: 'scheduled' | 'waiting' | 'active' }> = ({ appt, type }) => {
         const nutritionist = appt.user_id ? memberMap.get(appt.user_id) : null;
+        const patientName = appt.persons?.full_name || appt.title || 'Paciente';
         
         const handleCardClick = () => {
             if (appt.person_id && appt.persons) {
@@ -161,13 +167,18 @@ const WaitingQueuePage: FC<WaitingQueuePageProps> = ({ user, isMobile, navigate 
                 )}
 
                 <div style={{display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem', cursor: 'pointer'}} onClick={handleCardClick}>
-                    <img 
-                        src={appt.persons?.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${appt.persons?.full_name || '?'}&radius=50`} 
-                        alt="avatar" 
-                        style={{width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--surface-hover-color)'}} 
-                    />
+                    <div style={{
+                        width: '48px', height: '48px', borderRadius: '50%', 
+                        background: 'linear-gradient(135deg, var(--primary-light) 0%, var(--surface-color) 100%)',
+                        color: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontWeight: 800, fontSize: '1.5rem', flexShrink: 0,
+                        border: '1px solid var(--primary-light)',
+                        boxShadow: '0 4px 10px rgba(0,0,0,0.05)'
+                    }}>
+                        {getInitials(patientName)}
+                    </div>
                     <div style={{flex: 1, minWidth: 0}}>
-                        <h4 style={{margin: 0, fontSize: '1rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{appt.persons?.full_name || appt.title}</h4>
+                        <h4 style={{margin: 0, fontSize: '1rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{patientName}</h4>
                         <p style={{margin: '0.1rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-light)'}}>
                             {new Date(appt.start_time).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
                         </p>

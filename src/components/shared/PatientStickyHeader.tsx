@@ -150,25 +150,16 @@ const PatientStickyHeader: FC<PatientStickyHeaderProps> = ({ person, allergies, 
             <div className="patient-sticky-header" style={headerStyle}>
                 {/* Left Block: Patient Info */}
                 <div style={{ flex: '2 1 300px', display: 'flex', alignItems: 'center', gap: '1rem', minWidth: 0 }}>
-                    {person.avatar_url ? (
-                        <img 
-                            src={person.avatar_url}
-                            alt="Avatar del paciente"
-                            className="header-avatar"
-                            style={{width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid var(--border-color)'}}
-                        />
-                    ) : (
-                        <div className="header-avatar" style={{
-                            width: '64px', height: '64px', borderRadius: '50%', 
-                            background: 'linear-gradient(135deg, var(--primary-light) 0%, var(--surface-color) 100%)',
-                            color: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontWeight: 800, fontSize: '1.8rem', flexShrink: 0,
-                            border: '1px solid var(--primary-light)',
-                            boxShadow: '0 4px 10px rgba(0,0,0,0.05)'
-                        }}>
-                            {getInitials(person.full_name)}
-                        </div>
-                    )}
+                    <div className="header-avatar" style={{
+                        width: '64px', height: '64px', borderRadius: '50%', 
+                        background: 'linear-gradient(135deg, var(--primary-light) 0%, var(--surface-color) 100%)',
+                        color: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontWeight: 800, fontSize: '1.8rem', flexShrink: 0,
+                        border: '1px solid var(--primary-light)',
+                        boxShadow: '0 4px 10px rgba(0,0,0,0.05)'
+                    }}>
+                        {getInitials(person.full_name)}
+                    </div>
                     <div style={{minWidth: 0, overflow: 'hidden'}}>
                         <h1 className="header-name" style={{ margin: 0, fontSize: '1.5rem', color: 'var(--primary-color)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{person.full_name}</h1>
                         <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap'}}>
@@ -192,7 +183,7 @@ const PatientStickyHeader: FC<PatientStickyHeaderProps> = ({ person, allergies, 
                 
                 {/* Bottom Row: Alerts (Persistent) */}
                 <div className="header-bottom-row" style={{ width: '100%', display: 'flex', flexWrap: 'wrap', gap: '1rem 2rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem', marginTop: '0.5rem' }}>
-                     <div style={infoBlockStyle}>
+                     <div style={{...infoBlockStyle, minWidth: '200px'}}>
                         <span style={labelStyle}>{ICONS.briefcase} Condición Principal</span>
                         <span style={valueStyle}>{mainCondition}</span>
                     </div>

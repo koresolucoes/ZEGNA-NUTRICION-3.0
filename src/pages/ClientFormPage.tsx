@@ -24,7 +24,6 @@ const ClientFormPage: FC<ClientFormPageProps> = ({ clientToEditId, onBack, refer
         health_goal: '',
         birth_date: '',
         gender: 'female' as 'female' | 'male',
-        avatar_url: '',
         curp: '',
         address: '',
         emergency_contact_name: '',
@@ -33,8 +32,6 @@ const ClientFormPage: FC<ClientFormPageProps> = ({ clientToEditId, onBack, refer
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [avatarFile, setAvatarFile] = useState<File | null>(null);
-    const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [servicePlans, setServicePlans] = useState<PatientServicePlan[]>([]);
 
     useEffect(() => {
@@ -56,14 +53,12 @@ const ClientFormPage: FC<ClientFormPageProps> = ({ clientToEditId, onBack, refer
                     health_goal: data.health_goal || '',
                     birth_date: data.birth_date || '',
                     gender: data.gender === 'male' ? 'male' : 'female',
-                    avatar_url: data.avatar_url || '',
                     curp: data.curp || '',
                     address: data.address || '',
                     emergency_contact_name: data.emergency_contact_name || '',
                     emergency_contact_phone: data.emergency_contact_phone || '',
                     family_history: data.family_history || '',
                 });
-                setAvatarPreview(data.avatar_url || null);
             }
             setLoading(false);
         };
@@ -121,18 +116,6 @@ const ClientFormPage: FC<ClientFormPageProps> = ({ clientToEditId, onBack, refer
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value as any }));
-    };
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            setAvatarFile(file);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setAvatarPreview(reader.result as string);
-            };
-            reader.readAsDataURL(file);
-        }
     };
 
     const handleSetPlanDuration = (value: number, unit: 'month' | 'year' | null) => {
@@ -231,33 +214,8 @@ const ClientFormPage: FC<ClientFormPageProps> = ({ clientToEditId, onBack, refer
                 personId = newPerson.id;
             }
 
-            if (!personId) throw new Error("ID de paciente no disponible para subir avatar.");
-
-            if (avatarFile) {
-                const fileExt = avatarFile.name.split('.').pop();
-                const filePath = `patient-avatars/${personId}/avatar.${fileExt}`;
-
-                const { error: uploadError } = await supabase.storage
-                    .from('avatars')
-                    .upload(filePath, avatarFile, { upsert: true });
-                if (uploadError) throw uploadError;
-
-                const { data: urlData } = supabase.storage
-                    .from('avatars')
-                    .getPublicUrl(filePath);
-                
-                const newAvatarUrl = `${urlData.publicUrl}?t=${new Date().getTime()}`;
-
-                const { error: avatarUpdateError } = await supabase
-                    .from('persons')
-                    .update({ avatar_url: newAvatarUrl })
-                    .eq('id', personId);
-                
-                if (avatarUpdateError) throw avatarUpdateError;
-            }
-
             await supabase.from('logs').insert({
-                person_id: personId,
+                person_id: personId!,
                 log_type: 'AUDITORÍA',
                 description: `Se ${clientToEditId ? 'actualizó' : 'creó'} el expediente del paciente.`,
                 created_by_user_id: session.user.id,
@@ -323,6 +281,11 @@ const ClientFormPage: FC<ClientFormPageProps> = ({ clientToEditId, onBack, refer
         gap: '1rem'
     };
 
+    // Helper for initials
+    const getInitials = (name: string) => {
+        return name ? name.trim().charAt(0).toUpperCase() : '?';
+    };
+
     return (
         <div className="fade-in" style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', minHeight: '100vh', padding: '1rem' }}>
             <div style={modalStyle}>
@@ -355,17 +318,16 @@ const ClientFormPage: FC<ClientFormPageProps> = ({ clientToEditId, onBack, refer
                     <form id="client-form" onSubmit={handleSubmit}>
                         {error && <p style={styles.error}>{error}</p>}
 
-                        <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start', marginBottom: '2rem' }}>
-                             <div style={{ position: 'relative', width: '100px', height: '100px', flexShrink: 0 }}>
-                                <img
-                                    src={avatarPreview || `https://api.dicebear.com/8.x/initials/svg?seed=${formData.full_name || '?'}&radius=50`}
-                                    alt="Avatar"
-                                    style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: '4px solid var(--surface-hover-color)' }}
-                                />
-                                <label htmlFor="avatar" style={{ position: 'absolute', bottom: 0, right: 0, backgroundColor: 'var(--primary-color)', color: 'white', padding: '6px', borderRadius: '50%', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}>
-                                    {ICONS.edit}
-                                </label>
-                                <input id="avatar" name="avatar" type="file" onChange={handleFileChange} accept="image/*" style={{ display: 'none' }} />
+                        <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', marginBottom: '2rem' }}>
+                             <div style={{ 
+                                width: '80px', height: '80px', borderRadius: '50%', 
+                                background: 'linear-gradient(135deg, var(--primary-light) 0%, var(--surface-color) 100%)',
+                                color: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontWeight: 800, fontSize: '2rem', flexShrink: 0,
+                                border: '1px solid var(--primary-light)',
+                                boxShadow: '0 4px 10px rgba(0,0,0,0.05)'
+                             }}>
+                                {getInitials(formData.full_name)}
                             </div>
                             <div style={{ flex: 1 }}>
                                 <label htmlFor="full_name">Nombre Completo *</label>

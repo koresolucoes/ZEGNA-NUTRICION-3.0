@@ -227,11 +227,16 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
             backgroundColor: 'var(--surface-color)', 
             transition: 'background-color 0.2s',
         }}>
-            <img 
-                src={person?.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${session.user.email}`} 
-                alt="Profile" 
-                style={{width: '40px', height: '40px', borderRadius: '10px', border: '1px solid var(--border-color)', objectFit: 'cover', flexShrink: 0}}
-            />
+            <div style={{
+                width: '40px', height: '40px', borderRadius: '10px', 
+                background: 'linear-gradient(135deg, var(--primary-light) 0%, var(--surface-color) 100%)',
+                color: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: 800, fontSize: '1.2rem', flexShrink: 0,
+                border: '1px solid var(--border-color)',
+                boxShadow: '0 4px 10px rgba(0,0,0,0.05)'
+            }}>
+                {person?.full_name ? person.full_name.charAt(0).toUpperCase() : '?'}
+            </div>
             <div style={{flex: 1, minWidth: 0}}>
                 <p style={{margin: 0, fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-color)'}}>
                     {person?.full_name || 'Paciente'}
