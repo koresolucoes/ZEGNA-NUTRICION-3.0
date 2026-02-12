@@ -29,11 +29,7 @@ export const ClinicalHistoryTab: FC<ClinicalHistoryTabProps> = ({
 }) => {
     const [activeSubTab, setActiveSubTab] = useState('allergies');
 
-    // Filter consultations logic - duplicated from ConsultationsTab for reusability if needed, 
-    // or we can pass empty props since ConsultationsTab handles its own state/filtering? 
-    // ConsultationsTab handles its own filtering state, so we just pass data.
-
-    // Data for charts
+    // Data for charts - Sorted
     const sortedConsultations = useMemo(() => {
         return [...consultations].sort((a, b) => new Date(a.consultation_date).getTime() - new Date(b.consultation_date).getTime());
     }, [consultations]);
@@ -63,7 +59,7 @@ export const ClinicalHistoryTab: FC<ClinicalHistoryTabProps> = ({
                     { key: 'allergies', label: 'Alergias' },
                     { key: 'medical', label: 'Historial Médico' },
                     { key: 'medications', label: 'Medicamentos' },
-                    { key: 'lifestyle', label: 'Hábitos' }
+                    { key: 'lifestyle', label: 'Hábitos y Laboratorio' }
                 ].map(tab => (
                     <button
                         key={tab.key}
@@ -77,7 +73,7 @@ export const ClinicalHistoryTab: FC<ClinicalHistoryTabProps> = ({
             
             <div style={styles.nestedFolderContent}>
                 
-                {/* 1. ALERGIAS: Listado + Historial Consultas */}
+                {/* 1. ALERGIAS: Listado + Historial Consultas (Simplificado) */}
                 {activeSubTab === 'allergies' && (
                     <div className="fade-in">
                         <AllergiesManager allergies={allergies} onAdd={() => onEditAllergy(null)} onEdit={onEditAllergy} onDelete={(id, name) => openModal('deleteAllergy', id, `¿Eliminar la alergia a "${name}"?`)} memberMap={memberMap} />
@@ -88,16 +84,16 @@ export const ClinicalHistoryTab: FC<ClinicalHistoryTabProps> = ({
                     </div>
                 )}
 
-                {/* 2. HISTORIAL MÉDICO: Listado + Historial Consultas + Gráficas (Últimos 2 registros) */}
+                {/* 2. HISTORIAL MÉDICO: Listado + Gráficas Peso/IMC (Últimos 2) + Consultas */}
                 {activeSubTab === 'medical' && (
                     <div className="fade-in">
                         <MedicalHistoryManager history={medicalHistory} onAdd={() => onEditMedicalHistory(null)} onEdit={onEditMedicalHistory} onDelete={(id, name) => openModal('deleteMedicalHistory', id, `¿Eliminar el registro de "${name}"?`)} memberMap={memberMap} />
                         
                         <div style={{marginTop: '3rem'}}>
-                            <h3 style={{fontSize: '1.1rem', marginBottom: '1.5rem', color: 'var(--text-color)'}}>Progreso Reciente</h3>
+                            <h3 style={{fontSize: '1.1rem', marginBottom: '1.5rem', color: 'var(--text-color)'}}>Progreso Reciente (Últimas 2 visitas)</h3>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
-                                {weightData.length > 0 && <ProgressChart title="Peso (Últimos registros)" data={weightData} unit="kg" />}
-                                {imcData.length > 0 && <ProgressChart title="IMC (Últimos registros)" data={imcData} unit="pts" />}
+                                {weightData.length > 0 && <ProgressChart title="Peso" data={weightData} unit="kg" />}
+                                {imcData.length > 0 && <ProgressChart title="IMC" data={imcData} unit="pts" />}
                             </div>
                              {weightData.length === 0 && <p style={{color: 'var(--text-light)', fontStyle: 'italic'}}>No hay suficientes datos recientes para graficar progreso.</p>}
                         </div>
@@ -108,20 +104,20 @@ export const ClinicalHistoryTab: FC<ClinicalHistoryTabProps> = ({
                     </div>
                 )}
 
-                {/* 3. MEDICAMENTOS: Solo Listado */}
+                {/* 3. MEDICAMENTOS: Solo Listado (Limpio) */}
                 {activeSubTab === 'medications' && (
                     <div className="fade-in">
                         <MedicationsManager medications={medications} onAdd={() => onEditMedication(null)} onEdit={onEditMedication} onDelete={(id, name) => openModal('deleteMedication', id, `¿Eliminar el medicamento "${name}"?`)} memberMap={memberMap} />
                     </div>
                 )}
 
-                {/* 4. HÁBITOS: Listado + Gráficas Laboratorio (Glucosa, etc.) */}
+                {/* 4. HÁBITOS: Listado + Gráficas Laboratorio (Glucosa, Colesterol, etc.) */}
                 {activeSubTab === 'lifestyle' && (
                     <div className="fade-in">
                         <LifestyleManager habits={lifestyleHabits} onEdit={onEditLifestyle} memberMap={memberMap} />
                         
                         <div style={{marginTop: '3rem'}}>
-                             <h3 style={{fontSize: '1.1rem', marginBottom: '1.5rem', color: 'var(--text-color)'}}>Biomarcadores</h3>
+                             <h3 style={{fontSize: '1.1rem', marginBottom: '1.5rem', color: 'var(--text-color)'}}>Biomarcadores de Laboratorio</h3>
                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
                                 {glucoseData.length > 0 && <ProgressChart title="Glucosa" data={glucoseData} unit="mg/dl" />}
                                 {cholesterolData.length > 0 && <ProgressChart title="Colesterol" data={cholesterolData} unit="mg/dl" />}

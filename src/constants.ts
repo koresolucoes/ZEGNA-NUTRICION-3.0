@@ -81,10 +81,18 @@ export const styles: { [key: string]: React.CSSProperties } = {
     // Cards - Data Focused
     clientCard: { backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius-md)', padding: '1rem', marginBottom: '0.75rem', boxShadow: 'var(--shadow)', border: '1px solid var(--border-color)', transition: 'transform 0.2s' },
     
-    detailCard: { backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow)', marginBottom: '1.5rem', overflow: 'hidden', border: '1px solid var(--border-color)' },
-    detailCardHeader: { padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-    detailCardTitle: { margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-color)' },
-    detailCardBody: { padding: '1.5rem' },
+    // Widget Cards for Person Detail
+    detailCard: { 
+        backgroundColor: 'var(--surface-color)', 
+        borderRadius: '12px', 
+        boxShadow: '0 2px 4px rgba(0,0,0,0.02)', 
+        marginBottom: '0', 
+        overflow: 'hidden', 
+        border: '1px solid var(--border-color)' 
+    },
+    detailCardHeader: { padding: '1rem 1.25rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--surface-hover-color)' },
+    detailCardTitle: { margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-color)' },
+    detailCardBody: { padding: '1.25rem' },
     
     detailGroup: { marginBottom: '1rem' },
     detailGroupTitle: { fontWeight: 600, fontSize: '0.75rem', color: 'var(--text-light)', marginBottom: '0.25rem', textTransform: 'uppercase' as const, letterSpacing: '0.05em' },
