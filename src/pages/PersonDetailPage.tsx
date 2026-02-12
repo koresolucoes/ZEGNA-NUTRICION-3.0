@@ -1,3 +1,4 @@
+
 import React, { FC, useState, useEffect, useCallback, useMemo } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
@@ -370,7 +371,7 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
                 <button 
                     onClick={() => { onStartConsultation(); setConsultationMode(true); }}
                     className="button-primary"
-                    style={{width: '100%', padding: '0.8rem', fontSize: '1rem', fontWeight: 700, background: '#10B981', border: 'none'}}
+                    style={{width: '100%', padding: '0.8rem', fontSize: '1rem', fontWeight: 700, border: 'none'}}
                 >
                     {ICONS.activity} Iniciar Consulta
                 </button>
@@ -666,7 +667,7 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
                                 position: 'relative',
                                 zIndex: 1
                             }}>
-                                {activeTab === 'resumen' && person && <SummaryTab person={person} consultations={consultations} allergies={allergies} medicalHistory={medicalHistory} dietLogs={allDietLogs} exerciseLogs={allExerciseLogs} appointments={appointments} isMobile={isMobile} />}
+                                {activeTab === 'resumen' && person && <SummaryTab person={person} consultations={consultations} allergies={allergies} medicalHistory={medicalHistory} dietLogs={allDietLogs} exerciseLogs={allExerciseLogs} appointments={appointments} isMobile={isMobile} onViewPlans={() => handleTabClick('planes', 'current_plans')} />}
                                 
                                 {activeTab === 'expediente' && (
                                     <ClinicalHistoryTab 

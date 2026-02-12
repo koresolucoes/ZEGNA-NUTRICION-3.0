@@ -14,9 +14,10 @@ interface SummaryTabProps {
     exerciseLogs: ExerciseLog[];
     appointments: AppointmentWithPerson[];
     isMobile: boolean;
+    onViewPlans: () => void;
 }
 
-export const SummaryTab: FC<SummaryTabProps> = ({ person, consultations, allergies, medicalHistory, dietLogs, exerciseLogs, appointments, isMobile }) => {
+export const SummaryTab: FC<SummaryTabProps> = ({ person, consultations, allergies, medicalHistory, dietLogs, exerciseLogs, appointments, isMobile, onViewPlans }) => {
     
     const latestConsultation = consultations?.[0] || null;
     const latestDiet = dietLogs?.[0] || null;
@@ -86,6 +87,22 @@ export const SummaryTab: FC<SummaryTabProps> = ({ person, consultations, allergi
                                 <div><p style={labelStyle}>Comida Principal</p><p style={{fontSize: '0.95rem', color: 'var(--text-color)'}}>{latestDiet.comida || 'N/A'}</p></div>
                                 <div><p style={labelStyle}>Cena</p><p style={{fontSize: '0.95rem', color: 'var(--text-color)'}}>{latestDiet.cena || 'N/A'}</p></div>
                             </div>
+                            <button 
+                                onClick={onViewPlans}
+                                className="button-secondary"
+                                style={{
+                                    width: '100%',
+                                    marginTop: '1rem',
+                                    fontSize: '0.85rem',
+                                    padding: '0.6rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.5rem'
+                                }}
+                            >
+                                Ver plan completo →
+                            </button>
                         </>
                     ) : <p style={{color: 'var(--text-light)', fontStyle: 'italic'}}>No hay un plan activo para hoy.</p>}
                 </Widget>
@@ -98,9 +115,22 @@ export const SummaryTab: FC<SummaryTabProps> = ({ person, consultations, allergi
                             </p>
                             <p style={labelStyle}>Enfoque</p>
                             <p style={valueStyle}>{latestExercise.enfoque || 'General'}</p>
-                            <p style={{margin: '0.5rem 0 0 0', fontSize: '0.9rem', color: 'var(--primary-color)'}}>
+                            <button 
+                                onClick={onViewPlans}
+                                className="button-secondary"
+                                style={{
+                                    width: '100%',
+                                    marginTop: '1rem',
+                                    fontSize: '0.85rem',
+                                    padding: '0.6rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.5rem'
+                                }}
+                            >
                                 Ver detalles completos →
-                            </p>
+                            </button>
                         </>
                     ) : <p style={{color: 'var(--text-light)', fontStyle: 'italic'}}>Día de descanso o sin asignar.</p>}
                 </Widget>
