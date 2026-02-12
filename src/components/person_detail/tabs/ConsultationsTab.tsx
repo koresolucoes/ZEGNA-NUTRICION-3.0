@@ -47,7 +47,6 @@ export const ConsultationsTab: FC<ConsultationsTabProps> = ({ consultations, mem
             {filteredConsultations.length > 0 ? (
                 <div className="info-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
                     {filteredConsultations.map(c => {
-                        const nutritionist = c.nutritionist_id ? memberMap.get(c.nutritionist_id) : null;
                         return (
                             <div key={c.id} onClick={() => onView(c)} style={{ 
                                 backgroundColor: 'var(--surface-hover-color)', 
@@ -73,7 +72,7 @@ export const ConsultationsTab: FC<ConsultationsTabProps> = ({ consultations, mem
                                     </span>
                                 </div>
 
-                                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '1rem'}}>
+                                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '0.5rem'}}>
                                     <div style={{backgroundColor: 'var(--surface-color)', padding: '0.5rem', borderRadius: '6px', textAlign: 'center', border: '1px solid var(--border-color)'}}>
                                         <span style={{fontSize: '0.7rem', color: 'var(--text-light)', display: 'block', textTransform: 'uppercase'}}>Peso</span>
                                         <span style={{fontWeight: 700, fontSize: '1rem', color: 'var(--text-color)'}}>{c.weight_kg ?? '-'}</span>
@@ -87,13 +86,6 @@ export const ConsultationsTab: FC<ConsultationsTabProps> = ({ consultations, mem
                                         <span style={{fontWeight: 700, fontSize: '1rem', color: 'var(--text-color)'}}>{c.ta ?? '-'}</span>
                                     </div>
                                 </div>
-
-                                {nutritionist && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-light)', marginTop: '0.5rem'}}>
-                                        <img src={nutritionist.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${nutritionist.full_name || '?'}&radius=50`} alt="avatar" style={{width: '20px', height: '20px', borderRadius: '50%'}} />
-                                        <span>{nutritionist.full_name}</span>
-                                    </div>
-                                )}
                             </div>
                         )
                     })}

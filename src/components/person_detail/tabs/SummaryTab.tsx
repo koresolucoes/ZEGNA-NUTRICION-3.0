@@ -43,6 +43,8 @@ export const SummaryTab: FC<SummaryTabProps> = ({ person, consultations, allergi
         </div>
     );
     
+    const labelStyle: React.CSSProperties = { fontSize: '0.8rem', color: 'var(--text-light)', marginBottom: '0.25rem', fontWeight: 600 };
+
     return (
         <div className="fade-in" style={{ 
             display: 'grid', 
@@ -74,21 +76,12 @@ export const SummaryTab: FC<SummaryTabProps> = ({ person, consultations, allergi
                                 {new Date(latestConsultation.consultation_date).toLocaleDateString('es-MX', {dateStyle: 'long', timeZone: 'UTC'})}
                             </p>
                             <div style={{display: 'flex', justifyContent: 'space-around', textAlign: 'center'}}>
-                                <div><p style={styles.detailGroupTitle}>Peso</p><p style={styles.clinicalDataValue}>{latestConsultation.weight_kg} kg</p></div>
-                                <div><p style={styles.detailGroupTitle}>IMC</p><p style={styles.clinicalDataValue}>{latestConsultation.imc}</p></div>
-                                <div><p style={styles.detailGroupTitle}>TA</p><p style={styles.clinicalDataValue}>{latestConsultation.ta || '-'}</p></div>
+                                <div><p style={labelStyle}>Peso</p><p style={styles.clinicalDataValue}>{latestConsultation.weight_kg} kg</p></div>
+                                <div><p style={labelStyle}>IMC</p><p style={styles.clinicalDataValue}>{latestConsultation.imc}</p></div>
+                                <div><p style={labelStyle}>TA</p><p style={styles.clinicalDataValue}>{latestConsultation.ta || '-'}</p></div>
                             </div>
                         </>
                     ) : <p>No hay consultas registradas.</p>}
-                </Widget>
-
-                 <Widget title="Alertas Clínicas" icon={ICONS.briefcase}>
-                    {allergies.length > 0 || medicalHistory.length > 0 ? (
-                        <ul style={{margin: 0, paddingLeft: '1.25rem'}}>
-                            {allergies.slice(0, 2).map(a => <li key={a.id} style={{color: 'var(--error-color)'}}>Alergia: {a.substance}</li>)}
-                            {medicalHistory.slice(0, 2).map(h => <li key={h.id}>{h.condition}</li>)}
-                        </ul>
-                    ) : <p>No hay alertas clínicas importantes.</p>}
                 </Widget>
 
                 <Widget title="Plan de Alimentación Actual" icon={ICONS.book}>

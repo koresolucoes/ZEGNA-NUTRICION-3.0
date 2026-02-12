@@ -346,46 +346,81 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
     if (!person || !clinic) return <div className="fade-in"><p>Persona no encontrada.</p></div>;
 
     // --- SIDEBAR COMPONENT ---
-    const Sidebar = () => (
-        <div style={{ paddingTop: '0' }}>
-            <div style={{ position: isMobile ? 'static' : 'sticky', top: '140px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div style={styles.detailCard}>
-                    <div style={styles.detailCardHeader}><h3 style={styles.detailCardTitle}>Acciones Rápidas</h3></div>
-                    <div style={{...styles.detailCardBody, display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
-                        <button onClick={() => { onStartConsultation(); setConsultationMode(true); }}>Iniciar Consulta</button>
-                        {checkedInAppointmentForToday && <button onClick={handleCallPatient} className="button-secondary">{ICONS.send} Llamar a Consulta</button>}
-                        <button onClick={() => setIsPaymentModalOpen(true)} className="button-secondary">{ICONS.calculator} Registrar Cobro</button>
-                        <button onClick={() => setIsReferralModalOpen(true)} className="button-secondary">{ICONS.send} Referir</button>
-                        {!person.user_id && personType === 'client' && <button onClick={() => setIsInvitationModalOpen(true)} className="button-secondary">{ICONS.send} Invitar al Portal</button>}
-                        <button onClick={() => setReportModalOpen(true)} className="button-secondary">{ICONS.print} Generar Reporte</button>
+    const Sidebar = () => {
+        // Calculate macros from latest plan
+        const latestPlan = planHistory.length > 0 ? planHistory[0] : null;
+        const macros = latestPlan ? {
+            p: latestPlan.totals.protein_g.toFixed(0),
+            l: latestPlan.totals.lipid_g.toFixed(0),
+            hc: latestPlan.totals.carb_g.toFixed(0),
+            kcal: latestPlan.totals.kcal.toFixed(0)
+        } : null;
+
+        const MacroRow = ({label, value, color}: {label: string, value: string, color: string}) => (
+            <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '0.25rem'}}>
+                <span style={{color: 'var(--text-light)'}}>{label}</span>
+                <span style={{fontWeight: 600, color}}>{value}g</span>
+            </div>
+        );
+
+        return (
+            <div style={{ paddingTop: '0' }}>
+                <div style={{ position: isMobile ? 'static' : 'sticky', top: '140px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    
+                    <div style={styles.detailCard}>
+                        <div style={styles.detailCardHeader}><h3 style={styles.detailCardTitle}>Acciones Rápidas</h3></div>
+                        <div style={{...styles.detailCardBody, display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
+                            <button onClick={() => { onStartConsultation(); setConsultationMode(true); }}>Iniciar Consulta</button>
+                            <button onClick={() => setIsPaymentModalOpen(true)} className="button-secondary">{ICONS.calculator} Registrar Cobro</button>
+                             <button onClick={() => setReportModalOpen(true)} className="button-secondary">{ICONS.print} Generar Reporte</button>
+                            {checkedInAppointmentForToday && <button onClick={handleCallPatient} className="button-secondary">{ICONS.send} Llamar a Consulta</button>}
+                            <button onClick={() => setIsReferralModalOpen(true)} className="button-secondary">{ICONS.send} Referir Paciente</button>
+                            {!person.user_id && personType === 'client' && <button onClick={() => setIsInvitationModalOpen(true)} className="button-secondary">{ICONS.send} Invitar al Portal</button>}
+                        </div>
                     </div>
-                </div>
-                <div style={styles.detailCard}>
-                    <div style={styles.detailCardHeader}><h3 style={styles.detailCardTitle}>Alertas Clínicas</h3></div>
-                    <div style={{...styles.detailCardBody, display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
-                        {allergies.length > 0 ? (
-                            allergies.map(a => <div key={a.id} style={{color: 'var(--error-color)', fontWeight: 500}}>Alergia: {a.substance} ({a.severity})</div>)
-                        ) : <p style={{margin:0, color: 'var(--text-light)'}}>Sin alergias</p>}
-                        {medicalHistory.length > 0 ? (
-                            medicalHistory.map(h => <div key={h.id}><strong>Condición:</strong> {h.condition}</div>)
-                        ) : <p style={{margin:0, color: 'var(--text-light)'}}>Sin historial médico relevante</p>}
+
+                    <div style={styles.detailCard}>
+                         <div style={styles.detailCardHeader}><h3 style={styles.detailCardTitle}>Distribución de Dieta</h3></div>
+                         <div style={styles.detailCardBody}>
+                            {macros ? (
+                                <div>
+                                    <div style={{textAlign: 'center', marginBottom: '1rem'}}>
+                                        <div style={{fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary-color)'}}>{macros.kcal}</div>
+                                        <div style={{fontSize: '0.75rem', color: 'var(--text-light)'}}>Kcal totales</div>
+                                    </div>
+                                    <MacroRow label="Proteína" value={macros.p} color="#EC4899" />
+                                    <MacroRow label="Lípidos" value={macros.l} color="#F59E0B" />
+                                    <MacroRow label="Carbohidratos" value={macros.hc} color="#3B82F6" />
+                                </div>
+                            ) : (
+                                <div style={{textAlign: 'center', color: 'var(--text-light)', fontStyle: 'italic', fontSize: '0.9rem'}}>
+                                    Sin plan calculado.
+                                </div>
+                            )}
+                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     // --- MAIN CONTENT WITH FOLDER TABS ---
     const MainContent = () => (
         <div>
              <div style={styles.tabContainer} className="hide-scrollbar">
-                {['resumen', 'expediente', 'planes', 'gestion'].map(tab => (
+                {[
+                    { id: 'resumen', label: 'Resumen', sub: '' },
+                    { id: 'expediente', label: 'Expediente', sub: 'clinical_history' },
+                    { id: 'planes', label: 'Planes', sub: 'current_plans' },
+                    { id: 'gestion', label: 'Gestión', sub: 'appointments' },
+                    { id: 'informacion', label: 'Información', sub: '' }
+                ].map(tab => (
                     <button
-                        key={tab}
-                        onClick={() => handleTabClick(tab, tab === 'expediente' ? 'clinical_history' : tab === 'planes' ? 'current_plans' : tab === 'gestion' ? 'appointments' : '')}
-                        style={activeTab === tab ? {...styles.folderTab, ...styles.folderTabActive} : styles.folderTab}
+                        key={tab.id}
+                        onClick={() => handleTabClick(tab.id, tab.sub)}
+                        style={activeTab === tab.id ? {...styles.folderTab, ...styles.folderTabActive} : styles.folderTab}
                     >
-                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        {tab.label}
                     </button>
                 ))}
             </div>
@@ -395,12 +430,12 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
                 
                 {activeTab === 'expediente' && (
                     <section className="fade-in">
-                         {/* The new clinical history tab handles its own sub-navigation now, simplifying this parent render */}
                         <ClinicalHistoryTab 
                             allergies={allergies} 
                             medicalHistory={medicalHistory} 
                             medications={medications} 
                             lifestyleHabits={lifestyleHabits} 
+                            consultations={consultations}
                             memberMap={memberMap} 
                             onEditAllergy={(a) => handleOpenClinicalHistoryModal('allergy', a)} 
                             onEditMedicalHistory={(h) => handleOpenClinicalHistoryModal('medical', h)} 
@@ -408,15 +443,6 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
                             onEditLifestyle={() => setLifestyleModalOpen(true)} 
                             openModal={openModal} 
                         />
-                        
-                        {/* We can render other big sections below if needed, or keep them in their own main tabs */}
-                        <div style={{marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '2rem'}}>
-                             <ConsultationsTab consultations={consultations} memberMap={memberMap} onAdd={() => navigate('consultation-form', { personId: person.id, personType })} onEdit={(id) => navigate('consultation-form', { personId: person.id, personType, consultationId: id })} onView={setViewingConsultation} openModal={openModal} />
-                        </div>
-                        
-                        <div style={{marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '2rem'}}>
-                             <ProgressTab consultations={consultations} isMobile={isMobile} />
-                        </div>
                     </section>
                 )}
 
@@ -424,7 +450,7 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
                      <section className="fade-in">
                         <div style={{...styles.tabContainer, paddingLeft: 0, marginBottom: '-1px'}} className="hide-scrollbar">
                             {[
-                                { key: 'current_plans', label: 'Planes Actuales' },
+                                { key: 'current_plans', label: 'Planes actuales' },
                                 { key: 'calculated_plans', label: 'Calculados' },
                                 { key: 'log_files', label: 'Bitácora/Archivos' },
                                 { key: 'daily_tracking', label: 'Auto-Registro' }
@@ -456,13 +482,18 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
                     </section>
                 )}
 
+                {activeTab === 'informacion' && (
+                     <section className="fade-in">
+                        <InfoTab person={person} consultations={consultations} allergies={allergies} medicalHistory={medicalHistory} onRegisterConsent={handleRegisterConsent} onRevokeConsent={handleRevokeConsent} onExportData={handleExportData} onUploadConsent={handleConsentFileUpload} isUploadingConsent={isUploadingConsent} openModal={openModal} onManagePlan={() => setPlanModalOpen(true)} servicePlans={servicePlans} />
+                    </section>
+                )}
+
                 {activeTab === 'gestion' && (
                      <section className="fade-in">
                         <div style={{...styles.tabContainer, paddingLeft: 0, marginBottom: '-1px'}} className="hide-scrollbar">
                             {[
                                 { key: 'appointments', label: 'Citas' },
-                                { key: 'team', label: 'Equipo' },
-                                { key: 'info', label: 'Información' }
+                                { key: 'team', label: 'Equipo' }
                             ].map(sub => (
                                 <button
                                     key={sub.key}
@@ -476,7 +507,6 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
                          <div style={styles.nestedFolderContent}>
                             {activeSubTab === 'appointments' && <AppointmentsTab appointments={appointments} memberMap={memberMap} onAdd={() => setIsAppointmentModalOpen(true)} onEdit={(a) => {setEditingAppointment(a); setIsAppointmentModalOpen(true);}} />}
                             {activeSubTab === 'team' && <TeamTab careTeam={careTeam} allTeamMembers={teamMembers} personId={personId} isAdmin={role === 'admin'} onTeamUpdate={fetchData} internalNotes={internalNotes} user={user} />}
-                            {activeSubTab === 'info' && <InfoTab person={person} consultations={consultations} allergies={allergies} medicalHistory={medicalHistory} onRegisterConsent={handleRegisterConsent} onRevokeConsent={handleRevokeConsent} onExportData={handleExportData} onUploadConsent={handleConsentFileUpload} isUploadingConsent={isUploadingConsent} openModal={openModal} onManagePlan={() => setPlanModalOpen(true)} servicePlans={servicePlans} />}
                         </div>
                     </section>
                 )}

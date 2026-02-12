@@ -112,7 +112,40 @@ const AfiliadosPage: FC<{ isMobile: boolean; onViewDetails: (afiliadoId: string)
         closeModal();
     };
 
+    const getInitials = (name: string) => {
+        return name.trim().charAt(0).toUpperCase();
+    };
+
     // --- RENDER HELPERS ---
+
+    const AfiliadoAvatar: FC<{ person: Person, size?: number, fontSize?: string }> = ({ person, size = 64, fontSize = '1.8rem' }) => {
+        if (person.avatar_url) {
+            return (
+                 <img 
+                    src={person.avatar_url} 
+                    alt={person.full_name} 
+                    style={{
+                        width: `${size}px`, height: `${size}px`, minWidth: `${size}px`, borderRadius: '50%', objectFit: 'cover', aspectRatio: '1/1', objectPosition: 'center',
+                        border: '1px solid var(--border-color)', flexShrink: 0
+                    }} 
+                />
+            );
+        }
+
+        return (
+            <div style={{
+                width: `${size}px`, height: `${size}px`, minWidth: `${size}px`, borderRadius: '50%', 
+                background: 'linear-gradient(135deg, var(--primary-light) 0%, var(--surface-color) 100%)',
+                color: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: 800, fontSize: fontSize, flexShrink: 0,
+                border: '1px solid var(--primary-light)',
+                boxShadow: '0 4px 10px rgba(0,0,0,0.05)'
+            }}>
+                {getInitials(person.full_name)}
+            </div>
+        );
+    };
+
     const AfiliadoCard: FC<{ person: Person }> = ({ person }) => (
         <div 
             className="card-hover" 
@@ -137,14 +170,7 @@ const AfiliadosPage: FC<{ isMobile: boolean; onViewDetails: (afiliadoId: string)
 
             {/* Content - Increased padding top to avoid overlap */}
             <div style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', paddingTop: '3.5rem' }}>
-                 <img 
-                    src={person.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${person.full_name}&radius=50`} 
-                    alt="Avatar" 
-                    style={{
-                        width: '64px', height: '64px', minWidth: '64px', borderRadius: '50%', objectFit: 'cover', aspectRatio: '1/1', objectPosition: 'center',
-                        border: '3px solid var(--surface-hover-color)', flexShrink: 0
-                    }} 
-                />
+                 <AfiliadoAvatar person={person} />
                 <div style={{flex: 1, minWidth: 0}}>
                      <h3 style={{margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-color)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}} title={person.full_name}>
                         {person.full_name}
@@ -301,7 +327,7 @@ const AfiliadosPage: FC<{ isMobile: boolean; onViewDetails: (afiliadoId: string)
                                         {afiliados.map(m => (
                                             <tr key={m.id} className="table-row-hover" onClick={() => onViewDetails(m.id)} style={{ cursor: 'pointer' }}>
                                                 <td style={styles.td}>
-                                                    <img src={m.avatar_url || `https://api.dicebear.com/8.x/initials/svg?seed=${m.full_name}&radius=50`} alt="Avatar" style={{width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', aspectRatio: '1/1', objectPosition: 'center'}} />
+                                                    <AfiliadoAvatar person={m} size={36} fontSize="0.9rem" />
                                                 </td>
                                                 <td style={styles.td}>
                                                     <div style={{fontWeight: 600, color: 'var(--text-color)'}}>{m.full_name}</div>

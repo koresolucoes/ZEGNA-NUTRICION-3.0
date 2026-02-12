@@ -69,7 +69,7 @@ export const InfoTab: FC<InfoTabProps> = ({
 
     const DataRow: FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>{label}</span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 600 }}>{label}</span>
             <span style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--text-color)' }}>{value || '-'}</span>
         </div>
     );
@@ -108,7 +108,7 @@ export const InfoTab: FC<InfoTabProps> = ({
                     
                     <div style={{ marginTop: '0.5rem' }}>
                          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem'}}>
-                             <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Plan de Servicio</span>
+                             <span style={{ fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 600 }}>Plan de Servicio</span>
                              <button onClick={onManagePlan} style={{...styles.iconButton, color: 'var(--primary-color)', padding: '4px'}} title="Gestionar">{ICONS.edit}</button>
                          </div>
                          <div style={{ padding: '1rem', border: '1px solid var(--border-color)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -138,7 +138,7 @@ export const InfoTab: FC<InfoTabProps> = ({
                 {/* 4. Cumplimiento y Legal */}
                 <InfoCard title="Cumplimiento Normativo (NOM-004)" icon={ICONS.check}>
                     <div>
-                         <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Consentimiento Informado</span>
+                         <span style={{ fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 600 }}>Consentimiento Informado</span>
                          <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             {person.consent_given_at ? (
                                 <span style={{ color: 'var(--primary-color)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
