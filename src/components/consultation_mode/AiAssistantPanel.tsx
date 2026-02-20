@@ -1,5 +1,5 @@
 
-import React, { FC, FormEvent, RefObject, useState } from 'react';
+import React, { FC, FormEvent, RefObject, useState, useEffect } from 'react';
 import { styles } from '../../constants';
 import { ICONS } from '../../pages/AuthPage';
 import AiUserMessage from './AiUserMessage';
@@ -20,13 +20,13 @@ interface AiAssistantPanelProps {
     userInput: string;
     setUserInput: React.Dispatch<React.SetStateAction<string>>;
     aiInputRef: RefObject<HTMLInputElement>;
+    personName: string; // Added prop
 }
 
 const quickPrompts = [
     "Resumir historial",
-    "Analizar peso",
-    "Sugerir cambios dieta",
-    "Explicar lab. recientes"
+    "Sugerir cambios",
+    "Analizar progreso"
 ];
 
 // Componente para renderizar formato básico (Negritas y Listas)
@@ -75,7 +75,7 @@ const MarkdownRenderer: FC<{ content: string }> = ({ content }) => {
 
 const AiAssistantPanel: FC<AiAssistantPanelProps> = ({
     messages, aiLoading, chatEndRef, handleAiSubmit,
-    aiContext, setAiContext, userInput, setUserInput, aiInputRef
+    aiContext, setAiContext, userInput, setUserInput, aiInputRef, personName
 }) => {
     const [isContextPopoverVisible, setContextPopoverVisible] = useState(false);
 
@@ -93,22 +93,30 @@ const AiAssistantPanel: FC<AiAssistantPanelProps> = ({
     };
 
     const onQuickPromptClick = (prompt: string) => {
-        handleAiSubmit(prompt); // Treat prompt as if submitted form
+        handleAiSubmit(prompt); 
     };
 
     return (
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--surface-color)', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--surface-color)', borderRadius: '8px', overflow: 'hidden', borderLeft: '1px solid var(--border-color)' }}>
             <div style={styles.detailCardHeader}>
                 <h3 style={{...styles.detailCardTitle, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-                    {ICONS.sparkles} Asistente Clínico
+                    {ICONS.sparkles} ASISTENTE COPILOTO
                 </h3>
             </div>
             
             <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {messages.length === 0 && (
-                    <div style={{textAlign: 'center', color: 'var(--text-light)', marginTop: '2rem'}}>
-                        <p>Estoy listo para ayudarte con el análisis del paciente.</p>
-                        <p style={{fontSize: '0.8rem'}}>Envía elementos desde la línea de tiempo para darme contexto.</p>
+                {messages.length === 0 && !aiContext && (
+                    <div style={{textAlign: 'center', color: 'var(--text-light)', marginTop: '4rem', padding: '0 1rem'}}>
+                        <p style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Esperando contexto del paciente</p>
+                        <p style={{fontSize: '0.85rem'}}>Presiona el botón "Sincronizar" desde el panel izquierdo para que el asistente comprenda el contexto actual de {personName}.</p>
+                    </div>
+                )}
+
+                {messages.length === 0 && aiContext && (
+                     <div style={{textAlign: 'center', color: 'var(--primary-color)', marginTop: '4rem', padding: '0 1rem', animation: 'fadeIn 0.5s'}}>
+                        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>✅</div>
+                        <p style={{ fontWeight: 600, marginBottom: '0.5rem' }}>He recibido el contexto de {personName} de manera exitosa.</p>
+                        <p style={{fontSize: '0.85rem', color: 'var(--text-color)'}}>¿Quieres analizar algún detalle en particular?</p>
                     </div>
                 )}
                 
@@ -148,32 +156,31 @@ const AiAssistantPanel: FC<AiAssistantPanelProps> = ({
                 <div ref={chatEndRef} />
             </div>
 
-            {/* Quick Prompts (Heuristic 7) */}
-            {!aiContext && (
-                <div style={{padding: '0.5rem 1rem', display: 'flex', gap: '0.5rem', overflowX: 'auto', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--surface-hover-color)'}} className="hide-scrollbar">
-                    {quickPrompts.map(prompt => (
-                        <button 
-                            key={prompt} 
-                            onClick={() => onQuickPromptClick(prompt)}
-                            style={{
-                                border: '1px solid var(--primary-color)', 
-                                backgroundColor: 'var(--surface-color)', 
-                                color: 'var(--primary-color)', 
-                                borderRadius: '20px', 
-                                padding: '4px 12px', 
-                                fontSize: '0.75rem', 
-                                whiteSpace: 'nowrap',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
-                            }}
-                            className="nav-item-hover"
-                            disabled={aiLoading}
-                        >
-                            {prompt}
-                        </button>
-                    ))}
-                </div>
-            )}
+            {/* Quick Prompts - Chips at the bottom */}
+            <div style={{padding: '0.5rem 1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--surface-hover-color)'}}>
+                {quickPrompts.map(prompt => (
+                    <button 
+                        key={prompt} 
+                        onClick={() => onQuickPromptClick(prompt)}
+                        style={{
+                            border: '1px solid var(--border-color)', 
+                            backgroundColor: 'var(--surface-color)', 
+                            color: 'var(--text-color)', 
+                            borderRadius: '20px', 
+                            padding: '6px 16px', 
+                            fontSize: '0.75rem', 
+                            whiteSpace: 'nowrap',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            fontWeight: 500
+                        }}
+                        className="nav-item-hover"
+                        disabled={aiLoading}
+                    >
+                        {prompt}
+                    </button>
+                ))}
+            </div>
 
             <form onSubmit={(e) => handleAiSubmit(e)} style={{ padding: '0.75rem', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                 <div style={{
@@ -202,7 +209,7 @@ const AiAssistantPanel: FC<AiAssistantPanelProps> = ({
                         type="text" 
                         value={userInput} 
                         onChange={e => setUserInput(e.target.value)} 
-                        placeholder={aiContext ? (aiContext.file_url ? "Analiza este documento..." : "Pregunta sobre esto...") : "Escribe tu consulta..."} 
+                        placeholder="Pregunta a tu asistente..." 
                         style={{ 
                             flex: 1, margin: 0, border: 'none', background: 'transparent', 
                             padding: '8px 0', color: 'var(--text-color)', outline: 'none', fontSize: '0.95rem'
