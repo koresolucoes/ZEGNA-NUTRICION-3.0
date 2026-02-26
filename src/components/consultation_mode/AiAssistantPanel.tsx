@@ -98,17 +98,16 @@ const AiAssistantPanel: FC<AiAssistantPanelProps> = ({
 
     return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--surface-color)', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
-            <div style={styles.detailCardHeader}>
-                <h3 style={{...styles.detailCardTitle, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-                    {ICONS.sparkles} Asistente Clínico
-                </h3>
+            <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '1.2rem' }}>🤖</span>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, textTransform: 'uppercase' }}>ASISTENTE COPILOTO</h3>
             </div>
             
             <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {messages.length === 0 && (
-                    <div style={{textAlign: 'center', color: 'var(--text-light)', marginTop: '2rem'}}>
-                        <p>Estoy listo para ayudarte con el análisis del paciente.</p>
-                        <p style={{fontSize: '0.8rem'}}>Envía elementos desde la línea de tiempo para darme contexto.</p>
+                    <div style={{textAlign: 'center', color: 'var(--text-light)', marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem'}}>
+                        <p style={{ textTransform: 'uppercase', fontWeight: 600, fontSize: '0.9rem' }}>Esperando contexto del paciente</p>
+                        <p style={{ textTransform: 'uppercase', fontSize: '0.85rem' }}>Presiona el icono desde la linea del tiempo para comprender mejor el contexto</p>
                     </div>
                 )}
                 
@@ -150,21 +149,22 @@ const AiAssistantPanel: FC<AiAssistantPanelProps> = ({
 
             {/* Quick Prompts (Heuristic 7) */}
             {!aiContext && (
-                <div style={{padding: '0.5rem 1rem', display: 'flex', gap: '0.5rem', overflowX: 'auto', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--surface-hover-color)'}} className="hide-scrollbar">
+                <div style={{padding: '0.5rem 1rem', display: 'flex', gap: '0.5rem', overflowX: 'auto', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)'}} className="hide-scrollbar">
                     {quickPrompts.map(prompt => (
                         <button 
                             key={prompt} 
                             onClick={() => onQuickPromptClick(prompt)}
                             style={{
-                                border: '1px solid var(--primary-color)', 
-                                backgroundColor: 'var(--surface-color)', 
-                                color: 'var(--primary-color)', 
-                                borderRadius: '20px', 
-                                padding: '4px 12px', 
+                                border: 'none', 
+                                backgroundColor: 'transparent', 
+                                color: 'var(--text-light)', 
+                                padding: '4px 8px', 
                                 fontSize: '0.75rem', 
                                 whiteSpace: 'nowrap',
                                 cursor: 'pointer',
-                                transition: 'all 0.2s'
+                                transition: 'all 0.2s',
+                                textTransform: 'uppercase',
+                                fontWeight: 600
                             }}
                             className="nav-item-hover"
                             disabled={aiLoading}
@@ -175,11 +175,11 @@ const AiAssistantPanel: FC<AiAssistantPanelProps> = ({
                 </div>
             )}
 
-            <form onSubmit={(e) => handleAiSubmit(e)} style={{ padding: '0.75rem', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <form onSubmit={(e) => handleAiSubmit(e)} style={{ padding: '0.75rem 1.5rem', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                 <div style={{
                     flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', 
-                    backgroundColor: 'var(--background-color)', borderRadius: '20px', 
-                    padding: '0.25rem 0.75rem', border: '1px solid var(--border-color)',
+                    backgroundColor: 'var(--surface-color)', borderRadius: '4px', 
+                    padding: '0.5rem 0.75rem', border: '1px solid var(--border-color)',
                     transition: 'border-color 0.2s'
                 }}>
                     {aiContext && (
@@ -202,16 +202,17 @@ const AiAssistantPanel: FC<AiAssistantPanelProps> = ({
                         type="text" 
                         value={userInput} 
                         onChange={e => setUserInput(e.target.value)} 
-                        placeholder={aiContext ? (aiContext.file_url ? "Analiza este documento..." : "Pregunta sobre esto...") : "Escribe tu consulta..."} 
+                        placeholder="PREGUNTA A TU ASISTENTE" 
                         style={{ 
                             flex: 1, margin: 0, border: 'none', background: 'transparent', 
-                            padding: '8px 0', color: 'var(--text-color)', outline: 'none', fontSize: '0.95rem'
+                            padding: '4px 0', color: 'var(--text-color)', outline: 'none', fontSize: '0.9rem',
+                            textTransform: 'uppercase'
                         }} 
                         disabled={aiLoading} 
                     />
                 </div>
-                <button type="submit" disabled={aiLoading || !userInput.trim()} style={{...styles.iconButton, backgroundColor: 'var(--primary-color)', color: 'white', borderRadius: '50%', width: '36px', height: '36px'}}>
-                    {ICONS.send}
+                <button type="submit" disabled={aiLoading || !userInput.trim()} style={{...styles.iconButton, backgroundColor: 'transparent', color: 'var(--text-color)', border: 'none', padding: '0 0.5rem'}}>
+                    <span style={{ fontSize: '1.2rem', transform: 'rotate(-45deg)', display: 'inline-block' }}>{ICONS.send}</span>
                 </button>
             </form>
         </div>

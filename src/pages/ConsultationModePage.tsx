@@ -430,7 +430,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                 <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
                     <div style={{backgroundColor: 'var(--primary-color)', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '4px', fontWeight: 700, fontSize: '0.8rem'}}>EN CONSULTA</div>
                     <h2 style={{margin: 0, fontSize: '1.1rem', color: 'var(--text-color)'}}>{personName}</h2>
-                    <span style={{fontSize: '0.9rem', fontFamily: 'monospace', color: 'var(--text-light)'}}>{formatTime(elapsedTime)}</span>
+                    <span className="animate-pulse" style={{fontSize: '1rem', fontFamily: 'monospace', color: 'var(--text-light)', fontWeight: 600}}>{formatTime(elapsedTime)}</span>
                 </div>
                 <div style={{display: 'flex', gap: '1rem'}}>
                     <button onClick={() => setIsToolsOpen(true)} className="button-secondary" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
@@ -443,7 +443,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
             </div>
 
             {/* Main Layout - 3 Columns */}
-            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '280px 1fr 350px', overflow: 'hidden' }}>
+            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', overflow: 'hidden' }}>
                 
                 {/* 1. Left: Summary & Quick Actions */}
                 {!isMobile && (
@@ -451,6 +451,9 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                         <SummaryPanel 
                             person={person}
                             latestMetrics={latestMetrics}
+                            allergies={allergies}
+                            medications={medications}
+                            medicalHistory={medicalHistory}
                             relevantAppointment={sessionAppointment}
                             updateAppointmentStatus={updateAppointmentStatus}
                             appointmentUpdateLoading={appointmentUpdateLoading}
@@ -472,6 +475,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                 {/* 2. Center: Unified Timeline */}
                 <div style={{ padding: '1rem', overflowY: 'auto', backgroundColor: 'var(--surface-active)', display: 'flex', flexDirection: 'column' }}>
                      <TimelinePanel 
+                        person={person}
                         timeline={timeline} 
                         timelineFilters={timelineFilters} 
                         setTimelineFilters={setTimelineFilters}

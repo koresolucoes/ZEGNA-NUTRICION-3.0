@@ -2,9 +2,10 @@
 import React, { FC } from 'react';
 import { styles } from '../../constants';
 import { ICONS } from '../../pages/AuthPage';
-import { DietPlanHistoryItem } from '../../types';
+import { DietPlanHistoryItem, Person } from '../../types';
 
 interface TimelinePanelProps {
+    person?: Person;
     timeline: any[];
     timelineFilters: { search: string; start: string; end: string; };
     setTimelineFilters: React.Dispatch<React.SetStateAction<{ search: string; start: string; end: string; }>>;
@@ -13,8 +14,15 @@ interface TimelinePanelProps {
     formatItemForAI: (item: any) => { displayText: string; fullText: string; };
 }
 
+const ExpedienteItem: FC<{ icon: string, label: string }> = ({ icon, label }) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 0', borderBottom: '1px solid var(--border-color)', cursor: 'pointer' }} className="card-hover">
+        <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-color)', textTransform: 'uppercase' }}>{label}</span>
+        <span style={{ fontSize: '1.2rem' }}>{icon}</span>
+    </div>
+);
+
 const TimelinePanel: FC<TimelinePanelProps> = ({
-    timeline, timelineFilters, setTimelineFilters, handleTimelineItemClick, sendContextToAi, formatItemForAI
+    person, timeline, timelineFilters, setTimelineFilters, handleTimelineItemClick, sendContextToAi, formatItemForAI
 }) => {
     const getIconForType = (type: string) => {
         switch(type) {
@@ -38,14 +46,35 @@ const TimelinePanel: FC<TimelinePanelProps> = ({
 
     return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--surface-color)', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
-            <div style={styles.detailCardHeader}>
-                <h3 style={{...styles.detailCardTitle, margin: 0 }}>Expediente Activo</h3>
+            <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '1.2rem' }}>📄</span>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, textTransform: 'uppercase' }}>DATOS EN EXPEDIENTE</h3>
             </div>
             
+            <div style={{ padding: '0 1.5rem' }}>
+                <ExpedienteItem label="Plan de alimentacion" icon="🍐" />
+                <ExpedienteItem label="Rutina de ejercicio" icon="📈" />
+                <ExpedienteItem label="Consulta de seguimiento" icon="🛡️" />
+                <ExpedienteItem label="Auditoria" icon="📁" />
+            </div>
+
+            {person && (
+                <div style={{ padding: '1.5rem 1.5rem 0.5rem 1.5rem', marginTop: '0.5rem' }}>
+                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-light)', textTransform: 'uppercase', fontWeight: 600 }}>Paciente seleccionado</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ color: 'var(--primary-color)' }}>{ICONS.user}</span>
+                        <span style={{ fontWeight: 600, fontSize: '0.95rem', textTransform: 'uppercase' }}>{person.full_name}</span>
+                    </div>
+                </div>
+            )}
+
             {/* Search Bar */}
-            <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)' }}>
+            <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary-color)', fontWeight: 600, cursor: 'pointer', marginBottom: '0.5rem' }}>
+                    <span>🔍</span>
+                    <span style={{ textTransform: 'uppercase', fontSize: '0.9rem' }}>Buscar en el historial</span>
+                </div>
                 <div style={{...styles.searchInputContainer, width: '100%'}}>
-                    <span style={styles.searchInputIcon}>🔍</span>
                     <input 
                         type="text" 
                         placeholder="Buscar en historial..." 
