@@ -1,4 +1,3 @@
-
 import React, { FC, FormEvent, RefObject, useState } from 'react';
 import { styles } from '../../constants';
 import { ICONS } from '../../pages/AuthPage';
@@ -77,19 +76,12 @@ const AiAssistantPanel: FC<AiAssistantPanelProps> = ({
     messages, aiLoading, chatEndRef, handleAiSubmit,
     aiContext, setAiContext, userInput, setUserInput, aiInputRef
 }) => {
-    const [isContextPopoverVisible, setContextPopoverVisible] = useState(false);
+    const [showContextModal, setShowContextModal] = useState(false);
 
     const contextCapsuleStyle: React.CSSProperties = {
         backgroundColor: 'var(--primary-light)', color: 'var(--primary-color)', border: '1px solid var(--primary-color)',
         borderRadius: '16px', padding: '2px 8px 2px 10px', display: 'inline-flex', alignItems: 'center', gap: '8px',
         boxShadow: '0 2px 4px rgba(0,0,0,0.1)', flexShrink: 0, position: 'relative', fontSize: '0.85rem', maxWidth: '100%', overflow: 'hidden'
-    };
-    const contextPopoverStyle: React.CSSProperties = {
-        position: 'absolute', bottom: '120%', left: 0, backgroundColor: 'var(--surface-color)',
-        border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1rem',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.2)', zIndex: 10, width: '300px',
-        whiteSpace: 'pre-wrap', fontSize: '0.9rem', textAlign: 'left',
-        visibility: isContextPopoverVisible ? 'visible' : 'hidden', opacity: isContextPopoverVisible ? 1 : 0, transition: 'opacity 0.2s, visibility 0.2s',
     };
 
     const onQuickPromptClick = (prompt: string) => {
@@ -98,6 +90,20 @@ const AiAssistantPanel: FC<AiAssistantPanelProps> = ({
 
     return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--surface-color)', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+            {showContextModal && aiContext && (
+                <div style={{...styles.modalOverlay, zIndex: 3000}}>
+                    <div style={{...styles.modalContent, maxWidth: '600px', maxHeight: '80vh', display: 'flex', flexDirection: 'column'}}>
+                        <div style={styles.modalHeader}>
+                            <h3 style={styles.modalTitle}>Contexto Adjunto</h3>
+                            <button onClick={() => setShowContextModal(false)} style={{...styles.iconButton, border: 'none'}}>{ICONS.close}</button>
+                        </div>
+                        <div style={{...styles.modalBody, overflowY: 'auto', whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.9rem'}}>
+                            {aiContext.fullText}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ fontSize: '1.2rem' }}>🤖</span>
                 <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, textTransform: 'uppercase' }}>ASISTENTE COPILOTO</h3>
@@ -183,18 +189,11 @@ const AiAssistantPanel: FC<AiAssistantPanelProps> = ({
                     transition: 'border-color 0.2s'
                 }}>
                     {aiContext && (
-                         <div style={contextCapsuleStyle} onMouseEnter={() => setContextPopoverVisible(true)} onMouseLeave={() => setContextPopoverVisible(false)}>
+                         <div style={contextCapsuleStyle}>
                             {aiContext.file_url && <span style={{fontSize: '1rem'}}>📄</span>}
                             <span style={{whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '120px'}}>{aiContext.displayText}</span>
-                            <button type="button" onClick={() => setAiContext(null)} style={{...styles.iconButton, color: 'var(--primary-color)', width: '18px', height: '18px', padding: 0 }}>&times;</button>
-                            <div style={contextPopoverStyle}>
-                                {aiContext.file_url ? (
-                                    <>
-                                        <p style={{fontWeight: 600, marginBottom: '0.5rem'}}>Archivo Adjunto:</p>
-                                        <p>{aiContext.displayText}</p>
-                                    </>
-                                ) : aiContext.fullText}
-                            </div>
+                            <button type="button" onClick={() => setShowContextModal(true)} style={{...styles.iconButton, fontSize: '0.7rem', padding: '0 4px', textDecoration: 'underline', color: 'var(--primary-color)', border: 'none', background: 'transparent', cursor: 'pointer'}}>Ver más</button>
+                            <button type="button" onClick={() => setAiContext(null)} style={{...styles.iconButton, color: 'var(--primary-color)', width: '18px', height: '18px', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}>&times;</button>
                         </div>
                     )}
                     <input 

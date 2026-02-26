@@ -1,5 +1,5 @@
 
-import React, { FC } from 'react';
+import React, { FC, useState } from 'react';
 import { styles } from '../../constants';
 import { ICONS } from '../../pages/AuthPage';
 import { DietPlanHistoryItem, Person } from '../../types';
@@ -14,9 +14,20 @@ interface TimelinePanelProps {
     formatItemForAI: (item: any) => { displayText: string; fullText: string; };
 }
 
-const ExpedienteItem: FC<{ icon: string, label: string }> = ({ icon, label }) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 0', borderBottom: '1px solid var(--border-color)', cursor: 'pointer' }} className="card-hover">
-        <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-color)', textTransform: 'uppercase' }}>{label}</span>
+const ExpedienteItem: FC<{ icon: string, label: string, onClick?: () => void, isActive?: boolean }> = ({ icon, label, onClick, isActive }) => (
+    <div 
+        onClick={onClick}
+        style={{ 
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+            padding: '1rem 0.5rem', borderBottom: '1px solid var(--border-color)', cursor: 'pointer',
+            backgroundColor: isActive ? 'var(--surface-hover-color)' : 'transparent',
+            borderRadius: '8px',
+            transition: 'all 0.2s',
+            marginBottom: '0.25rem'
+        }} 
+        className="card-hover"
+    >
+        <span style={{ fontWeight: 600, fontSize: '0.95rem', color: isActive ? 'var(--primary-color)' : 'var(--text-color)', textTransform: 'uppercase' }}>{label}</span>
         <span style={{ fontSize: '1.2rem' }}>{icon}</span>
     </div>
 );
@@ -24,6 +35,8 @@ const ExpedienteItem: FC<{ icon: string, label: string }> = ({ icon, label }) =>
 const TimelinePanel: FC<TimelinePanelProps> = ({
     person, timeline, timelineFilters, setTimelineFilters, handleTimelineItemClick, sendContextToAi, formatItemForAI
 }) => {
+    const [activeFilter, setActiveFilter] = useState<string | null>(null);
+
     const getIconForType = (type: string) => {
         switch(type) {
             case 'consultation': return ICONS.clinic;
@@ -44,6 +57,24 @@ const TimelinePanel: FC<TimelinePanelProps> = ({
         }
     };
 
+    const handleFilterClick = (type: string) => {
+        if (activeFilter === type) {
+            setActiveFilter(null);
+        } else {
+            setActiveFilter(type);
+        }
+    };
+
+    const filteredTimeline = timeline.filter(item => {
+        if (activeFilter) {
+            if (activeFilter === 'diet' && item.type !== 'diet' && item.type !== 'diet_plan_history') return false;
+            if (activeFilter === 'exercise' && item.type !== 'exercise') return false;
+            if (activeFilter === 'consultation' && item.type !== 'consultation') return false;
+            if (activeFilter === 'log' && item.type !== 'log') return false;
+        }
+        return true;
+    });
+
     return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--surface-color)', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
             <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -51,11 +82,31 @@ const TimelinePanel: FC<TimelinePanelProps> = ({
                 <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, textTransform: 'uppercase' }}>DATOS EN EXPEDIENTE</h3>
             </div>
             
-            <div style={{ padding: '0 1.5rem' }}>
-                <ExpedienteItem label="Plan de alimentacion" icon="🍐" />
-                <ExpedienteItem label="Rutina de ejercicio" icon="📈" />
-                <ExpedienteItem label="Consulta de seguimiento" icon="🛡️" />
-                <ExpedienteItem label="Auditoria" icon="📁" />
+            <div style={{ padding: '0.5rem 1rem' }}>
+                <ExpedienteItem 
+                    label="Plan de alimentacion" 
+                    icon="🍐" 
+                    onClick={() => handleFilterClick('diet')}
+                    isActive={activeFilter === 'diet'}
+                />
+                <ExpedienteItem 
+                    label="Rutina de ejercicio" 
+                    icon="📈" 
+                    onClick={() => handleFilterClick('exercise')}
+                    isActive={activeFilter === 'exercise'}
+                />
+                <ExpedienteItem 
+                    label="Consulta de seguimiento" 
+                    icon="🛡️" 
+                    onClick={() => handleFilterClick('consultation')}
+                    isActive={activeFilter === 'consultation'}
+                />
+                <ExpedienteItem 
+                    label="Auditoria" 
+                    icon="📁" 
+                    onClick={() => handleFilterClick('log')}
+                    isActive={activeFilter === 'log'}
+                />
             </div>
 
             {person && (
@@ -86,14 +137,14 @@ const TimelinePanel: FC<TimelinePanelProps> = ({
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
-                {timeline.map((item, index) => {
+                {filteredTimeline.map((item, index) => {
                     const icon = getIconForType(item.type);
                     const accentColor = getColorForType(item.type);
                     
                     return (
                         <div key={`${item.id}-${index}`} style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', position: 'relative' }}>
                              {/* Timeline Line */}
-                             {index !== timeline.length - 1 && (
+                             {index !== filteredTimeline.length - 1 && (
                                  <div style={{ position: 'absolute', top: '32px', left: '15px', bottom: '-16px', width: '2px', backgroundColor: 'var(--border-color)', zIndex: 0 }}></div>
                              )}
                              
@@ -149,7 +200,7 @@ const TimelinePanel: FC<TimelinePanelProps> = ({
                         </div>
                     );
                 })}
-                {timeline.length === 0 && (
+                {filteredTimeline.length === 0 && (
                     <div style={{textAlign: 'center', color: 'var(--text-light)', marginTop: '3rem'}}>
                         <p>No hay eventos registrados.</p>
                     </div>

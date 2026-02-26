@@ -14,7 +14,7 @@ import ConsultationDetailModal from '../components/modals/ConsultationDetailModa
 import LogDetailModal from '../components/modals/LogDetailModal';
 import DietLogDetailModal from '../components/modals/DietLogDetailModal';
 import ExerciseLogDetailModal from '../components/modals/ExerciseLogDetailModal';
-import ReportModal from '../components/ReportModal'; // Import ReportModal
+import ReportModal from '../components/ReportModal';
 
 interface AiMessage {
     role: 'user' | 'model';
@@ -36,7 +36,6 @@ interface ConsultationModePageProps {
     medications?: Medication[];
     lifestyleHabits?: LifestyleHabits | null;
     internalNotes?: InternalNoteWithAuthor[];
-    // Added files prop for RAG
     files?: PersonFile[]; 
     onDataRefresh: (silent?: boolean) => void;
     onExit: () => void;
@@ -49,18 +48,14 @@ interface ConsultationModePageProps {
     subscription: (ClinicSubscription & { plans: Plan | null }) | null;
 }
 
-// Helper to compare dates without time
 const areDatesEqual = (d1: Date, d2: Date) => 
     d1.getFullYear() === d2.getFullYear() && 
     d1.getMonth() === d2.getMonth() && 
     d1.getDate() === d2.getDate();
 
-// Helper to parse dates robustly across Safari/iOS/Windows
 const safeParseDate = (dateStr: string | null | undefined): Date => {
     if (!dateStr) return new Date();
-    
     try {
-        // 1. Handle YYYY-MM-DD explicitly to prevent timezone shifts (local midnight)
         if (dateStr.length === 10 && dateStr.includes('-') && !dateStr.includes(':')) {
             const parts = dateStr.split('-');
             const year = parseInt(parts[0], 10);
@@ -69,26 +64,15 @@ const safeParseDate = (dateStr: string | null | undefined): Date => {
             const d = new Date(year, month, day);
             if (!isNaN(d.getTime())) return d;
         }
-
-        // 2. Fix SQL-like timestamps for Safari (replace space with T)
-        // Safari fails on "2023-01-01 12:00:00", needs "2023-01-01T12:00:00"
         const safeStr = dateStr.replace(' ', 'T');
         const d = new Date(safeStr);
-
-        // 3. Check for Invalid Date
-        if (isNaN(d.getTime())) {
-            console.warn('Fecha inválida detectada:', dateStr);
-            return new Date(); // Fallback to now to prevent crash
-        }
+        if (isNaN(d.getTime())) return new Date();
         return d;
     } catch (e) {
-        console.error('Error parseando fecha:', e);
         return new Date();
     }
 };
 
-// Define Modal Component outside to prevent re-rendering flicker
-// Z-Index updated to 2100 to appear above the Consultation Mode (2000)
 const ToolsModal: FC<{ onClose: () => void; children: ReactNode; isMobile: boolean }> = ({ onClose, children, isMobile }) => (
     <div style={{ ...styles.modalOverlay, zIndex: 2100, padding: isMobile ? '0.5rem' : '2rem', backdropFilter: 'blur(5px)' }}>
         <div style={{ ...styles.modalContent, width: '95%', maxWidth: '1400px', height: isMobile ? '95vh' : '90vh' }} className="fade-in">
@@ -109,7 +93,6 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
 }) => {
     
     const personName = person.full_name;
-    const personBirthDate = person.birth_date;
     
     // Timer State
     const [elapsedTime, setElapsedTime] = useState(0);
@@ -170,17 +153,13 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
             latestGlucose: latestLab?.glucose_mg_dl,
             latestCholesterol: latestLab?.cholesterol_mg_dl,
             latestTriglycerides: latestLab?.triglycerides_mg_dl,
-            latestHba1c: latestLab?.hba1c
+            latestHba1c: latestLab?.hba1c,
+            height_cm: latestHeight,
+            weight_kg: latestWeight
         };
     }, [consultations]);
     
-    // Quick Forms State
-    const [quickConsult, setQuickConsult] = useState({ weight_kg: '', height_cm: '' });
-    const [quickLog, setQuickLog] = useState('');
-    const [formLoading, setFormLoading] = useState<'consult' | 'log' | null>(null);
-    const [quickSuccess, setQuickSuccess] = useState<string | null>(null);
     const [isToolsOpen, setIsToolsOpen] = useState(false);
-    const [appointmentUpdateLoading, setAppointmentUpdateLoading] = useState(false);
 
     // AI Assistant State
     const [aiMessages, setAiMessages] = useState<AiMessage[]>([]);
@@ -204,76 +183,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
         return `${age}`;
     };
     
-    const handleQuickConsultSubmit = async (e: FormEvent) => {
-        e.preventDefault();
-        setFormLoading('consult');
-        setQuickSuccess(null);
-        try {
-            const w = quickConsult.weight_kg ? parseFloat(quickConsult.weight_kg) : null;
-            const h = quickConsult.height_cm ? parseFloat(quickConsult.height_cm) : null;
-            let imc = null;
-            if (w && h) imc = parseFloat((w / ((h / 100) ** 2)).toFixed(2));
-
-            await supabase.from('consultations').insert({
-                person_id: person.id,
-                consultation_date: new Date().toISOString().split('T')[0],
-                weight_kg: w,
-                height_cm: h,
-                imc: imc,
-                notes: 'Registro rápido desde Modo Consulta',
-                nutritionist_id: (await supabase.auth.getUser()).data.user?.id
-            });
-            
-            setQuickConsult({ weight_kg: '', height_cm: '' });
-            onDataRefresh(true);
-            setQuickSuccess('Medición registrada');
-            setTimeout(() => setQuickSuccess(null), 3000);
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setFormLoading(null);
-        }
-    };
-
-    const handleQuickLogSubmit = async (e: FormEvent) => {
-        e.preventDefault();
-        setFormLoading('log');
-        try {
-            await supabase.from('logs').insert({
-                person_id: person.id,
-                log_type: 'Nota Rápida',
-                description: quickLog,
-                created_by_user_id: (await supabase.auth.getUser()).data.user?.id
-            });
-            setQuickLog('');
-            onDataRefresh(true);
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setFormLoading(null);
-        }
-    };
-    
-    const updateAppointmentStatus = async (id: string, status: 'completed' | 'no-show' | 'cancelled') => {
-        setAppointmentUpdateLoading(true);
-        try {
-             await supabase.from('appointments').update({ status }).eq('id', id);
-             if (status === 'completed') {
-                await supabase.rpc('award_points_for_consultation_attendance', {
-                    p_person_id: person.id,
-                    p_appointment_id: id
-                });
-             }
-             onDataRefresh(true);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setAppointmentUpdateLoading(false);
-        }
-    };
-    
     // --- TIMELINE LOGIC ---
-    // Filters for Timeline
     const [timelineFilters, setTimelineFilters] = useState({ search: '', start: '', end: '' });
 
     const timeline = useMemo(() => {
@@ -358,7 +268,6 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
         setAiLoading(true);
 
         try {
-            // Construct context-aware prompt
             const contextText = selectedContext ? `\n\nCONTEXTO ADJUNTO:\n${selectedContext.fullText}\n\n` : '';
             
             const historyForModel = aiMessages.map(msg => ({
@@ -379,7 +288,6 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                  }
             };
 
-            // RAG Support: Pass file URL if context has one
             if (selectedContext?.file_url) {
                 payload.file_url = selectedContext.file_url;
             }
@@ -401,8 +309,121 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
             chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }
     };
-    
-    // --- Render ---
+
+    // --- Flying Animation Logic ---
+    const [flyingItem, setFlyingItem] = useState<{x: number, y: number, content: string, fullContext: any} | null>(null);
+    const [animating, setAnimating] = useState(false);
+
+    useEffect(() => {
+        if (flyingItem) {
+            // Wait a tick to ensure render, then animate
+            requestAnimationFrame(() => setAnimating(true));
+            
+            const timer = setTimeout(() => {
+                handleContextSelection(flyingItem.fullContext);
+                setAnimating(false);
+                setFlyingItem(null);
+            }, 800); 
+            return () => clearTimeout(timer);
+        }
+    }, [flyingItem]);
+
+    const handleSaveData = async (type: string, data: any, sourceRect?: DOMRect) => {
+        try {
+            let contextText = '';
+            let contextDisplay = '';
+
+            if (type === 'allergy') {
+                const { error } = await supabase.from('allergies_intolerances').insert({
+                    person_id: person.id,
+                    substance: data.substance,
+                    severity: data.severity,
+                    reaction: 'No especificada',
+                    notes: 'Agregado desde Modo Consulta'
+                });
+                if (error) throw error;
+                contextDisplay = `Alergia: ${data.substance}`;
+                contextText = `Nueva alergia registrada: ${data.substance} (${data.severity})`;
+            } else if (type === 'medication') {
+                const { error } = await supabase.from('medications').insert({
+                    person_id: person.id,
+                    name: data.name,
+                    dosage: data.dosage,
+                    frequency: data.frequency,
+                    start_date: new Date().toISOString().split('T')[0],
+                    status: 'active'
+                });
+                if (error) throw error;
+                contextDisplay = `Medicamento: ${data.name}`;
+                contextText = `Nuevo medicamento registrado: ${data.name}, Dosis: ${data.dosage}, Frecuencia: ${data.frequency}`;
+            } else if (type === 'condition') {
+                 const { error } = await supabase.from('medical_history').insert({
+                    person_id: person.id,
+                    condition: data.condition,
+                    diagnosis_date: new Date().toISOString().split('T')[0],
+                    status: 'active',
+                    notes: data.notes
+                });
+                if (error) throw error;
+                contextDisplay = `Condición: ${data.condition}`;
+                contextText = `Nueva condición registrada: ${data.condition}. Notas: ${data.notes}`;
+            } else if (type === 'metrics') {
+                if (data.gender !== person.gender) {
+                    await supabase.from('persons').update({ gender: data.gender }).eq('id', person.id);
+                }
+                const today = new Date().toISOString().split('T')[0];
+                const { data: existingConsult } = await supabase.from('consultations')
+                    .select('id')
+                    .eq('person_id', person.id)
+                    .eq('consultation_date', today)
+                    .single();
+
+                if (existingConsult) {
+                    await supabase.from('consultations').update({
+                        weight_kg: data.weight_kg,
+                        height_cm: data.height_cm
+                    }).eq('id', existingConsult.id);
+                } else {
+                    await supabase.from('consultations').insert({
+                        person_id: person.id,
+                        consultation_date: today,
+                        weight_kg: data.weight_kg,
+                        height_cm: data.height_cm,
+                        notes: 'Registro desde panel resumen'
+                    });
+                }
+                contextDisplay = `Mediciones Actualizadas`;
+                contextText = `Mediciones actualizadas: Peso ${data.weight_kg}kg, Estatura ${data.height_cm}cm, Sexo ${data.gender}`;
+            } else if (type === 'notes') {
+                await supabase.from('persons').update({ notes: data.notes }).eq('id', person.id);
+                contextDisplay = `Notas Actualizadas`;
+                contextText = `Notas del paciente actualizadas: ${data.notes}`;
+            } else if (type === 'birth_date') {
+                await supabase.from('persons').update({ birth_date: data.birth_date }).eq('id', person.id);
+                contextDisplay = `Fecha Nacimiento Actualizada`;
+                contextText = `Fecha de nacimiento actualizada: ${data.birth_date}`;
+            } else if (type === 'goal') {
+                await supabase.from('persons').update({ health_goal: data.health_goal }).eq('id', person.id);
+                contextDisplay = `Objetivo Actualizado`;
+                contextText = `Objetivo de salud actualizado: ${data.health_goal}`;
+            }
+
+            onDataRefresh(true);
+            
+            if (sourceRect) {
+                setFlyingItem({
+                    x: sourceRect.left + (sourceRect.width / 2),
+                    y: sourceRect.top + (sourceRect.height / 2),
+                    content: contextDisplay,
+                    fullContext: { displayText: contextDisplay, fullText: contextText }
+                });
+            }
+
+        } catch (error) {
+            console.error("Error saving data:", error);
+            alert("Error al guardar los datos. Por favor intente de nuevo.");
+        }
+    };
 
     return (
         <div className="fade-in" style={{ 
@@ -410,12 +431,34 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
             backgroundColor: 'var(--background-color)', zIndex: 2000, 
             display: 'flex', flexDirection: 'column' 
         }}>
+            {flyingItem && createPortal(
+                <div style={{
+                    position: 'fixed',
+                    left: animating ? '83%' : `${flyingItem.x}px`,
+                    top: animating ? '50%' : `${flyingItem.y}px`,
+                    transform: 'translate(-50%, -50%) scale(' + (animating ? 0.5 : 1) + ')',
+                    opacity: animating ? 0 : 1,
+                    transition: 'all 0.8s cubic-bezier(0.68, -0.55, 0.27, 1.55)',
+                    backgroundColor: 'var(--primary-color)',
+                    color: 'white',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '20px',
+                    zIndex: 9999,
+                    pointerEvents: 'none',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                    fontWeight: 600,
+                    whiteSpace: 'nowrap'
+                }}>
+                    {flyingItem.content}
+                </div>,
+                document.body
+            )}
+
             {isToolsOpen && (
                 <ToolsModal onClose={() => setIsToolsOpen(false)} isMobile={isMobile}>
                     <CalculatorsPage 
                         isMobile={isMobile} 
                         initialPersonToLoad={person} 
-                        // IMPORTANT: Pass a very high z-index to be above the Tools Modal (2100)
                         customModalZIndex={2200}
                     />
                 </ToolsModal>
@@ -454,20 +497,9 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                             allergies={allergies}
                             medications={medications}
                             medicalHistory={medicalHistory}
-                            relevantAppointment={sessionAppointment}
-                            updateAppointmentStatus={updateAppointmentStatus}
-                            appointmentUpdateLoading={appointmentUpdateLoading}
-                            quickConsult={quickConsult}
-                            setQuickConsult={setQuickConsult}
-                            handleQuickConsultSubmit={handleQuickConsultSubmit}
-                            formLoading={formLoading}
-                            quickLog={quickLog}
-                            setQuickLog={setQuickLog}
-                            handleQuickLogSubmit={handleQuickLogSubmit}
                             sendContextToAi={handleContextSelection}
                             formatSummaryForAI={formatSummaryForAI}
-                            calculateAge={calculateAge}
-                            quickSuccess={quickSuccess}
+                            onSaveData={handleSaveData}
                         />
                     </div>
                 )}
@@ -487,7 +519,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
 
                 {/* 3. Right: AI Assistant */}
                 {!isMobile && (
-                    <div style={{ borderLeft: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', display: 'flex', flexDirection: 'column' }}>
+                    <div id="ai-panel-container" style={{ borderLeft: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', display: 'flex', flexDirection: 'column' }}>
                          <AiAssistantPanel 
                             messages={aiMessages}
                             aiLoading={aiLoading}
@@ -503,7 +535,6 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                 )}
             </div>
             
-            {/* Mobile Tabs if needed, or just hide AI/Left panel on mobile for MVP simplification */}
             {isMobile && (
                 <div style={{padding: '1rem', textAlign: 'center', backgroundColor: 'var(--surface-color)', borderTop: '1px solid var(--border-color)'}}>
                     <p style={{fontSize: '0.8rem', color: 'var(--text-light)'}}>Vista móvil simplificada. Usa una tablet o escritorio para la experiencia completa.</p>
