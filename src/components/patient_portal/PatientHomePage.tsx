@@ -1,7 +1,7 @@
 import React, { FC, useMemo, useState, useEffect, useCallback } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { Person, DietLog, ExerciseLog, DailyCheckin, ConsultationWithLabs, AppointmentWithPerson, PatientServicePlan, PopulatedReferralConsentRequest, PatientJournalEntry } from '../../types';
-import { ICONS } from '../AuthPage';
+import { ICONS } from '../../pages/AuthPage';
 import ConfirmationModal from '../../components/shared/ConfirmationModal';
 import DailyCheckinFormModal from '../../components/patient_portal/DailyCheckinFormModal';
 import { supabase } from '../../supabase';

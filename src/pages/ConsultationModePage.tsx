@@ -338,7 +338,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                     person_id: person.id,
                     substance: data.substance,
                     severity: data.severity,
-                    reaction: 'No especificada',
+                    type: 'Alergia',
                     notes: 'Agregado desde Modo Consulta'
                 });
                 if (error) throw error;
@@ -349,9 +349,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                     person_id: person.id,
                     name: data.name,
                     dosage: data.dosage,
-                    frequency: data.frequency,
-                    start_date: new Date().toISOString().split('T')[0],
-                    status: 'active'
+                    frequency: data.frequency
                 });
                 if (error) throw error;
                 contextDisplay = `Medicamento: ${data.name}`;
@@ -361,7 +359,6 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                     person_id: person.id,
                     condition: data.condition,
                     diagnosis_date: new Date().toISOString().split('T')[0],
-                    status: 'active',
                     notes: data.notes
                 });
                 if (error) throw error;

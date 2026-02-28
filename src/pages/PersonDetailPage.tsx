@@ -230,7 +230,7 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
                 supabase.from('files').select('*').eq('person_id', personId).order('created_at', { ascending: false }),
                 supabase.from('team_members_with_profiles').select('*').eq('clinic_id', clinic.id),
                 supabase.from('care_team').select('*').eq('person_id', personId),
-                supabase.from('internal_notes').select('*, team_members_with_profiles!internal_notes_user_id_fkey(*)').eq('person_id', personId).order('created_at', { ascending: false }),
+                supabase.from('internal_notes').select('*').eq('person_id', personId).order('created_at', { ascending: false }),
                 supabase.from('diet_plan_history').select('*').eq('person_id', personId).order('created_at', { ascending: false }),
                 supabase.from('appointments').select('*, persons(full_name, avatar_url, person_type)').eq('person_id', personId).order('start_time', { ascending: false }),
                 supabase.from('patient_service_plans').select('*').eq('clinic_id', clinic.id),
@@ -270,8 +270,13 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
             }));
             setCareTeam(populatedCareTeam);
             
-            // Internal Notes are populated via query join now, but let's double check typing
-            setInternalNotes((internalNotesRes.data as any) || []);
+            // Populate Internal Notes manually
+            const internalNotesRaw = internalNotesRes.data || [];
+            const populatedInternalNotes = internalNotesRaw.map((note: any) => ({
+                ...note,
+                team_members_with_profiles: teamMembersData.find((tm: any) => tm.user_id === note.user_id) || null
+            }));
+            setInternalNotes(populatedInternalNotes);
 
         } catch (err: any) {
             setError(err.message);
