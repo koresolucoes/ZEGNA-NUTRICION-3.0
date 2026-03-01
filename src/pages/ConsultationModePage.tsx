@@ -15,6 +15,8 @@ import LogDetailModal from '../components/modals/LogDetailModal';
 import DietLogDetailModal from '../components/modals/DietLogDetailModal';
 import ExerciseLogDetailModal from '../components/modals/ExerciseLogDetailModal';
 import ReportModal from '../components/ReportModal';
+import PatientSummaryModal from '../components/consultation_mode/PatientSummaryModal';
+import PrescriptionBuilderModal from '../components/consultation_mode/PrescriptionBuilderModal';
 
 interface AiMessage {
     role: 'user' | 'model';
@@ -46,6 +48,7 @@ interface ConsultationModePageProps {
     setViewingExerciseLog: (log: ExerciseLog | null) => void;
     clinic: Clinic | null;
     subscription: (ClinicSubscription & { plans: Plan | null }) | null;
+    nutritionistProfile: any;
 }
 
 const areDatesEqual = (d1: Date, d2: Date) => 
@@ -89,7 +92,7 @@ const ToolsModal: FC<{ onClose: () => void; children: ReactNode; isMobile: boole
 
 const ConsultationModePage: FC<ConsultationModePageProps> = ({ 
     person, personType, consultations, logs, dietLogs, exerciseLogs, planHistory, appointments, allergies = [], medicalHistory = [], medications = [], lifestyleHabits, internalNotes, files = [],
-    onDataRefresh, onExit, isMobile, setViewingConsultation, setViewingLog, setViewingDietLog, setViewingExerciseLog, clinic, subscription
+    onDataRefresh, onExit, isMobile, setViewingConsultation, setViewingLog, setViewingDietLog, setViewingExerciseLog, clinic, subscription, nutritionistProfile
 }) => {
     
     const personName = person.full_name;
@@ -160,6 +163,8 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
     }, [consultations]);
     
     const [isToolsOpen, setIsToolsOpen] = useState(false);
+    const [isPatientSummaryOpen, setIsPatientSummaryOpen] = useState(false);
+    const [isPrescriptionBuilderOpen, setIsPrescriptionBuilderOpen] = useState(false);
 
     // AI Assistant State
     const [aiMessages, setAiMessages] = useState<AiMessage[]>([]);
@@ -461,6 +466,25 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                 </ToolsModal>
             )}
 
+            {isPatientSummaryOpen && (
+                <PatientSummaryModal
+                    person={person}
+                    clinic={clinic}
+                    nutritionistProfile={nutritionistProfile}
+                    metrics={latestMetrics}
+                    prescriptions={medications}
+                    onClose={() => setIsPatientSummaryOpen(false)}
+                />
+            )}
+
+            {isPrescriptionBuilderOpen && (
+                <PrescriptionBuilderModal
+                    personId={person.id}
+                    onClose={() => setIsPrescriptionBuilderOpen(false)}
+                    onSave={() => onDataRefresh(true)}
+                />
+            )}
+
             {/* Header */}
             <div style={{ 
                 height: '60px', backgroundColor: 'var(--surface-color)', borderBottom: '1px solid var(--border-color)', 
@@ -473,6 +497,12 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                     <span className="animate-pulse" style={{fontSize: '1rem', fontFamily: 'monospace', color: 'var(--text-light)', fontWeight: 600}}>{formatTime(elapsedTime)}</span>
                 </div>
                 <div style={{display: 'flex', gap: '1rem'}}>
+                    <button onClick={() => setIsPrescriptionBuilderOpen(true)} className="button-secondary" style={{display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#E0F2FE', color: '#0284C7', borderColor: '#BAE6FD'}}>
+                        {ICONS.file} Crear Receta
+                    </button>
+                    <button onClick={() => setIsPatientSummaryOpen(true)} className="button-secondary" style={{display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#DCFCE7', color: '#166534', borderColor: '#86EFAC'}}>
+                        {ICONS.download} Resumen Paciente
+                    </button>
                     <button onClick={() => setIsToolsOpen(true)} className="button-secondary" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
                         {ICONS.calculator} Herramientas
                     </button>
