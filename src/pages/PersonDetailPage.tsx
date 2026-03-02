@@ -381,10 +381,10 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
                     {ICONS.activity} Iniciar Consulta
                 </button>
                  <button onClick={() => setIsAppointmentModalOpen(true)} className="button-secondary" style={{width: '100%', fontSize: '0.85rem', justifyContent: 'center'}}>
-                    {ICONS.calendar} Cita
+                    {ICONS.calendar} Programar Cita
                 </button>
-                 <button onClick={() => setIsPaymentModalOpen(true)} className="button-secondary" style={{width: '100%', fontSize: '0.85rem', justifyContent: 'center'}}>
-                    {ICONS.dollar} Cobrar
+                 <button onClick={() => setReportModalOpen(true)} className="button-secondary" style={{width: '100%', fontSize: '0.85rem', justifyContent: 'center'}}>
+                    {ICONS.file} Generar Reporte
                 </button>
                  <button onClick={() => setIsReferralModalOpen(true)} className="button-secondary" style={{width: '100%', fontSize: '0.85rem', justifyContent: 'center'}}>
                     {ICONS.send} Referir Paciente
