@@ -61,7 +61,7 @@ const PrescriptionBuilderModal: FC<PrescriptionBuilderModalProps> = ({ personId,
     };
 
     const modalContent = (
-        <div style={{...styles.modalOverlay, zIndex: 1300}}>
+        <div style={{...styles.modalOverlay, zIndex: 2300}}>
             <div style={{...styles.modalContent, width: '90%', maxWidth: '800px'}}>
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)'}}>
                     <h2 style={{margin: 0, fontSize: '1.5rem', color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
