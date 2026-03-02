@@ -1,21 +1,11 @@
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet, Image, Font } from '@react-pdf/renderer';
+import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
 import { Person, Clinic, NutritionistProfile, Medication } from '../../../types';
-
-// Register fonts if needed
-Font.register({
-    family: 'Inter',
-    fonts: [
-        { src: 'https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiA.woff2', fontWeight: 400 },
-        { src: 'https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuI6fAZ9hiA.woff2', fontWeight: 600 },
-        { src: 'https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuGKYAZ9hiA.woff2', fontWeight: 700 }
-    ]
-});
 
 const styles = StyleSheet.create({
     page: {
         padding: 40,
-        fontFamily: 'Inter',
+        fontFamily: 'Helvetica',
         backgroundColor: '#ffffff',
         color: '#1f2937',
     },
@@ -37,7 +27,7 @@ const styles = StyleSheet.create({
     },
     clinicName: {
         fontSize: 16,
-        fontWeight: 700,
+        fontWeight: 'bold',
         color: '#111827',
     },
     doctorName: {
@@ -52,7 +42,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 20,
-        fontWeight: 700,
+        fontWeight: 'bold',
         color: '#111827',
         marginBottom: 20,
         textAlign: 'center',
@@ -62,7 +52,7 @@ const styles = StyleSheet.create({
     },
     sectionTitle: {
         fontSize: 14,
-        fontWeight: 600,
+        fontWeight: 'bold',
         color: '#374151',
         borderBottomWidth: 1,
         borderBottomColor: '#e5e7eb',
@@ -83,7 +73,7 @@ const styles = StyleSheet.create({
         fontSize: 10,
         color: '#111827',
         width: '70%',
-        fontWeight: 500,
+        fontWeight: 'normal',
     },
     metricsGrid: {
         flexDirection: 'row',
@@ -103,7 +93,7 @@ const styles = StyleSheet.create({
     },
     metricValue: {
         fontSize: 14,
-        fontWeight: 600,
+        fontWeight: 'bold',
         color: '#111827',
     },
     prescriptionItem: {
@@ -116,7 +106,7 @@ const styles = StyleSheet.create({
     },
     medName: {
         fontSize: 12,
-        fontWeight: 600,
+        fontWeight: 'bold',
         color: '#111827',
         marginBottom: 4,
     },
@@ -273,7 +263,7 @@ const PatientSummaryDocument: React.FC<PatientSummaryDocumentProps> = ({
                 {nextAppointment && (
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Próxima Cita Sugerida</Text>
-                        <Text style={{fontSize: 11, color: '#111827', fontWeight: 600}}>{nextAppointment}</Text>
+                        <Text style={{fontSize: 11, color: '#111827', fontWeight: 'bold'}}>{nextAppointment}</Text>
                     </View>
                 )}
 

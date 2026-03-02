@@ -26,15 +26,15 @@ const PatientSummaryModal: FC<PatientSummaryModalProps> = ({
 
     const modalContent = (
         <div style={{...styles.modalOverlay, zIndex: 2300}}>
-            <div style={{...styles.modalContent, width: '90%', maxWidth: '900px', height: '90vh', display: 'flex', flexDirection: 'column'}}>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)'}}>
-                    <h2 style={{margin: 0, fontSize: '1.5rem', color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+            <div style={{...styles.modalContent, width: '90%', maxWidth: '900px', height: '90vh'}}>
+                <div style={styles.modalHeader}>
+                    <h2 style={{...styles.modalTitle, display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
                         {ICONS.file} Resumen para el Paciente
                     </h2>
-                    <button onClick={onClose} style={{...styles.iconButton, border: 'none', backgroundColor: 'var(--surface-hover-color)'}}>{ICONS.close}</button>
+                    <button onClick={onClose} style={{...styles.iconButton, border: 'none'}}>{ICONS.close}</button>
                 </div>
 
-                <div style={{display: 'flex', gap: '1rem', marginBottom: '1rem'}}>
+                <div style={{display: 'flex', gap: '1rem', padding: '0 1.5rem', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)'}}>
                     <button 
                         onClick={() => setView('config')} 
                         style={{...styles.tabButton, ...(view === 'config' ? styles.activeTab : {})}}>
@@ -47,7 +47,7 @@ const PatientSummaryModal: FC<PatientSummaryModalProps> = ({
                     </button>
                 </div>
 
-                <div style={{flex: 1, overflowY: 'auto', paddingRight: '0.5rem'}}>
+                <div style={{...styles.modalBody, flex: 1}}>
                     {view === 'config' ? (
                         <div style={{display: 'flex', flexDirection: 'column', gap: '1.5rem'}}>
                             <div style={styles.card}>
@@ -87,7 +87,7 @@ const PatientSummaryModal: FC<PatientSummaryModalProps> = ({
                             </div>
                         </div>
                     ) : (
-                        <div style={{height: '100%', border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden'}}>
+                        <div style={{height: '100%', minHeight: '500px', border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden'}}>
                             <PDFViewer style={{ width: '100%', height: '100%', border: 'none' }}>
                                 <PatientSummaryDocument 
                                     person={person}
@@ -103,7 +103,7 @@ const PatientSummaryModal: FC<PatientSummaryModalProps> = ({
                     )}
                 </div>
 
-                <div style={{marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '1rem'}}>
+                <div style={styles.modalFooter}>
                     <button onClick={onClose} className="button-secondary">Cancelar</button>
                     {view === 'config' ? (
                         <button onClick={() => setView('preview')} className="button-primary">Siguiente: Vista Previa</button>

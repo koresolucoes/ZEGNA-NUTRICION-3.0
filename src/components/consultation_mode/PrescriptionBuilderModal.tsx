@@ -63,53 +63,53 @@ const PrescriptionBuilderModal: FC<PrescriptionBuilderModalProps> = ({ personId,
     const modalContent = (
         <div style={{...styles.modalOverlay, zIndex: 2300}}>
             <div style={{...styles.modalContent, width: '90%', maxWidth: '800px'}}>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)'}}>
-                    <h2 style={{margin: 0, fontSize: '1.5rem', color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                <div style={styles.modalHeader}>
+                    <h2 style={{...styles.modalTitle, display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
                         {ICONS.file} Receta / Suplementación
                     </h2>
-                    <button onClick={onClose} style={{...styles.iconButton, border: 'none', backgroundColor: 'var(--surface-hover-color)'}}>{ICONS.close}</button>
+                    <button onClick={onClose} style={{...styles.iconButton, border: 'none'}}>{ICONS.close}</button>
                 </div>
 
-                {error && <div style={styles.errorMessage}>{error}</div>}
+                <div style={{...styles.modalBody, display: 'flex', flexDirection: 'column', gap: '1.5rem'}}>
+                    {error && <div style={styles.errorMessage}>{error}</div>}
 
-                <div style={{display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '60vh', overflowY: 'auto', paddingRight: '0.5rem'}}>
                     {medications.map((med, index) => (
-                        <div key={index} style={{...styles.card, padding: '1rem', position: 'relative'}}>
-                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem'}}>
-                                <h4 style={{margin: 0, fontSize: '1rem', color: 'var(--text-color)'}}>Ítem {index + 1}</h4>
+                        <div key={index} style={{...styles.card, padding: '1.5rem', position: 'relative'}}>
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem'}}>
+                                <h4 style={{margin: 0, fontSize: '1.1rem', color: 'var(--text-color)'}}>Ítem {index + 1}</h4>
                                 {medications.length > 1 && (
-                                    <button onClick={() => handleRemoveRow(index)} style={{...styles.iconButton, color: 'var(--error-color)', padding: '4px', width: '28px', height: '28px'}} title="Eliminar">
+                                    <button onClick={() => handleRemoveRow(index)} style={{...styles.iconButton, color: 'var(--error-color)', padding: '4px', width: '32px', height: '32px'}} title="Eliminar">
                                         {ICONS.delete}
                                     </button>
                                 )}
                             </div>
-                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
-                                <div style={styles.inputGroup}>
+                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem'}}>
+                                <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
                                     <label style={styles.label}>Nombre del Medicamento/Suplemento *</label>
                                     <input type="text" value={med.name} onChange={(e) => handleChange(index, 'name', e.target.value)} style={styles.input} placeholder="Ej. Paracetamol 500mg" required />
                                 </div>
-                                <div style={styles.inputGroup}>
+                                <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
                                     <label style={styles.label}>Dosis</label>
                                     <input type="text" value={med.dosage} onChange={(e) => handleChange(index, 'dosage', e.target.value)} style={styles.input} placeholder="Ej. 1 tableta" />
                                 </div>
-                                <div style={styles.inputGroup}>
+                                <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
                                     <label style={styles.label}>Frecuencia</label>
                                     <input type="text" value={med.frequency} onChange={(e) => handleChange(index, 'frequency', e.target.value)} style={styles.input} placeholder="Ej. Cada 8 horas" />
                                 </div>
-                                <div style={styles.inputGroup}>
+                                <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
                                     <label style={styles.label}>Indicaciones adicionales</label>
                                     <input type="text" value={med.notes} onChange={(e) => handleChange(index, 'notes', e.target.value)} style={styles.input} placeholder="Ej. Tomar con alimentos" />
                                 </div>
                             </div>
                         </div>
                     ))}
+
+                    <button onClick={handleAddRow} className="button-secondary" style={{width: '100%', justifyContent: 'center', borderStyle: 'dashed', padding: '1rem'}}>
+                        {ICONS.add} Agregar otro ítem
+                    </button>
                 </div>
 
-                <button onClick={handleAddRow} className="button-secondary" style={{marginTop: '1rem', width: '100%', justifyContent: 'center', borderStyle: 'dashed'}}>
-                    {ICONS.add} Agregar otro ítem
-                </button>
-
-                <div style={{marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '1rem'}}>
+                <div style={styles.modalFooter}>
                     <button onClick={onClose} className="button-secondary" disabled={loading}>Cancelar</button>
                     <button onClick={handleSave} className="button-primary" disabled={loading}>
                         {loading ? 'Guardando...' : <>{ICONS.save} Guardar Receta</>}
