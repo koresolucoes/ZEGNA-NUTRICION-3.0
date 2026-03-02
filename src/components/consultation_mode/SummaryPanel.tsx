@@ -78,11 +78,24 @@ const SummaryPanel: FC<SummaryPanelProps> = ({
                 fields = [{ name: 'substance', label: 'Sustancia', type: 'text' }, { name: 'severity', label: 'Severidad', type: 'select', options: ['Leve', 'Moderada', 'Severa'] }];
                 break;
             case 'medication':
-                fields = [{ name: 'name', label: 'Nombre', type: 'text' }, { name: 'dosage', label: 'Dosis', type: 'text' }, { name: 'frequency', label: 'Frecuencia', type: 'text' }];
+                fields = [{ name: 'name', label: 'Nombre', type: 'text' }, { name: 'dosage', label: 'Dosis', type: 'text' }, { name: 'frequency', label: 'Frecuencia', type: 'text' }, { name: 'notes', label: 'Notas', type: 'textarea' }];
+                if (label === 'Medicamentos que afectan la frecuencia cardiaca') {
+                    initialData.notes = 'Afecta la frecuencia cardiaca';
+                }
                 break;
             case 'condition': // Padecimiento, Discapacidad, Embarazo
-                fields = [{ name: 'condition', label: 'Condición', type: 'text', defaultValue: label === 'Embarazo' ? 'Embarazo' : '' }, { name: 'notes', label: 'Notas', type: 'textarea' }];
-                if (label === 'Embarazo') initialData.condition = 'Embarazo';
+                if (label === 'Embarazo' || label === 'Discapacidad' || label === 'Padecimiento') {
+                    fields = [
+                        { name: 'has_condition', label: `¿Tiene ${label.toLowerCase()}?`, type: 'select', options: ['Sí', 'No'] },
+                        { name: 'condition', label: 'Especificar cuál', type: 'text' },
+                        { name: 'notes', label: 'Notas', type: 'textarea' }
+                    ];
+                    initialData.has_condition = 'Sí';
+                    initialData.label_type = label;
+                    if (label === 'Embarazo') initialData.condition = 'Embarazo';
+                } else {
+                    fields = [{ name: 'condition', label: 'Condición', type: 'text' }, { name: 'notes', label: 'Notas', type: 'textarea' }];
+                }
                 break;
             case 'metrics': // Info adicional
                 fields = [
@@ -117,7 +130,7 @@ const SummaryPanel: FC<SummaryPanelProps> = ({
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--surface-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--surface-color)' }}>
             {editModal.isOpen && (
                 <div style={{...styles.modalOverlay, zIndex: 3000}}>
                     <div style={{...styles.modalContent, maxWidth: '400px'}}>
@@ -202,7 +215,7 @@ const SummaryPanel: FC<SummaryPanelProps> = ({
                     label="Medicamentos" 
                     action="AGREGAR" 
                     onActionClick={(e) => handleActionClick(e, 'medication', 'Medicamentos', 'AGREGAR')} 
-                    values={medications.map(m => `${m.name} (${m.dosage || ''})`)}
+                    values={medications.filter(m => !m.notes?.toLowerCase().includes('frecuencia cardiaca')).map(m => `${m.name} (${m.dosage || ''})`)}
                 />
                 <SyncItem 
                     label="Alergias" 
@@ -245,7 +258,12 @@ const SummaryPanel: FC<SummaryPanelProps> = ({
                     onActionClick={(e) => handleActionClick(e, 'birth_date', 'Fecha de nacimiento', 'EDITAR')} 
                     values={person?.birth_date ? [person.birth_date] : []}
                 />
-                <SyncItem label="Medicamentos que afectan la frecuencia cardiaca" />
+                <SyncItem 
+                    label="Medicamentos que afectan la frecuencia cardiaca" 
+                    action="AGREGAR"
+                    onActionClick={(e) => handleActionClick(e, 'medication', 'Medicamentos que afectan la frecuencia cardiaca', 'AGREGAR')}
+                    values={medications.filter(m => m.notes?.toLowerCase().includes('frecuencia cardiaca')).map(m => `${m.name} (${m.dosage || ''})`)}
+                />
                 <SyncItem 
                     label="Objetivo" 
                     action="EDITAR" 

@@ -89,7 +89,7 @@ const AiAssistantPanel: FC<AiAssistantPanelProps> = ({
     };
 
     return (
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--surface-color)', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--surface-color)', overflow: 'hidden' }}>
             {showContextModal && aiContext && (
                 <div style={{...styles.modalOverlay, zIndex: 3000}}>
                     <div style={{...styles.modalContent, maxWidth: '600px', maxHeight: '80vh', display: 'flex', flexDirection: 'column'}}>

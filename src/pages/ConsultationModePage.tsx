@@ -354,21 +354,26 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                     person_id: person.id,
                     name: data.name,
                     dosage: data.dosage,
-                    frequency: data.frequency
+                    frequency: data.frequency,
+                    notes: data.notes
                 });
                 if (error) throw error;
                 contextDisplay = `Medicamento: ${data.name}`;
-                contextText = `Nuevo medicamento registrado: ${data.name}, Dosis: ${data.dosage}, Frecuencia: ${data.frequency}`;
+                contextText = `Nuevo medicamento registrado: ${data.name}, Dosis: ${data.dosage}, Frecuencia: ${data.frequency}, Notas: ${data.notes || ''}`;
             } else if (type === 'condition') {
-                 const { error } = await supabase.from('medical_history').insert({
+                let conditionToSave = data.condition;
+                if (data.has_condition === 'No') {
+                    conditionToSave = `Niega ${data.label_type}`;
+                }
+                const { error } = await supabase.from('medical_history').insert({
                     person_id: person.id,
-                    condition: data.condition,
+                    condition: conditionToSave,
                     diagnosis_date: new Date().toISOString().split('T')[0],
                     notes: data.notes
                 });
                 if (error) throw error;
-                contextDisplay = `Condición: ${data.condition}`;
-                contextText = `Nueva condición registrada: ${data.condition}. Notas: ${data.notes}`;
+                contextDisplay = `Condición: ${conditionToSave}`;
+                contextText = `Nueva condición registrada: ${conditionToSave}. Notas: ${data.notes}`;
             } else if (type === 'metrics') {
                 if (data.gender !== person.gender) {
                     await supabase.from('persons').update({ gender: data.gender }).eq('id', person.id);
@@ -513,11 +518,11 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
             </div>
 
             {/* Main Layout - 3 Columns */}
-            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', overflow: 'hidden' }}>
+            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', overflow: 'hidden', gap: '1rem', padding: '1rem', backgroundColor: 'var(--background-color)' }}>
                 
                 {/* 1. Left: Summary & Quick Actions */}
                 {!isMobile && (
-                    <div style={{ padding: '1rem', borderRight: '1px solid var(--border-color)', overflowY: 'auto', backgroundColor: 'var(--background-color)' }}>
+                    <div style={{ overflowY: 'auto', backgroundColor: 'var(--surface-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                         <SummaryPanel 
                             person={person}
                             latestMetrics={latestMetrics}
@@ -532,7 +537,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                 )}
 
                 {/* 2. Center: Unified Timeline */}
-                <div style={{ padding: '1rem', overflowY: 'auto', backgroundColor: 'var(--surface-active)', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ overflowY: 'auto', backgroundColor: 'var(--surface-color)', display: 'flex', flexDirection: 'column', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                      <TimelinePanel 
                         person={person}
                         timeline={timeline} 
@@ -546,7 +551,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
 
                 {/* 3. Right: AI Assistant */}
                 {!isMobile && (
-                    <div id="ai-panel-container" style={{ borderLeft: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', display: 'flex', flexDirection: 'column' }}>
+                    <div id="ai-panel-container" style={{ backgroundColor: 'var(--surface-color)', display: 'flex', flexDirection: 'column', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                          <AiAssistantPanel 
                             messages={aiMessages}
                             aiLoading={aiLoading}

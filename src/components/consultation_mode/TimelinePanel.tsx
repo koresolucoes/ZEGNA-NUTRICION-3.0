@@ -76,7 +76,7 @@ const TimelinePanel: FC<TimelinePanelProps> = ({
     });
 
     return (
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--surface-color)', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--surface-color)', overflow: 'hidden' }}>
             <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ fontSize: '1.2rem' }}>📄</span>
                 <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, textTransform: 'uppercase' }}>DATOS EN EXPEDIENTE</h3>
