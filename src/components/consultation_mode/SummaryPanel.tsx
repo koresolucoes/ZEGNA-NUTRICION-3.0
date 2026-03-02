@@ -19,14 +19,26 @@ const SyncItem: FC<{
     action?: 'Agregar' | 'Editar', 
     subItems?: string[], 
     onActionClick?: (e: React.MouseEvent) => void,
-    values?: string[] 
-}> = ({ label, action, subItems, onActionClick, values }) => (
-    <div style={{ padding: '0.75rem 0', borderBottom: '1px solid var(--border-color)' }}>
+    values?: string[],
+    isSelected?: boolean,
+    onSelect?: () => void
+}> = ({ label, action, subItems, onActionClick, values, isSelected, onSelect }) => (
+    <div style={{ padding: '0.75rem 0', borderBottom: '1px solid var(--border-color)', backgroundColor: isSelected ? 'var(--primary-light)' : 'transparent', transition: 'background-color 0.2s', cursor: onSelect ? 'pointer' : 'default' }} onClick={onSelect}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-color)', textTransform: 'uppercase' }}>{label}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                {onSelect && (
+                    <input 
+                        type="checkbox" 
+                        checked={isSelected} 
+                        onChange={() => {}} // Handled by div click
+                        style={{ cursor: 'pointer' }}
+                    />
+                )}
+                <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-color)', textTransform: 'uppercase' }}>{label}</span>
+            </div>
             {action && (
                 <button 
-                    onClick={onActionClick}
+                    onClick={(e) => { e.stopPropagation(); onActionClick?.(e); }}
                     style={{ 
                         background: 'transparent', 
                         border: 'none', 
@@ -65,6 +77,61 @@ const SummaryPanel: FC<SummaryPanelProps> = ({
     });
     const [formData, setFormData] = useState<any>({});
     const buttonRef = useRef<DOMRect | undefined>(undefined);
+    const [selectedItems, setSelectedItems] = useState<string[]>([]);
+
+    const toggleSelection = (label: string) => {
+        setSelectedItems(prev => 
+            prev.includes(label) ? prev.filter(i => i !== label) : [...prev, label]
+        );
+    };
+
+    const handleSyncWithAi = () => {
+        if (selectedItems.length === 0) {
+            // If nothing selected, send the whole summary
+            sendContextToAi(formatSummaryForAI());
+        } else {
+            // Build custom context based on selection
+            let customFullText = `Paciente: ${person?.full_name}\n\n`;
+            let customDisplayText = `Contexto seleccionado de ${person?.full_name}`;
+
+            if (selectedItems.includes('Embarazo')) {
+                const vals = medicalHistory.filter(h => h.condition === 'Embarazo').map(h => h.condition);
+                if (vals.length > 0) customFullText += `Embarazo:\n${vals.map(v => `• ${v}`).join('\n')}\n\n`;
+            }
+            if (selectedItems.includes('Medicamentos')) {
+                const vals = medications.filter(m => !m.notes?.toLowerCase().includes('frecuencia cardiaca')).map(m => `${m.name} (${m.dosage || ''})`);
+                if (vals.length > 0) customFullText += `Medicamentos:\n${vals.map(v => `• ${v}`).join('\n')}\n\n`;
+            }
+            if (selectedItems.includes('Alergias')) {
+                const vals = allergies.map(a => `${a.substance} (${a.severity || ''})`);
+                if (vals.length > 0) customFullText += `Alergias:\n${vals.map(v => `• ${v}`).join('\n')}\n\n`;
+            }
+            if (selectedItems.includes('Padecimiento')) {
+                const vals = medicalHistory.filter(h => h.condition !== 'Embarazo').map(h => h.condition);
+                if (vals.length > 0) customFullText += `Padecimientos:\n${vals.map(v => `• ${v}`).join('\n')}\n\n`;
+            }
+            // Discapacidad has no values array mapped in the original code, skipping for now or add if needed
+            if (selectedItems.includes('Información Adicional')) {
+                customFullText += `Información Adicional:\nEstatura: ${latestMetrics?.height_cm ? `${latestMetrics.height_cm} cm` : '-'}\nPeso: ${latestMetrics?.weight_kg ? `${latestMetrics.weight_kg} kg` : '-'}\nSexo: ${person?.gender || '-'}\n\n`;
+            }
+            if (selectedItems.includes('Notas')) {
+                if (person?.notes) customFullText += `Notas:\n${person.notes}\n\n`;
+            }
+            if (selectedItems.includes('Fecha de Nacimiento')) {
+                if (person?.birth_date) customFullText += `Fecha de Nacimiento: ${person.birth_date}\n\n`;
+            }
+            if (selectedItems.includes('Medicamentos que Afectan la Frecuencia Cardiaca')) {
+                const vals = medications.filter(m => m.notes?.toLowerCase().includes('frecuencia cardiaca')).map(m => `${m.name} (${m.dosage || ''})`);
+                if (vals.length > 0) customFullText += `Medicamentos que Afectan la Frecuencia Cardiaca:\n${vals.map(v => `• ${v}`).join('\n')}\n\n`;
+            }
+            if (selectedItems.includes('Objetivo')) {
+                if (person?.health_goal) customFullText += `Objetivo de Salud:\n${person.health_goal}\n\n`;
+            }
+
+            sendContextToAi({ displayText: customDisplayText, fullText: customFullText });
+            setSelectedItems([]); // Clear selection after sending
+        }
+    };
 
     const handleActionClick = (e: React.MouseEvent, type: string, label: string, action: string) => {
         const rect = (e.target as HTMLElement).getBoundingClientRect();
@@ -181,7 +248,7 @@ const SummaryPanel: FC<SummaryPanelProps> = ({
 
             <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)' }}>
                 <button 
-                    onClick={() => sendContextToAi(formatSummaryForAI())}
+                    onClick={handleSyncWithAi}
                     style={{ 
                         width: '100%', 
                         padding: '0.75rem', 
@@ -200,7 +267,7 @@ const SummaryPanel: FC<SummaryPanelProps> = ({
                     }}
                 >
                     <span>{ICONS.sparkles}</span>
-                    Sincronizar con asistente
+                    {selectedItems.length > 0 ? `Sincronizar (${selectedItems.length}) con asistente` : 'Sincronizar todo con asistente'}
                 </button>
             </div>
             
@@ -210,29 +277,39 @@ const SummaryPanel: FC<SummaryPanelProps> = ({
                     action="Agregar" 
                     onActionClick={(e) => handleActionClick(e, 'condition', 'Embarazo', 'Agregar')} 
                     values={medicalHistory.filter(h => h.condition === 'Embarazo').map(h => h.condition)}
+                    isSelected={selectedItems.includes('Embarazo')}
+                    onSelect={() => toggleSelection('Embarazo')}
                 />
                 <SyncItem 
                     label="Medicamentos" 
                     action="Agregar" 
                     onActionClick={(e) => handleActionClick(e, 'medication', 'Medicamentos', 'Agregar')} 
                     values={medications.filter(m => !m.notes?.toLowerCase().includes('frecuencia cardiaca')).map(m => `${m.name} (${m.dosage || ''})`)}
+                    isSelected={selectedItems.includes('Medicamentos')}
+                    onSelect={() => toggleSelection('Medicamentos')}
                 />
                 <SyncItem 
                     label="Alergias" 
                     action="Agregar" 
                     onActionClick={(e) => handleActionClick(e, 'allergy', 'Alergias', 'Agregar')} 
                     values={allergies.map(a => `${a.substance} (${a.severity || ''})`)}
+                    isSelected={selectedItems.includes('Alergias')}
+                    onSelect={() => toggleSelection('Alergias')}
                 />
                 <SyncItem 
                     label="Padecimiento" 
                     action="Agregar" 
                     onActionClick={(e) => handleActionClick(e, 'condition', 'Padecimiento', 'Agregar')} 
                     values={medicalHistory.filter(h => h.condition !== 'Embarazo').map(h => h.condition)}
+                    isSelected={selectedItems.includes('Padecimiento')}
+                    onSelect={() => toggleSelection('Padecimiento')}
                 />
                 <SyncItem 
                     label="Discapacidad" 
                     action="Agregar" 
                     onActionClick={(e) => handleActionClick(e, 'condition', 'Discapacidad', 'Agregar')} 
+                    isSelected={selectedItems.includes('Discapacidad')}
+                    onSelect={() => toggleSelection('Discapacidad')}
                 />
                 <SyncItem 
                     label="Información Adicional" 
@@ -245,24 +322,32 @@ const SummaryPanel: FC<SummaryPanelProps> = ({
                         '-' // TODO: Blood type
                     ]}
                     onActionClick={(e) => handleActionClick(e, 'metrics', 'Información Adicional', 'Editar')}
+                    isSelected={selectedItems.includes('Información Adicional')}
+                    onSelect={() => toggleSelection('Información Adicional')}
                 />
                 <SyncItem 
                     label="Notas" 
                     action="Editar"
                     onActionClick={(e) => handleActionClick(e, 'notes', 'Notas', 'Editar')}
                     values={person?.notes ? [person.notes] : []}
+                    isSelected={selectedItems.includes('Notas')}
+                    onSelect={() => toggleSelection('Notas')}
                 />
                 <SyncItem 
                     label="Fecha de Nacimiento" 
                     action="Editar" 
                     onActionClick={(e) => handleActionClick(e, 'birth_date', 'Fecha de Nacimiento', 'Editar')} 
                     values={person?.birth_date ? [person.birth_date] : []}
+                    isSelected={selectedItems.includes('Fecha de Nacimiento')}
+                    onSelect={() => toggleSelection('Fecha de Nacimiento')}
                 />
                 <SyncItem 
                     label="Medicamentos que Afectan la Frecuencia Cardiaca" 
                     action="Agregar"
                     onActionClick={(e) => handleActionClick(e, 'medication', 'Medicamentos que Afectan la Frecuencia Cardiaca', 'Agregar')}
                     values={medications.filter(m => m.notes?.toLowerCase().includes('frecuencia cardiaca')).map(m => `${m.name} (${m.dosage || ''})`)}
+                    isSelected={selectedItems.includes('Medicamentos que Afectan la Frecuencia Cardiaca')}
+                    onSelect={() => toggleSelection('Medicamentos que Afectan la Frecuencia Cardiaca')}
                 />
                 <SyncItem 
                     label="Objetivo" 
@@ -270,6 +355,8 @@ const SummaryPanel: FC<SummaryPanelProps> = ({
                     subItems={['Pérdida de peso', 'Aumento de masa muscular', 'Control de índice glucémico', 'Otros / especificar']} 
                     onActionClick={(e) => handleActionClick(e, 'goal', 'Objetivo', 'Editar')}
                     values={person?.health_goal ? [person.health_goal] : []}
+                    isSelected={selectedItems.includes('Objetivo')}
+                    onSelect={() => toggleSelection('Objetivo')}
                 />
             </div>
         </div>
