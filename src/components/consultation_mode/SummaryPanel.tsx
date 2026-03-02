@@ -16,7 +16,7 @@ interface SummaryPanelProps {
 
 const SyncItem: FC<{ 
     label: string, 
-    action?: 'AGREGAR' | 'EDITAR', 
+    action?: 'Agregar' | 'Editar', 
     subItems?: string[], 
     onActionClick?: (e: React.MouseEvent) => void,
     values?: string[] 
@@ -207,68 +207,68 @@ const SummaryPanel: FC<SummaryPanelProps> = ({
             <div style={{ flex: 1, overflowY: 'auto', padding: '0 1rem' }}>
                 <SyncItem 
                     label="Embarazo" 
-                    action="AGREGAR" 
-                    onActionClick={(e) => handleActionClick(e, 'condition', 'Embarazo', 'AGREGAR')} 
+                    action="Agregar" 
+                    onActionClick={(e) => handleActionClick(e, 'condition', 'Embarazo', 'Agregar')} 
                     values={medicalHistory.filter(h => h.condition === 'Embarazo').map(h => h.condition)}
                 />
                 <SyncItem 
                     label="Medicamentos" 
-                    action="AGREGAR" 
-                    onActionClick={(e) => handleActionClick(e, 'medication', 'Medicamentos', 'AGREGAR')} 
+                    action="Agregar" 
+                    onActionClick={(e) => handleActionClick(e, 'medication', 'Medicamentos', 'Agregar')} 
                     values={medications.filter(m => !m.notes?.toLowerCase().includes('frecuencia cardiaca')).map(m => `${m.name} (${m.dosage || ''})`)}
                 />
                 <SyncItem 
                     label="Alergias" 
-                    action="AGREGAR" 
-                    onActionClick={(e) => handleActionClick(e, 'allergy', 'Alergias', 'AGREGAR')} 
+                    action="Agregar" 
+                    onActionClick={(e) => handleActionClick(e, 'allergy', 'Alergias', 'Agregar')} 
                     values={allergies.map(a => `${a.substance} (${a.severity || ''})`)}
                 />
                 <SyncItem 
                     label="Padecimiento" 
-                    action="AGREGAR" 
-                    onActionClick={(e) => handleActionClick(e, 'condition', 'Padecimiento', 'AGREGAR')} 
+                    action="Agregar" 
+                    onActionClick={(e) => handleActionClick(e, 'condition', 'Padecimiento', 'Agregar')} 
                     values={medicalHistory.filter(h => h.condition !== 'Embarazo').map(h => h.condition)}
                 />
                 <SyncItem 
                     label="Discapacidad" 
-                    action="AGREGAR" 
-                    onActionClick={(e) => handleActionClick(e, 'condition', 'Discapacidad', 'AGREGAR')} 
+                    action="Agregar" 
+                    onActionClick={(e) => handleActionClick(e, 'condition', 'Discapacidad', 'Agregar')} 
                 />
                 <SyncItem 
-                    label="Informacion adicional" 
-                    action="EDITAR" 
-                    subItems={['Estatura', 'Peso', 'Sexo', 'Grupo Sanguineo']} 
+                    label="Información Adicional" 
+                    action="Editar" 
+                    subItems={['Estatura', 'Peso', 'Sexo', 'Grupo Sanguíneo']} 
                     values={[
                         latestMetrics?.height_cm ? `${latestMetrics.height_cm} cm` : '-',
                         latestMetrics?.weight_kg ? `${latestMetrics.weight_kg} kg` : '-',
                         person?.gender || '-',
                         '-' // TODO: Blood type
                     ]}
-                    onActionClick={(e) => handleActionClick(e, 'metrics', 'Informacion adicional', 'EDITAR')}
+                    onActionClick={(e) => handleActionClick(e, 'metrics', 'Información Adicional', 'Editar')}
                 />
                 <SyncItem 
                     label="Notas" 
-                    action="EDITAR"
-                    onActionClick={(e) => handleActionClick(e, 'notes', 'Notas', 'EDITAR')}
+                    action="Editar"
+                    onActionClick={(e) => handleActionClick(e, 'notes', 'Notas', 'Editar')}
                     values={person?.notes ? [person.notes] : []}
                 />
                 <SyncItem 
-                    label="Fecha de nacimiento" 
-                    action="EDITAR" 
-                    onActionClick={(e) => handleActionClick(e, 'birth_date', 'Fecha de nacimiento', 'EDITAR')} 
+                    label="Fecha de Nacimiento" 
+                    action="Editar" 
+                    onActionClick={(e) => handleActionClick(e, 'birth_date', 'Fecha de Nacimiento', 'Editar')} 
                     values={person?.birth_date ? [person.birth_date] : []}
                 />
                 <SyncItem 
-                    label="Medicamentos que afectan la frecuencia cardiaca" 
-                    action="AGREGAR"
-                    onActionClick={(e) => handleActionClick(e, 'medication', 'Medicamentos que afectan la frecuencia cardiaca', 'AGREGAR')}
+                    label="Medicamentos que Afectan la Frecuencia Cardiaca" 
+                    action="Agregar"
+                    onActionClick={(e) => handleActionClick(e, 'medication', 'Medicamentos que Afectan la Frecuencia Cardiaca', 'Agregar')}
                     values={medications.filter(m => m.notes?.toLowerCase().includes('frecuencia cardiaca')).map(m => `${m.name} (${m.dosage || ''})`)}
                 />
                 <SyncItem 
                     label="Objetivo" 
-                    action="EDITAR" 
-                    subItems={['Perdida de peso', 'Aumento de masa muscular', 'Control de indice glucemico', 'Otros / especificar']} 
-                    onActionClick={(e) => handleActionClick(e, 'goal', 'Objetivo', 'EDITAR')}
+                    action="Editar" 
+                    subItems={['Pérdida de peso', 'Aumento de masa muscular', 'Control de índice glucémico', 'Otros / especificar']} 
+                    onActionClick={(e) => handleActionClick(e, 'goal', 'Objetivo', 'Editar')}
                     values={person?.health_goal ? [person.health_goal] : []}
                 />
             </div>
