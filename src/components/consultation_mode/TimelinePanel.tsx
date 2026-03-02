@@ -163,7 +163,7 @@ const TimelinePanel: FC<TimelinePanelProps> = ({
                                     padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--border-color)',
                                     backgroundColor: 'var(--surface-hover-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem'
                                 }}>
-                                    <div onClick={() => item.type !== 'diet_plan_history' && handleTimelineItemClick(item)} style={{cursor: item.type !== 'diet_plan_history' ? 'pointer' : 'default', flex: 1}}>
+                                    <div onClick={() => item.type !== 'diet_plan_history' && handleTimelineItemClick(item)} style={{cursor: item.type !== 'diet_plan_history' ? 'pointer' : 'default', flex: 1, minWidth: 0}}>
                                         <p style={{ margin: 0, color: 'var(--text-light)', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>
                                             {item.date.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
                                         </p>

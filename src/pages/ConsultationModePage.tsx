@@ -518,11 +518,11 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
             </div>
 
             {/* Main Layout - 3 Columns */}
-            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', overflow: 'hidden', gap: '1rem', padding: '1rem', backgroundColor: 'var(--background-color)' }}>
+            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', overflow: 'hidden', gap: '1rem', padding: '1rem', backgroundColor: 'var(--background-color)' }}>
                 
                 {/* 1. Left: Summary & Quick Actions */}
                 {!isMobile && (
-                    <div style={{ overflowY: 'auto', backgroundColor: 'var(--surface-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ overflow: 'hidden', backgroundColor: 'var(--surface-color)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                         <SummaryPanel 
                             person={person}
                             latestMetrics={latestMetrics}
@@ -537,7 +537,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                 )}
 
                 {/* 2. Center: Unified Timeline */}
-                <div style={{ overflowY: 'auto', backgroundColor: 'var(--surface-color)', display: 'flex', flexDirection: 'column', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                <div style={{ overflow: 'hidden', backgroundColor: 'var(--surface-color)', display: 'flex', flexDirection: 'column', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                      <TimelinePanel 
                         person={person}
                         timeline={timeline} 
@@ -551,7 +551,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
 
                 {/* 3. Right: AI Assistant */}
                 {!isMobile && (
-                    <div id="ai-panel-container" style={{ backgroundColor: 'var(--surface-color)', display: 'flex', flexDirection: 'column', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                    <div id="ai-panel-container" style={{ overflow: 'hidden', backgroundColor: 'var(--surface-color)', display: 'flex', flexDirection: 'column', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                          <AiAssistantPanel 
                             messages={aiMessages}
                             aiLoading={aiLoading}
