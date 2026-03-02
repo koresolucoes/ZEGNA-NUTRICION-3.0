@@ -17,6 +17,7 @@ import ExerciseLogDetailModal from '../components/modals/ExerciseLogDetailModal'
 import ReportModal from '../components/ReportModal';
 import PatientSummaryModal from '../components/consultation_mode/PatientSummaryModal';
 import PrescriptionBuilderModal from '../components/consultation_mode/PrescriptionBuilderModal';
+import SoapGeneratorModal from '../components/consultation_mode/SoapGeneratorModal';
 
 interface AiMessage {
     role: 'user' | 'model';
@@ -165,6 +166,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
     const [isToolsOpen, setIsToolsOpen] = useState(false);
     const [isPatientSummaryOpen, setIsPatientSummaryOpen] = useState(false);
     const [isPrescriptionBuilderOpen, setIsPrescriptionBuilderOpen] = useState(false);
+    const [isSoapGeneratorOpen, setIsSoapGeneratorOpen] = useState(false);
 
     // AI Assistant State
     const [aiMessages, setAiMessages] = useState<AiMessage[]>([]);
@@ -186,6 +188,64 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
             age--;
         }
         return `${age}`;
+    };
+
+    const handleGenerateSoapNote = async (subjectiveData: any) => {
+        setAiLoading(true);
+        setIsSoapGeneratorOpen(false);
+
+        const context = formatSummaryForAI().fullText;
+        const prompt = `
+Genera una Nota Clínica con formato SOAP (Subjetivo, Objetivo, Análisis, Plan) para este paciente.
+Usa un tono profesional, médico y narrativo.
+
+DATOS SUBJETIVOS (Proporcionados por el paciente):
+- Apetito: ${subjectiveData.appetite}
+- Energía: ${subjectiveData.energy_level}
+- Sueño: ${subjectiveData.sleep_hours} horas, Calidad ${subjectiveData.sleep_quality}
+- Digestión: ${subjectiveData.digestive_issues}
+- Agua: ${subjectiveData.water_intake}
+- Estrés: ${subjectiveData.stress_level}
+- Actividad Física: ${subjectiveData.exercise_frequency}
+- Cambios Recientes: ${subjectiveData.recent_changes}
+- Síntomas: ${subjectiveData.symptoms}
+
+DATOS OBJETIVOS (Del expediente):
+${context}
+
+INSTRUCCIONES:
+1. Redacta el apartado SUBJETIVO integrando los datos de arriba en un párrafo coherente.
+2. Redacta el apartado OBJETIVO con los datos antropométricos y bioquímicos disponibles.
+3. Redacta el ANÁLISIS con un breve diagnóstico nutricional basado en los datos.
+4. Redacta el PLAN con recomendaciones generales.
+5. NO uses markdown con negritas excesivas, usa un formato limpio de texto.
+`;
+
+        try {
+            const response = await fetch('/api/gemini', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clinic_id: clinic?.id,
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                    config: {
+                        systemInstruction: "Eres un asistente clínico experto. Genera notas SOAP precisas y profesionales.",
+                    }
+                })
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Error contacting AI');
+
+            setAiMessages(prev => [...prev, 
+                { role: 'user', content: "Generar Nota SOAP basada en cuestionario." },
+                { role: 'model', content: data.text }
+            ]);
+        } catch (error: any) {
+            setAiMessages(prev => [...prev, { role: 'model', content: `Error al generar nota: ${error.message}` }]);
+        } finally {
+            setAiLoading(false);
+        }
     };
     
     // --- TIMELINE LOGIC ---
@@ -464,6 +524,16 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                 document.body
             )}
 
+            {isSoapGeneratorOpen && (
+                <SoapGeneratorModal 
+                    isOpen={isSoapGeneratorOpen} 
+                    onClose={() => setIsSoapGeneratorOpen(false)} 
+                    onGenerate={handleGenerateSoapNote}
+                    person={person}
+                    loading={aiLoading}
+                />
+            )}
+
             {isToolsOpen && (
                 <ToolsModal onClose={() => setIsToolsOpen(false)} isMobile={isMobile}>
                     <CalculatorsPage 
@@ -565,6 +635,7 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                             userInput={aiInput}
                             setUserInput={setAiInput}
                             aiInputRef={aiInputRef}
+                            onOpenSoapGenerator={() => setIsSoapGeneratorOpen(true)}
                          />
                     </div>
                 )}

@@ -19,6 +19,7 @@ interface AiAssistantPanelProps {
     userInput: string;
     setUserInput: React.Dispatch<React.SetStateAction<string>>;
     aiInputRef: RefObject<HTMLInputElement>;
+    onOpenSoapGenerator?: () => void;
 }
 
 const quickPrompts = [
@@ -74,7 +75,7 @@ const MarkdownRenderer: FC<{ content: string }> = ({ content }) => {
 
 const AiAssistantPanel: FC<AiAssistantPanelProps> = ({
     messages, aiLoading, chatEndRef, handleAiSubmit,
-    aiContext, setAiContext, userInput, setUserInput, aiInputRef
+    aiContext, setAiContext, userInput, setUserInput, aiInputRef, onOpenSoapGenerator
 }) => {
     const [showContextModal, setShowContextModal] = useState(false);
 
@@ -90,6 +91,34 @@ const AiAssistantPanel: FC<AiAssistantPanelProps> = ({
 
     return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--surface-color)', overflow: 'hidden' }}>
+            {/* Header */}
+            <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--surface-color)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ color: 'var(--primary-color)' }}>{ICONS.sparkles}</span>
+                    <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Asistente IA</h3>
+                </div>
+                {onOpenSoapGenerator && (
+                    <button 
+                        onClick={onOpenSoapGenerator}
+                        style={{
+                            fontSize: '0.75rem',
+                            padding: '0.25rem 0.5rem',
+                            backgroundColor: 'var(--primary-light)',
+                            color: 'var(--primary-color)',
+                            border: '1px solid var(--primary-color)',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem'
+                        }}
+                    >
+                        {ICONS.file} Generar Nota Clínica
+                    </button>
+                )}
+            </div>
+
             {showContextModal && aiContext && (
                 <div style={{...styles.modalOverlay, zIndex: 3000}}>
                     <div style={{...styles.modalContent, maxWidth: '600px', maxHeight: '80vh', display: 'flex', flexDirection: 'column'}}>
