@@ -21,11 +21,12 @@ interface ClinicalHistoryTabProps {
     onEditMedication: (medication: Medication | null) => void;
     onEditLifestyle: () => void;
     openModal: (action: 'deleteAllergy' | 'deleteMedicalHistory' | 'deleteMedication' | 'deleteConsultation', id: string, text: string) => void;
+    onOpenSoapGenerator?: () => void;
 }
 
 export const ClinicalHistoryTab: FC<ClinicalHistoryTabProps> = ({
     allergies, medicalHistory, medications, lifestyleHabits, consultations, memberMap,
-    onEditAllergy, onEditMedicalHistory, onEditMedication, onEditLifestyle, openModal
+    onEditAllergy, onEditMedicalHistory, onEditMedication, onEditLifestyle, openModal, onOpenSoapGenerator
 }) => {
     const [activeSubTab, setActiveSubTab] = useState('allergies');
 
@@ -54,21 +55,46 @@ export const ClinicalHistoryTab: FC<ClinicalHistoryTabProps> = ({
     return (
         <section className="fade-in" style={{ overflow: 'visible' }}>
             {/* Sub-navigation using Folder Tabs metaphor */}
-            <div style={{...styles.tabContainer, paddingLeft: 0, marginBottom: '-1px'}} className="hide-scrollbar">
-                {[
-                    { key: 'allergies', label: 'Alergias' },
-                    { key: 'medical', label: 'Historial Médico' },
-                    { key: 'medications', label: 'Medicamentos' },
-                    { key: 'lifestyle', label: 'Hábitos y Laboratorio' }
-                ].map(tab => (
-                    <button
-                        key={tab.key}
-                        onClick={() => setActiveSubTab(tab.key)}
-                        style={activeSubTab === tab.key ? {...styles.folderTab, ...styles.folderTabActive} : styles.folderTab}
+            <div style={{...styles.tabContainer, paddingLeft: 0, marginBottom: '-1px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}} className="hide-scrollbar">
+                <div style={{display: 'flex'}}>
+                    {[
+                        { key: 'allergies', label: 'Alergias' },
+                        { key: 'medical', label: 'Historial Médico' },
+                        { key: 'medications', label: 'Medicamentos' },
+                        { key: 'lifestyle', label: 'Hábitos y Laboratorio' }
+                    ].map(tab => (
+                        <button
+                            key={tab.key}
+                            onClick={() => setActiveSubTab(tab.key)}
+                            style={activeSubTab === tab.key ? {...styles.folderTab, ...styles.folderTabActive} : styles.folderTab}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+                {onOpenSoapGenerator && (
+                    <button 
+                        onClick={onOpenSoapGenerator}
+                        style={{
+                            fontSize: '0.8rem',
+                            padding: '0.4rem 0.8rem',
+                            backgroundColor: 'var(--primary-light)',
+                            color: 'var(--primary-color)',
+                            border: '1px solid var(--primary-color)',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.4rem',
+                            marginBottom: '0.5rem',
+                            marginRight: '1rem'
+                        }}
                     >
-                        {tab.label}
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                        Generar Nota Clínica
                     </button>
-                ))}
+                )}
             </div>
             
             <div style={styles.nestedFolderContent}>

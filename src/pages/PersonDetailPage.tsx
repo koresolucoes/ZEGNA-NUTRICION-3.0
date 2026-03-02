@@ -49,6 +49,7 @@ import ConsultingRoomModal from '../components/shared/ConsultingRoomModal';
 import MealPlanGenerator from '../components/MealPlanGenerator';
 import ExercisePlanGenerator from '../components/ExercisePlanGenerator';
 import ConsultationModePage from './ConsultationModePage';
+import SoapGeneratorModal from '../components/consultation_mode/SoapGeneratorModal';
 import { createPortal } from 'react-dom';
 
 const modalRoot = document.getElementById('modal-root');
@@ -184,6 +185,80 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
     const [isCreatingManualLog, setIsCreatingManualLog] = useState<'diet' | 'exercise' | null>(null);
     const [isFileUploadModalOpen, setFileUploadModalOpen] = useState(false);
     const [isReportModalOpen, setReportModalOpen] = useState(false);
+    const [isSoapGeneratorOpen, setIsSoapGeneratorOpen] = useState(false);
+    const [aiLoading, setAiLoading] = useState(false);
+
+    // --- AI Logic for SOAP Note ---
+    const handleGenerateSoapNote = async (subjectiveData: any) => {
+        setAiLoading(true);
+        setIsSoapGeneratorOpen(false);
+
+        const context = `
+Paciente: ${person?.full_name}
+Edad: ${person?.birth_date ? new Date().getFullYear() - new Date(person.birth_date).getFullYear() : 'N/A'}
+Objetivo: ${person?.health_goal || 'No definido'}
+Alergias: ${allergies.map(a => a.substance).join(', ')}
+Padecimientos: ${medicalHistory.map(h => h.condition).join(', ')}
+Medicamentos: ${medications.map(m => m.name).join(', ')}
+`;
+
+        const prompt = `
+Genera una Nota Clínica con formato SOAP (Subjetivo, Objetivo, Análisis, Plan) para este paciente.
+Usa un tono profesional, médico y narrativo.
+
+DATOS SUBJETIVOS (Proporcionados por el paciente):
+- Apetito: ${subjectiveData.appetite}
+- Energía: ${subjectiveData.energy_level}
+- Sueño: ${subjectiveData.sleep_hours} horas, Calidad ${subjectiveData.sleep_quality}
+- Digestión: ${subjectiveData.digestive_issues}
+- Agua: ${subjectiveData.water_intake}
+- Estrés: ${subjectiveData.stress_level}
+- Actividad Física: ${subjectiveData.exercise_frequency}
+- Cambios Recientes: ${subjectiveData.recent_changes}
+- Síntomas: ${subjectiveData.symptoms}
+
+DATOS OBJETIVOS (Del expediente):
+${context}
+
+INSTRUCCIONES:
+1. Redacta el apartado SUBJETIVO integrando los datos de arriba en un párrafo coherente.
+2. Redacta el apartado OBJETIVO con los datos antropométricos y bioquímicos disponibles.
+3. Redacta el ANÁLISIS con un breve diagnóstico nutricional basado en los datos.
+4. Redacta el PLAN con recomendaciones generales.
+5. NO uses markdown con negritas excesivas, usa un formato limpio de texto.
+`;
+
+        try {
+            const response = await fetch('/api/gemini', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clinic_id: clinic?.id,
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                    config: {
+                        systemInstruction: "Eres un asistente clínico experto. Genera notas SOAP precisas y profesionales.",
+                    }
+                })
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Error contacting AI');
+
+            // Append to private notes
+            const newNote = `\n\n--- NOTA SOAP GENERADA (${new Date().toLocaleDateString()}) ---\n${data.text}`;
+            setNote(prev => prev + newNote);
+            
+            // Save immediately
+            await supabase.from('persons').update({ notes: person?.notes ? person.notes + newNote : newNote }).eq('id', personId);
+            fetchData();
+
+        } catch (error: any) {
+            console.error("Error generating SOAP note:", error);
+            alert("Error al generar la nota. Por favor intente de nuevo.");
+        } finally {
+            setAiLoading(false);
+        }
+    };
     const [modalState, setModalState] = useState<{ isOpen: boolean; action: any; idToDelete: string | null; text: string | null; fileToDeletePath?: string | null; }>({ isOpen: false, action: null, idToDelete: null, text: null, fileToDeletePath: null });
     const [viewingConsultation, setViewingConsultation] = useState<ConsultationWithLabs | null>(null);
     const [viewingLog, setViewingLog] = useState<Log | null>(null);
@@ -597,6 +672,7 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
             {isLifestyleModalOpen && <LifestyleFormModal isOpen={isLifestyleModalOpen} onClose={()=>{handleClinicalHistorySave();fetchData()}} personId={personId} habitsToEdit={lifestyleHabits} />}
             {isFileUploadModalOpen && <FileUploadModal isOpen={isFileUploadModalOpen} onClose={()=>{handleFileUploadSuccess();fetchData()}} personId={personId} />}
             {isReportModalOpen && person && <ReportModal person={person} consultations={consultations} dietLogs={allDietLogs} exerciseLogs={allExerciseLogs} allergies={allergies} medicalHistory={medicalHistory} medications={medications} lifestyleHabits={lifestyleHabits} onClose={() => setReportModalOpen(false)} isMobile={isMobile} nutritionistProfile={nutritionistProfile} clinic={clinic} />}
+            {isSoapGeneratorOpen && person && <SoapGeneratorModal isOpen={isSoapGeneratorOpen} onClose={() => setIsSoapGeneratorOpen(false)} onGenerate={handleGenerateSoapNote} person={person} loading={aiLoading} />}
             {viewingConsultation && <ConsultationDetailModal consultation={viewingConsultation} onClose={() => setViewingConsultation(null)} zIndex={isConsultationMode ? 2200 : 1050} />}
             {viewingLog && <LogDetailModal log={viewingLog} onClose={() => setViewingLog(null)} zIndex={isConsultationMode ? 2200 : 1050} />}
             {viewingDietLog && <DietLogDetailModal log={viewingDietLog} onClose={() => setViewingDietLog(null)} zIndex={isConsultationMode ? 2200 : 1050} />}
@@ -687,6 +763,7 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
                                         onEditMedication={(m) => handleOpenClinicalHistoryModal('medication', m)} 
                                         onEditLifestyle={() => setLifestyleModalOpen(true)} 
                                         openModal={openModal} 
+                                        onOpenSoapGenerator={() => setIsSoapGeneratorOpen(true)}
                                     />
                                 )}
 
