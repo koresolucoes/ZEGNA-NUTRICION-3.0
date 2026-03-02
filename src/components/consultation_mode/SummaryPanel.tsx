@@ -14,6 +14,36 @@ interface SummaryPanelProps {
     onSaveData: (type: string, data: any, sourceRect?: DOMRect) => Promise<void>;
 }
 
+const IosSwitch: FC<{ checked?: boolean, onChange?: () => void }> = ({ checked, onChange }) => (
+    <div 
+        onClick={(e) => { e.stopPropagation(); onChange?.(); }}
+        style={{
+            width: '36px',
+            height: '20px',
+            backgroundColor: checked ? 'var(--primary-color)' : '#E5E7EB',
+            borderRadius: '10px',
+            position: 'relative',
+            cursor: 'pointer',
+            transition: 'background-color 0.3s',
+            flexShrink: 0
+        }}
+    >
+        <div 
+            style={{
+                width: '16px',
+                height: '16px',
+                backgroundColor: 'white',
+                borderRadius: '50%',
+                position: 'absolute',
+                top: '2px',
+                left: checked ? '18px' : '2px',
+                transition: 'left 0.3s',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+            }}
+        />
+    </div>
+);
+
 const SyncItem: FC<{ 
     label: string, 
     action?: 'Agregar' | 'Editar', 
@@ -23,49 +53,47 @@ const SyncItem: FC<{
     isSelected?: boolean,
     onSelect?: () => void
 }> = ({ label, action, subItems, onActionClick, values, isSelected, onSelect }) => (
-    <div style={{ padding: '0.75rem 0', borderBottom: '1px solid var(--border-color)', backgroundColor: isSelected ? 'var(--primary-light)' : 'transparent', transition: 'background-color 0.2s', cursor: onSelect ? 'pointer' : 'default' }} onClick={onSelect}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                {onSelect && (
-                    <input 
-                        type="checkbox" 
-                        checked={isSelected} 
-                        onChange={() => {}} // Handled by div click
-                        style={{ cursor: 'pointer' }}
-                    />
-                )}
-                <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-color)', textTransform: 'uppercase' }}>{label}</span>
+    <div style={{ padding: '0.75rem 0', borderBottom: '1px solid var(--border-color)', backgroundColor: isSelected ? 'var(--primary-light)' : 'transparent', transition: 'background-color 0.2s', cursor: onSelect ? 'pointer' : 'default', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }} onClick={onSelect}>
+        {onSelect && (
+            <div style={{ paddingTop: '0.1rem' }}>
+                <IosSwitch checked={isSelected} onChange={onSelect} />
             </div>
-            {action && (
-                <button 
-                    onClick={(e) => { e.stopPropagation(); onActionClick?.(e); }}
-                    style={{ 
-                        background: 'transparent', 
-                        border: 'none', 
-                        color: 'var(--primary-color)', 
-                        fontWeight: 600, 
-                        fontSize: '0.8rem', 
-                        cursor: 'pointer',
-                        padding: '0.25rem 0.5rem'
-                    }}>
-                    {action}
-                </button>
+        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-color)', textTransform: 'uppercase' }}>{label}</span>
+                {action && (
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onActionClick?.(e); }}
+                        style={{ 
+                            background: 'transparent', 
+                            border: 'none', 
+                            color: 'var(--primary-color)', 
+                            fontWeight: 600, 
+                            fontSize: '0.8rem', 
+                            cursor: 'pointer',
+                            padding: '0.25rem 0.5rem',
+                            flexShrink: 0
+                        }}>
+                        {action}
+                    </button>
+                )}
+            </div>
+            {subItems && (
+                <div style={{ marginTop: '0.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    {subItems.map((item, idx) => (
+                        <div key={idx} style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>
+                            <span style={{ fontWeight: 600 }}>{item}:</span> {values && values[idx] ? values[idx] : '-'}
+                        </div>
+                    ))}
+                </div>
+            )}
+            {!subItems && values && values.length > 0 && (
+                 <div style={{ marginTop: '0.25rem', fontSize: '0.85rem', color: 'var(--text-color)' }}>
+                    {values.map((v, i) => <div key={i}>• {v}</div>)}
+                 </div>
             )}
         </div>
-        {subItems && (
-            <div style={{ marginTop: '0.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                {subItems.map((item, idx) => (
-                    <div key={idx} style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>
-                        <span style={{ fontWeight: 600 }}>{item}:</span> {values && values[idx] ? values[idx] : '-'}
-                    </div>
-                ))}
-            </div>
-        )}
-        {!subItems && values && values.length > 0 && (
-             <div style={{ marginTop: '0.25rem', fontSize: '0.85rem', color: 'var(--text-color)' }}>
-                {values.map((v, i) => <div key={i}>• {v}</div>)}
-             </div>
-        )}
     </div>
 );
 
