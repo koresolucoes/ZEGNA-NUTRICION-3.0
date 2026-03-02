@@ -364,7 +364,10 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
                 let conditionToSave = data.condition;
                 if (data.has_condition === 'No') {
                     conditionToSave = `Niega ${data.label_type}`;
+                } else if (!conditionToSave || conditionToSave.trim() === '') {
+                    conditionToSave = data.label_type || 'Condición no especificada';
                 }
+
                 const { error } = await supabase.from('medical_history').insert({
                     person_id: person.id,
                     condition: conditionToSave,
