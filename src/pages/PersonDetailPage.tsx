@@ -148,7 +148,6 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
     const [allDietLogs, setAllDietLogs] = useState<DietLog[]>([]);
     const [allExerciseLogs, setAllExerciseLogs] = useState<ExerciseLog[]>([]);
     const [allergies, setAllergies] = useState<Allergy[]>([]);
-    const [note, setNote] = useState<string>('');
     const [medicalHistory, setMedicalHistory] = useState<MedicalHistory[]>([]);
     const [medications, setMedications] = useState<Medication[]>([]);
     const [lifestyleHabits, setLifestyleHabits] = useState<LifestyleHabits | null>(null);
@@ -318,7 +317,6 @@ INSTRUCCIONES:
             if (personRes.error) throw personRes.error;
 
             setPerson(personRes.data);
-            setNote(personRes.data?.notes || '');
             setConsultations(consultRes.data || []);
             setLogs(logsRes.data || []);
             setAllDietLogs(dietRes.data || []);
@@ -571,6 +569,7 @@ INSTRUCCIONES:
     
     // Private Notes Widget
     const PrivateNotesWidget = () => {
+        const [note, setNote] = useState(person?.notes || '');
         const [isSaving, setIsSaving] = useState(false);
         const [saved, setSaved] = useState(false);
 

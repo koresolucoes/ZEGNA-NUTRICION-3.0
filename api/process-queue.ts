@@ -49,10 +49,10 @@ export default async function handler(req: any, res: any) {
         return res.status(405).json({ error: 'Método no permitido' });
     }
 
-    // Seguridad: Verificar que la solicitud provenga de una fuente confiable (nuestro cron job o webhook interno)
+    // Seguridad: Verificar que la solicitud provenga de una fuente confiable (nuestro cron job)
     const authToken = req.headers.authorization?.split(' ')[1];
     const VERCEL_AUTOMATION_SECRET = process.env.VERCEL_AUTOMATION_SECRET;
-    if (VERCEL_AUTOMATION_SECRET && authToken !== VERCEL_AUTOMATION_SECRET) {
+    if (!VERCEL_AUTOMATION_SECRET || authToken !== VERCEL_AUTOMATION_SECRET) {
         return res.status(401).json({ error: 'No autorizado' });
     }
     
@@ -122,102 +122,21 @@ export default async function handler(req: any, res: any) {
         if (agentTools?.get_available_slots?.enabled) { functionDeclarations.push({ name: 'get_available_slots', description: 'Consulta los horarios de citas disponibles para una fecha específica.', parameters: { type: Type.OBJECT, properties: { target_date: { type: Type.STRING, description: 'Fecha en formato YYYY-MM-DD.' } }, required: ['target_date'] }, }); }
         if (personData && agentTools?.book_appointment?.enabled) { functionDeclarations.push({ name: 'book_appointment', description: 'Agenda una nueva cita para el paciente actual en un horario específico.', parameters: { type: Type.OBJECT, properties: { start_time: { type: Type.STRING, description: 'Fecha y hora en formato ISO 8601.' }, notes: { type: Type.STRING, description: 'Notas adicionales.' } }, required: ['start_time'] }, }); }
         
-        // 7. Get knowledge base context if enabled
-        let knowledgeBaseContext = "";
-        if (agent.use_knowledge_base) {
-            const keywords = combinedMessage.toLowerCase().split(' ').filter(word => word.length > 3);
-            if (keywords.length > 0) {
-                const titleQuery = keywords.map(kw => `title.ilike.%${kw}%`).join(',');
-                const { data: resources, error: resourceError } = await supabaseAdmin.from('knowledge_base_resources').select('title, content').eq('clinic_id', clinicId).or(titleQuery).limit(3);
-                if (resourceError) console.warn(`[Procesador de Cola] Error querying knowledge base: ${resourceError.message}`);
-                else if (resources && resources.length > 0) {
-                    knowledgeBaseContext = "--- INICIO DE BASE DE CONOCIMIENTO ---\nUtiliza la siguiente información de la base de conocimiento de la clínica como fuente principal para formular tu respuesta.\n\n" +
-                        resources.map(r => `DOCUMENTO: "${r.title}"\nCONTENIDO: ${r.content}\n---`).join('\n') + "\n--- FIN DE BASE DE CONOCIMIENTO ---";
-                }
-            }
-        }
-
-        // --- TIME CONTEXT INJECTION ---
-        const now = new Date();
-        const dateOptions: Intl.DateTimeFormatOptions = { 
-            timeZone: 'America/Mexico_City', 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric', 
-            hour: '2-digit', 
-            minute: '2-digit',
-            hour12: false
-        };
-        const todayString = now.toLocaleString('es-MX', dateOptions);
-        const todayISO = now.toISOString().split('T')[0];
-        const currentDayName = now.toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City', weekday: 'long' });
-
-        let systemInstruction = (agent.system_prompt || 'Eres una secretaria virtual.') + (knowledgeBaseContext ? `\n\n${knowledgeBaseContext}` : '');
+        let systemInstruction = (agent.system_prompt || 'Eres una secretaria virtual.');
         
-        // Add Memory and Time Instructions
-        systemInstruction += `\n\n=== CONTEXTO TEMPORAL OBLIGATORIO ===
-        - FECHA Y HORA ACTUAL: ${todayString} (Zona Horaria: CDMX/México).
-        - DÍA DE LA SEMANA: ${currentDayName}.
-        - FECHA ISO: ${todayISO}.
-        
-        INSTRUCCIÓN CRÍTICA: Si el usuario pregunta "¿qué día es hoy?", "¿qué hora es?" o hace referencia a "mañana/ayer", DEBES usar EXCLUSIVAMENTE la información de "FECHA Y HORA ACTUAL" proporcionada arriba.
-        
-        INSTRUCCIONES DE MEMORIA Y CONTEXTO:
+        // Add Memory Instructions
+        systemInstruction += `\n\nMEMORIA Y CONTEXTO:
         - Tienes acceso al historial reciente de la conversación. ÚSALO.
         - Si el usuario hace referencia a algo dicho anteriormente (ej. "hazlo", "sí", "gracias"), revisa el historial para entender el contexto.
         - Mantén una conversación fluida y natural.`;
 
         if (personData) {
-            // FETCH CRITICAL CLINICAL CONTEXT AND APPOINTMENTS
-            const [allergiesRes, historyRes, lifestyleRes, appointmentsRes] = await Promise.all([
-                supabaseAdmin.from('allergies_intolerances').select('substance, severity').eq('person_id', personData.id),
-                supabaseAdmin.from('medical_history').select('condition').eq('person_id', personData.id),
-                supabaseAdmin.from('lifestyle_habits').select('*').eq('person_id', personData.id).single(),
-                supabaseAdmin.from('appointments')
-                    .select('start_time, title')
-                    .eq('person_id', personData.id)
-                    .eq('status', 'scheduled')
-                    .gte('start_time', new Date().toISOString())
-                    .order('start_time', { ascending: true })
-                    .limit(3)
-            ]);
-
-            const allergiesList = allergiesRes.data?.map(a => `${a.substance} (${a.severity || 'Moderada'})`).join(', ') || 'Ninguna registrada';
-            const conditionsList = historyRes.data?.map(h => h.condition).join(', ') || 'Ninguna registrada';
-            const habits = lifestyleRes.data || {};
-            const preferences = [
-                habits.smokes ? 'Fumador' : null,
-                habits.alcohol_frequency ? `Alcohol: ${habits.alcohol_frequency}` : null
-            ].filter(Boolean).join(', ');
-            
-            const appointmentsList = appointmentsRes.data?.map(appt => 
-                `- ${new Date(appt.start_time).toLocaleString('es-MX', { timeZone: 'America/Mexico_City', dateStyle: 'medium', timeStyle: 'short' })}: ${appt.title}`
-            ).join('\n') || 'No hay citas próximas programadas.';
-
-            systemInstruction += `\n\nIMPORTANTE: Estás conversando con un paciente registrado: ${personData.full_name}.
-            
-            ⚠️ **ALERTA DE SEGURIDAD CLÍNICA - CONTEXTO DEL PACIENTE** ⚠️
-            - ALERGIAS/INTOLERANCIAS: ${allergiesList}
-            - CONDICIONES MÉDICAS: ${conditionsList}
-            - PREFERENCIAS/HÁBITOS: ${preferences || 'Sin datos'}
-            - OBJETIVO DE SALUD: ${personData.health_goal || 'No especificado'}
-            
-            📅 **PRÓXIMAS CITAS PROGRAMADAS**:
-            ${appointmentsList}
-
-            **INSTRUCCIONES CRÍTICAS:**
-            1. ANTES de sugerir cualquier alimento o receta, VERIFICA las alergias e intolerancias listadas arriba. NUNCA sugieras algo que contenga un alérgeno del paciente.
-            2. Si el usuario pregunta sobre una dieta o ejercicio, considera sus condiciones médicas.
-            3. Si no estás seguro si un alimento es seguro, advierte al paciente.
-            4. Si el paciente pregunta "¿Cuándo es mi cita?" o "¿Tengo cita?", consulta la lista de "PRÓXIMAS CITAS PROGRAMADAS" provista arriba.
-
-            Tu función principal es ayudarle con su plan de salud.
-            - Para cualquier pregunta sobre su plan de comidas ESPECÍFICO DEL DÍA, rutina de ejercicio, estado del plan de servicio, DEBES usar la herramienta 'get_my_data_for_ai'.
-            - Para preguntas sobre PROGRESO, peso, historia o cambios a lo largo del tiempo, DEBES usar la herramienta 'get_patient_progress'.
-            - Para agendar una NUEVA cita, DEBES usar la herramienta 'book_appointment'.`;
+            systemInstruction += `\n\nIMPORTANTE: Estás conversando con un paciente registrado: ${personData.full_name}. 
+            - Para consultar su plan del día o estado de suscripción, usa 'get_my_data_for_ai'.
+            - Para consultas sobre su progreso, peso histórico o cambios, usa 'get_patient_progress'.
+            - Para agendar cita, usa 'book_appointment'.`;
         } else {
-            systemInstruction += `\n\nEstás conversando con un usuario no registrado. Puedes proporcionar información general sobre la clínica, pero no puedes acceder o proporcionar datos de ningún paciente.`;
+            systemInstruction += ` Estás conversando con un usuario desconocido.`;
         }
         
         let currentMessages = [...formattedHistory, { role: 'user' as const, parts: [{ text: combinedMessage }] }];
