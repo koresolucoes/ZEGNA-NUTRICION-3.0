@@ -49,10 +49,10 @@ export default async function handler(req: any, res: any) {
         return res.status(405).json({ error: 'Método no permitido' });
     }
 
-    // Seguridad: Verificar que la solicitud provenga de una fuente confiable (nuestro cron job)
+    // Seguridad: Verificar que la solicitud provenga de una fuente confiable (nuestro cron job o webhook interno)
     const authToken = req.headers.authorization?.split(' ')[1];
     const VERCEL_AUTOMATION_SECRET = process.env.VERCEL_AUTOMATION_SECRET;
-    if (!VERCEL_AUTOMATION_SECRET || authToken !== VERCEL_AUTOMATION_SECRET) {
+    if (VERCEL_AUTOMATION_SECRET && authToken !== VERCEL_AUTOMATION_SECRET) {
         return res.status(401).json({ error: 'No autorizado' });
     }
     

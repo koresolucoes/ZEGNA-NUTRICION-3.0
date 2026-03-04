@@ -1,6 +1,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI, FunctionDeclaration, Type, Content } from "@google/genai";
+import processQueueHandler from './process-queue';
 
 // Supabase admin client, necessary for server-side operations that bypass RLS
 const supabaseAdmin = createClient(
@@ -296,10 +297,8 @@ export default async function handler(req: any, res: any) {
     });
 
     // 4. Trigger Asynchronous Processing
-    // We call the process-queue API without waiting for it to finish.
-    // This allows us to return 200 OK to Meta/Twilio immediately.
-    const baseUrl = process.env.APP_URL || `https://${req.headers.host}`;
-    const processQueueUrl = `${baseUrl}/api/process-queue`;
+    // We call the process-queue API handler directly without awaiting it.
+    // This avoids network issues and allows us to return 200 OK to Meta/Twilio immediately.
     
     // We fetch the record we just created to pass it to the processor
     const { data: queueRecord } = await supabaseAdmin
@@ -309,14 +308,19 @@ export default async function handler(req: any, res: any) {
         .single();
 
     if (queueRecord) {
-        fetch(processQueueUrl, {
+        const mockReq = {
             method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.VERCEL_AUTOMATION_SECRET}`
-            },
-            body: JSON.stringify({ record: queueRecord })
-        }).catch(err => console.error('[Webhook] Error triggering process-queue:', err));
+            headers: { authorization: `Bearer ${process.env.VERCEL_AUTOMATION_SECRET}` },
+            body: { record: queueRecord }
+        };
+        const mockRes = {
+            status: (code: number) => mockRes,
+            json: (data: any) => { console.log(`[Background Queue] Status: ${data.message || data.error}`); },
+            send: (data: any) => { console.log(`[Background Queue] Status: ${data}`); }
+        };
+        
+        // Execute in background
+        processQueueHandler(mockReq, mockRes).catch(err => console.error('[Webhook] Error in background process-queue:', err));
     }
 
     // Return 200 OK immediately to prevent retries
