@@ -104,7 +104,18 @@ export default async function handler(req: any, res: any) {
             .limit(30);
 
         if (historyError) throw historyError;
-        const formattedHistory = formatHistoryForGemini(history.reverse());
+        
+        // Helper to merge consecutive messages of the same role
+        const rawHistory = history.reverse();
+        const mergedHistory: any[] = [];
+        for (const msg of rawHistory) {
+            const role = msg.sender === 'agent' ? 'model' : 'user';
+            if (mergedHistory.length > 0 && mergedHistory[mergedHistory.length - 1].role === role) {
+                mergedHistory[mergedHistory.length - 1].parts[0].text += `\n\n${msg.message_content}`;
+            } else {
+                mergedHistory.push({ role, parts: [{ text: msg.message_content }] });
+            }
+        }
         
         const agentTools = agent.tools as { [key: string]: { enabled: boolean } } | null;
         const functionDeclarations: FunctionDeclaration[] = [];
@@ -131,7 +142,9 @@ export default async function handler(req: any, res: any) {
         - Mantén una conversación fluida y natural.`;
 
         if (personData) {
-            systemInstruction += `\n\nIMPORTANTE: Estás conversando con un paciente registrado: ${personData.full_name}. 
+            systemInstruction += `\n\n=== PERFIL DEL PACIENTE ACTUAL ===
+            Nombre: ${personData.full_name}
+            
             - Para consultar su plan del día o estado de suscripción, usa 'get_my_data_for_ai'.
             - Para consultas sobre su progreso, peso histórico o cambios, usa 'get_patient_progress'.
             - Para agendar cita, usa 'book_appointment'.`;
@@ -139,7 +152,13 @@ export default async function handler(req: any, res: any) {
             systemInstruction += ` Estás conversando con un usuario desconocido.`;
         }
         
-        let currentMessages = [...formattedHistory, { role: 'user' as const, parts: [{ text: combinedMessage }] }];
+        let currentMessages: Content[] = [...mergedHistory];
+        const userParts = [{ text: combinedMessage }];
+        if (currentMessages.length > 0 && currentMessages[currentMessages.length - 1].role === 'user') {
+            currentMessages[currentMessages.length - 1].parts.push(...userParts);
+        } else {
+            currentMessages.push({ role: 'user', parts: userParts });
+        }
         
         while (true) {
             const response = await ai.models.generateContent({ model: modelName, contents: currentMessages, config: { systemInstruction, tools: functionDeclarations.length > 0 ? [{ functionDeclarations }] : undefined } });

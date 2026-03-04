@@ -247,7 +247,29 @@ export default async function handler(req: any, res: any) {
         }
     }
 
-    // 3. Log user's message (with media URL if available)
+    // 3. Fetch history BEFORE inserting the new message to avoid duplicates
+    const { data: history, error: historyError } = await supabaseAdmin
+        .from('whatsapp_conversations')
+        .select('sender, message_content')
+        .eq('contact_id', contact.id)
+        .order('sent_at', { ascending: false })
+        .limit(40); 
+
+    if (historyError) throw historyError;
+    
+    // Helper to merge consecutive messages of the same role
+    const rawHistory = history.reverse();
+    const mergedHistory: any[] = [];
+    for (const msg of rawHistory) {
+        const role = msg.sender === 'agent' ? 'model' : 'user';
+        if (mergedHistory.length > 0 && mergedHistory[mergedHistory.length - 1].role === role) {
+            mergedHistory[mergedHistory.length - 1].parts[0].text += `\n\n${msg.message_content}`;
+        } else {
+            mergedHistory.push({ role, parts: [{ text: msg.message_content }] });
+        }
+    }
+
+    // 4. Log user's message (with media URL if available)
     await supabaseAdmin.from('whatsapp_conversations').insert({ 
         clinic_id: clinicId, 
         contact_id: contact.id, 
@@ -259,7 +281,7 @@ export default async function handler(req: any, res: any) {
         mime_type: pendingMedia?.mimeType
     });
 
-    // 4. Check if AI agent should respond
+    // 5. Check if AI agent should respond
     const { data: agent, error: agentError } = await supabaseAdmin.from('ai_agents').select('*').eq('clinic_id', clinicId).single();
     
     const isPlanActive = personData?.subscription_end_date ? new Date(personData.subscription_end_date) >= new Date() : false;
@@ -273,17 +295,6 @@ export default async function handler(req: any, res: any) {
       }
       return res.status(200).send('Agent inactive for this conversation.');
     }
-    
-    // 5. Fetch history using contact_id for efficiency - INCREASED LIMIT FOR BETTER MEMORY
-    const { data: history, error: historyError } = await supabaseAdmin
-        .from('whatsapp_conversations')
-        .select('sender, message_content')
-        .eq('contact_id', contact.id)
-        .order('sent_at', { ascending: false })
-        .limit(50); 
-
-    if (historyError) throw historyError;
-    const formattedHistory = formatHistoryForGemini(history.reverse());
     
     // 6. Define and check for enabled tools
     const agentTools = agent.tools as { [key: string]: { enabled: boolean } } | null;
@@ -436,7 +447,8 @@ export default async function handler(req: any, res: any) {
             `- ${new Date(appt.start_time).toLocaleString('es-MX', { timeZone: 'America/Mexico_City', dateStyle: 'medium', timeStyle: 'short' })}: ${appt.title}`
         ).join('\n') || 'No hay citas próximas programadas.';
 
-        systemInstruction += `\n\nIMPORTANTE: Estás conversando con un paciente registrado: ${personData.full_name}.
+        systemInstruction += `\n\n=== PERFIL DEL PACIENTE ACTUAL ===
+        Nombre: ${personData.full_name}
         
         ⚠️ **ALERTA DE SEGURIDAD CLÍNICA - CONTEXTO DEL PACIENTE** ⚠️
         - ALERGIAS/INTOLERANCIAS: ${allergiesList}
@@ -473,9 +485,17 @@ export default async function handler(req: any, res: any) {
     const userParts: any[] = [{ text: messageBody }];
     if (inlineDataPart) userParts.push(inlineDataPart);
 
+    // Ensure alternating roles: if the last message in history is 'user', merge the new message into it
+    let finalContents: Content[] = [...mergedHistory];
+    if (finalContents.length > 0 && finalContents[finalContents.length - 1].role === 'user') {
+        finalContents[finalContents.length - 1].parts.push(...userParts);
+    } else {
+        finalContents.push({ role: 'user', parts: userParts });
+    }
+
     const firstResponse = await ai.models.generateContent({ 
         model: modelName, 
-        contents: [...formattedHistory, { role: 'user', parts: userParts }], 
+        contents: finalContents, 
         config: { 
             systemInstruction: systemInstruction,
             tools: functionDeclarations.length > 0 ? [{ functionDeclarations }] : undefined
@@ -541,8 +561,7 @@ export default async function handler(req: any, res: any) {
         
         // 10. Second call to Gemini with function results
         const historyForSecondCall: Content[] = [
-            ...formattedHistory,
-            { role: 'user', parts: userParts }, // Pass the original parts including image if present
+            ...finalContents,
             firstResponse.candidates[0].content,
             {
                 role: 'tool',
