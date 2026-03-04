@@ -89,6 +89,13 @@ export default async function handler(req: any, res: any) {
             return res.status(200).json({ message: 'Agente inactivo, cola limpiada.' });
         }
 
+        // FETCH NUTRITIONIST DATA
+        let nutritionistInfo = null;
+        if (clinicData?.owner_id) {
+            const { data: nutInfo } = await supabaseAdmin.from('nutritionist_profiles').select('*').eq('user_id', clinicData.owner_id).single();
+            nutritionistInfo = nutInfo;
+        }
+
         // --- Inicio de la Lógica de IA ---
         // UPDATED: Use GEMINI_API_KEY
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
@@ -135,6 +142,18 @@ export default async function handler(req: any, res: any) {
         
         let systemInstruction = (agent.system_prompt || 'Eres una secretaria virtual.');
         
+        // Añadir información de la clínica y el nutriólogo
+        systemInstruction += `\n\n=== INFORMACIÓN DE LA CLÍNICA Y NUTRIÓLOGO ===
+        - Clínica: ${clinicData?.name || 'No especificada'}
+        - Dirección: ${clinicData?.address || 'No especificada'}
+        - Teléfono: ${clinicData?.phone_number || 'No especificado'}
+        - Email: ${clinicData?.email || 'No especificado'}
+        - Horario: ${clinicData?.operating_hours_start || 'No especificado'} a ${clinicData?.operating_hours_end || 'No especificado'}
+        - Nutriólogo(a) Titular: ${nutritionistInfo?.full_name || 'No especificado'} ${nutritionistInfo?.professional_title ? `(${nutritionistInfo.professional_title})` : ''}
+        - Cédula Profesional: ${nutritionistInfo?.license_number || 'No especificada'}
+        
+        INSTRUCCIÓN: Si el paciente pregunta por los datos de contacto de la clínica, la dirección, los horarios o el nombre de su nutriólogo, utiliza esta información para responder de forma natural y servicial.`;
+
         // Add Memory Instructions
         systemInstruction += `\n\nMEMORIA Y CONTEXTO:
         - Tienes acceso al historial reciente de la conversación. ÚSALO.

@@ -36,6 +36,8 @@ const MarkdownRenderer: FC<{ content: string }> = ({ content }) => {
 
 const PatientAiChatModal: FC<PatientAiChatModalProps> = ({ isOpen, onClose, person }) => {
     const [agentConfig, setAgentConfig] = useState<AiAgent | null>(null);
+    const [clinicInfo, setClinicInfo] = useState<any>(null);
+    const [nutritionistInfo, setNutritionistInfo] = useState<any>(null);
     const [messages, setMessages] = useState<any[]>([]);
     const [userInput, setUserInput] = useState('');
     const [loading, setLoading] = useState(false);
@@ -46,6 +48,18 @@ const PatientAiChatModal: FC<PatientAiChatModalProps> = ({ isOpen, onClose, pers
             if (!person.clinic_id) return;
             const { data } = await supabase.from('ai_agents').select('*').eq('clinic_id', person.clinic_id).single();
             setAgentConfig(data);
+
+            // Fetch clinic and nutritionist info
+            const { data: clinicData } = await supabase.from('clinics').select('*').eq('id', person.clinic_id).single();
+            if (clinicData) {
+                let nutData = null;
+                if (clinicData.owner_id) {
+                    const { data: nData } = await supabase.from('nutritionist_profiles').select('*').eq('user_id', clinicData.owner_id).single();
+                    nutData = nData;
+                }
+                setClinicInfo(clinicData);
+                setNutritionistInfo(nutData);
+            }
         };
 
         if (isOpen) {
@@ -102,7 +116,20 @@ const PatientAiChatModal: FC<PatientAiChatModalProps> = ({ isOpen, onClose, pers
             const now = new Date();
             const todayString = now.toLocaleString('es-MX');
 
-            const systemInstruction = `${agentConfig.patient_system_prompt || 'Eres un asistente nutricional amigable.'}
+            let systemInstruction = `${agentConfig.patient_system_prompt || 'Eres un asistente nutricional amigable.'}
+            
+            === INFORMACIÓN DE LA CLÍNICA Y NUTRIÓLOGO ===
+            - Clínica: ${clinicInfo?.name || 'No especificada'}
+            - Dirección: ${clinicInfo?.address || 'No especificada'}
+            - Teléfono: ${clinicInfo?.phone_number || 'No especificado'}
+            - Email: ${clinicInfo?.email || 'No especificado'}
+            - Horario: ${clinicInfo?.operating_hours_start || 'No especificado'} a ${clinicInfo?.operating_hours_end || 'No especificado'}
+            - Nutriólogo(a) Titular: ${nutritionistInfo?.full_name || 'No especificado'} ${nutritionistInfo?.professional_title ? `(${nutritionistInfo.professional_title})` : ''}
+            - Cédula Profesional: ${nutritionistInfo?.license_number || 'No especificada'}
+            
+            INSTRUCCIÓN: Si el paciente pregunta por los datos de contacto de la clínica, la dirección, los horarios o el nombre de su nutriólogo, utiliza esta información para responder de forma natural y servicial.
+            
+            === CONTEXTO TEMPORAL Y DEL PACIENTE ===
             FECHA ACTUAL: ${todayString}. Estás hablando con ${person.full_name}.`;
 
             let apiResult = await callGeminiApi(newMessages, systemInstruction, tools);
