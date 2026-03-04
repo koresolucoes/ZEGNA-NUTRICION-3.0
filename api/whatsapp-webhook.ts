@@ -1,7 +1,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI, FunctionDeclaration, Type, Content } from "@google/genai";
-import processQueueHandler from './process-queue';
+import processQueueHandler from './process-queue.js';
 
 // Supabase admin client, necessary for server-side operations that bypass RLS
 const supabaseAdmin = createClient(
