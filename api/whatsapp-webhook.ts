@@ -549,14 +549,28 @@ export default async function handler(req: any, res: any) {
                         functionResult = { result: data };
                     }
                 } else if (funcCall.name === 'get_available_slots') {
-                    const { data, error } = await supabaseAdmin.rpc('get_available_slots', { p_clinic_id: clinicId, p_target_date: funcCall.args.target_date });
+                    const { data, error } = await supabaseAdmin.rpc('get_available_slots', { p_clinic_id: clinicId, p_target_date: funcCall.args.target_date, p_timezone: clinicTimezone });
                     if (error) throw error;
                     functionResult = { result: data || [] };
                 } else if (funcCall.name === 'book_appointment') {
+                    // Gemini returns start_time in ISO format based on the timezone we gave it.
+                    // If the clinic is in Mazatlan (UTC-7), and the user asks for 15:00,
+                    // Gemini might return "2026-03-10T15:00:00.000-07:00" or just "2026-03-10T15:00:00".
+                    // We need to ensure it's correctly interpreted as the clinic's local time before saving.
+                    let startTimeISO = funcCall.args.start_time;
+                    
+                    // If Gemini returns a naive datetime (no timezone offset), append the clinic's offset
+                    // or parse it in the clinic's timezone to get the correct UTC time for the database.
+                    // A simple way is to let the DB handle it if we pass the correct offset, 
+                    // but since we only have the IANA timezone name (e.g., 'America/Mazatlan'), 
+                    // we can use Intl.DateTimeFormat to find the current offset, or just pass the timezone name to the RPC.
+                    // For now, we'll pass the timezone name to the RPC so the database can handle the conversion correctly.
+                    
                     let rpcParams: any = {
                         p_clinic_id: clinicId,
-                        p_start_time: funcCall.args.start_time,
-                        p_notes: funcCall.args.notes || null
+                        p_start_time: startTimeISO,
+                        p_notes: funcCall.args.notes || null,
+                        p_timezone: clinicTimezone // Pass timezone to RPC
                     };
                     if (personData) {
                         rpcParams.p_person_id = personData.id;
