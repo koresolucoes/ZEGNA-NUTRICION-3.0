@@ -791,6 +791,7 @@ export type Database = {
           referred_by_code: string | null
           rfc: string | null
           theme: string | null
+          timezone: string | null
           website: string | null
         }
         Insert: {
@@ -811,6 +812,7 @@ export type Database = {
           referred_by_code?: string | null
           rfc?: string | null
           theme?: string | null
+          timezone?: string | null
           website?: string | null
         }
         Update: {
@@ -831,6 +833,7 @@ export type Database = {
           referred_by_code?: string | null
           rfc?: string | null
           theme?: string | null
+          timezone?: string | null
           website?: string | null
         }
         Relationships: []

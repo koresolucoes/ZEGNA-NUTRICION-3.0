@@ -28,6 +28,21 @@ const fiscalRegimeOptions = [
     { code: '626', name: 'Régimen Simplificado de Confianza (RESICO)' },
 ];
 
+const timezoneOptions = [
+    { id: 'America/Mexico_City', name: 'Ciudad de México (Centro)' },
+    { id: 'America/Monterrey', name: 'Monterrey (Centro)' },
+    { id: 'America/Mazatlan', name: 'Mazatlán (Pacífico/Montaña)' },
+    { id: 'America/Chihuahua', name: 'Chihuahua (Montaña)' },
+    { id: 'America/Hermosillo', name: 'Hermosillo (Sonora)' },
+    { id: 'America/Tijuana', name: 'Tijuana (Noroeste/Pacífico)' },
+    { id: 'America/Cancun', name: 'Cancún (Sureste)' },
+    { id: 'America/Bogota', name: 'Bogotá (Colombia)' },
+    { id: 'America/Lima', name: 'Lima (Perú)' },
+    { id: 'America/Santiago', name: 'Santiago (Chile)' },
+    { id: 'America/Buenos_Aires', name: 'Buenos Aires (Argentina)' },
+    { id: 'Europe/Madrid', name: 'Madrid (España)' }
+];
+
 const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
 // --- Subcomponent: Theme Preview Widget ---
@@ -114,6 +129,7 @@ const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile, navig
         rfc: '',
         fiscal_regime: '',
         navigation_layout: 'sidebar' as 'sidebar' | 'header',
+        timezone: 'America/Mexico_City',
     });
     const [logoFile, setLogoFile] = useState<File | null>(null);
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -150,6 +166,7 @@ const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile, navig
                 rfc: clinic.rfc || '',
                 fiscal_regime: clinic.fiscal_regime || '',
                 navigation_layout: (clinic.navigation_layout as 'sidebar' | 'header') || 'sidebar',
+                timezone: clinic.timezone || 'America/Mexico_City',
             });
             setLogoPreview(clinic.logo_url || null);
         }
@@ -169,6 +186,7 @@ const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile, navig
                clinicFormData.navigation_layout !== (clinic.navigation_layout || 'sidebar') ||
                clinicFormData.rfc !== (clinic.rfc || '') ||
                clinicFormData.fiscal_regime !== (clinic.fiscal_regime || '') ||
+               clinicFormData.timezone !== (clinic.timezone || 'America/Mexico_City') ||
                scheduleChanged ||
                !!logoFile;
     }, [clinic, clinicFormData, logoFile]);
@@ -240,7 +258,8 @@ const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile, navig
                 operating_schedule: clinicFormData.operating_schedule,
                 rfc: clinicFormData.rfc || null,
                 fiscal_regime: clinicFormData.fiscal_regime || null,
-                navigation_layout: clinicFormData.navigation_layout
+                navigation_layout: clinicFormData.navigation_layout,
+                timezone: clinicFormData.timezone
             } as any).eq('id', clinic.id).select().single();
 
             if (error) throw error;
@@ -357,6 +376,14 @@ const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile, navig
                                 <div style={{gridColumn: isMobile ? 'span 2' : 'span 1'}}>
                                     <label htmlFor="website">Sitio Web</label>
                                     <input id="website" name="website" type="url" value={clinicFormData.website} onChange={handleClinicDataChange} placeholder="https://" />
+                                </div>
+                                <div style={{gridColumn: isMobile ? 'span 2' : 'span 1'}}>
+                                    <label htmlFor="timezone">Zona Horaria</label>
+                                    <select id="timezone" name="timezone" value={clinicFormData.timezone} onChange={handleClinicDataChange}>
+                                        {timezoneOptions.map(opt => (
+                                            <option key={opt.id} value={opt.id}>{opt.name}</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div style={{gridColumn: 'span 2'}}>
                                     <label htmlFor="address">Dirección Física</label>

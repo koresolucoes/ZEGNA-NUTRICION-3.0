@@ -142,6 +142,23 @@ export default async function handler(req: any, res: any) {
         
         let systemInstruction = (agent.system_prompt || 'Eres una secretaria virtual.');
         
+        // --- TIME CONTEXT INJECTION ---
+        const now = new Date();
+        const clinicTimezone = clinicData?.timezone || 'America/Mexico_City';
+        const dateOptions: Intl.DateTimeFormatOptions = { 
+            timeZone: clinicTimezone, 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: false
+        };
+        const todayString = now.toLocaleString('es-MX', dateOptions);
+        const todayISO = now.toLocaleString('sv', { timeZone: clinicTimezone }).split(' ')[0];
+        const currentDayName = now.toLocaleDateString('es-MX', { timeZone: clinicTimezone, weekday: 'long' });
+
         // Añadir información de la clínica y el nutriólogo
         systemInstruction += `\n\n=== INFORMACIÓN DE LA CLÍNICA Y NUTRIÓLOGO ===
         - Clínica: ${clinicData?.name || 'No especificada'}
@@ -153,6 +170,14 @@ export default async function handler(req: any, res: any) {
         - Cédula Profesional: ${nutritionistInfo?.license_number || 'No especificada'}
         
         INSTRUCCIÓN: Si el paciente pregunta por los datos de contacto de la clínica, la dirección, los horarios o el nombre de su nutriólogo, utiliza esta información para responder de forma natural y servicial.`;
+
+        // Añadir instrucciones explícitas de memoria, multimodalidad y contexto temporal
+        systemInstruction += `\n\n=== CONTEXTO TEMPORAL OBLIGATORIO ===
+        - FECHA Y HORA ACTUAL: ${todayString} (Zona Horaria: ${clinicTimezone}).
+        - DÍA DE LA SEMANA: ${currentDayName}.
+        - FECHA ISO: ${todayISO}.
+        
+        INSTRUCCIÓN CRÍTICA: Si el usuario pregunta "¿qué día es hoy?", "¿qué hora es?" o hace referencia a "mañana/ayer", DEBES usar EXCLUSIVAMENTE la información de "FECHA Y HORA ACTUAL" proporcionada arriba. Ignora cualquier fecha interna de tu entrenamiento.`;
 
         // Add Memory Instructions
         systemInstruction += `\n\nMEMORIA Y CONTEXTO:

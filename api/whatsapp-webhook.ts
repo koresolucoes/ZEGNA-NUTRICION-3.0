@@ -398,8 +398,9 @@ export default async function handler(req: any, res: any) {
 
     // --- TIME CONTEXT INJECTION ---
     const now = new Date();
+    const clinicTimezone = clinicInfo?.timezone || 'America/Mexico_City';
     const dateOptions: Intl.DateTimeFormatOptions = { 
-        timeZone: 'America/Mexico_City', 
+        timeZone: clinicTimezone, 
         weekday: 'long', 
         year: 'numeric', 
         month: 'long', 
@@ -409,8 +410,8 @@ export default async function handler(req: any, res: any) {
         hour12: false
     };
     const todayString = now.toLocaleString('es-MX', dateOptions);
-    const todayISO = now.toISOString().split('T')[0];
-    const currentDayName = now.toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City', weekday: 'long' });
+    const todayISO = now.toLocaleString('sv', { timeZone: clinicTimezone }).split(' ')[0];
+    const currentDayName = now.toLocaleDateString('es-MX', { timeZone: clinicTimezone, weekday: 'long' });
 
     let systemInstruction = agent.system_prompt + (knowledgeBaseContext ? `\n\n${knowledgeBaseContext}` : '');
     
@@ -428,7 +429,7 @@ export default async function handler(req: any, res: any) {
 
     // Añadir instrucciones explícitas de memoria, multimodalidad y contexto temporal
     systemInstruction += `\n\n=== CONTEXTO TEMPORAL OBLIGATORIO ===
-    - FECHA Y HORA ACTUAL: ${todayString} (Zona Horaria: CDMX/México).
+    - FECHA Y HORA ACTUAL: ${todayString} (Zona Horaria: ${clinicTimezone}).
     - DÍA DE LA SEMANA: ${currentDayName}.
     - FECHA ISO: ${todayISO}.
     
@@ -464,7 +465,7 @@ export default async function handler(req: any, res: any) {
         ].filter(Boolean).join(', ');
         
         const appointmentsList = appointmentsRes.data?.map(appt => 
-            `- ${new Date(appt.start_time).toLocaleString('es-MX', { timeZone: 'America/Mexico_City', dateStyle: 'medium', timeStyle: 'short' })}: ${appt.title}`
+            `- ${new Date(appt.start_time).toLocaleString('es-MX', { timeZone: clinicTimezone, dateStyle: 'medium', timeStyle: 'short' })}: ${appt.title}`
         ).join('\n') || 'No hay citas próximas programadas.';
 
         systemInstruction += `\n\n=== PERFIL DEL PACIENTE ACTUAL ===
