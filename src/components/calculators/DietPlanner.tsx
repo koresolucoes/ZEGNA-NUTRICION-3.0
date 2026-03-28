@@ -470,7 +470,7 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
             {step === 2 && (
                 <div className="fade-in">
                     {/* Category Tabs */}
-                    <div style={{display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '1rem', marginBottom: '1rem'}} className="hide-scrollbar">
+                    <div style={{display: 'flex', gap: '0.5rem', flexWrap: 'wrap', paddingBottom: '1rem', marginBottom: '1rem'}}>
                         {groupsList.map(group => (
                             <button 
                                 key={group} 
