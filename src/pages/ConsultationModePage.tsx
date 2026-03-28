@@ -18,6 +18,8 @@ import ReportModal from '../components/ReportModal';
 import PatientSummaryModal from '../components/consultation_mode/PatientSummaryModal';
 import PrescriptionBuilderModal from '../components/consultation_mode/PrescriptionBuilderModal';
 import SoapGeneratorModal from '../components/consultation_mode/SoapGeneratorModal';
+import DietPlanner from '../components/calculators/DietPlanner';
+import ExercisePlanGenerator from '../components/ExercisePlanGenerator';
 
 interface AiMessage {
     role: 'user' | 'model';
@@ -168,6 +170,27 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
     const [isPrescriptionBuilderOpen, setIsPrescriptionBuilderOpen] = useState(false);
     const [isSoapGeneratorOpen, setIsSoapGeneratorOpen] = useState(false);
 
+    // Data for Planners
+    const [equivalentsData, setEquivalentsData] = useState<any[]>([]);
+    const [knowledgeResources, setKnowledgeResources] = useState<any[]>([]);
+
+    useEffect(() => {
+        const fetchPlannerData = async () => {
+            if (!clinic) return;
+            try {
+                const [eqRes, krRes] = await Promise.all([
+                    supabase.from('food_equivalents').select('*'),
+                    supabase.from('knowledge_base_resources').select('*').eq('clinic_id', clinic.id)
+                ]);
+                if (eqRes.data) setEquivalentsData(eqRes.data);
+                if (krRes.data) setKnowledgeResources(krRes.data);
+            } catch (err) {
+                console.error("Error fetching planner data:", err);
+            }
+        };
+        fetchPlannerData();
+    }, [clinic]);
+
     // AI Assistant State
     const [aiMessages, setAiMessages] = useState<AiMessage[]>([]);
     const [aiInput, setAiInput] = useState('');
@@ -250,6 +273,7 @@ INSTRUCCIONES:
     
     // --- TIMELINE LOGIC ---
     const [timelineFilters, setTimelineFilters] = useState({ search: '', start: '', end: '' });
+    const [centerView, setCenterView] = useState<'timeline' | 'diet' | 'exercise'>('timeline');
 
     const timeline = useMemo(() => {
         const combined = [
@@ -609,17 +633,77 @@ INSTRUCCIONES:
                     </div>
                 )}
 
-                {/* 2. Center: Unified Timeline */}
+                {/* 2. Center: Unified Timeline / Planners */}
                 <div style={{ overflow: 'hidden', backgroundColor: 'var(--surface-color)', display: 'flex', flexDirection: 'column', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                     <TimelinePanel 
-                        person={person}
-                        timeline={timeline} 
-                        timelineFilters={timelineFilters} 
-                        setTimelineFilters={setTimelineFilters}
-                        handleTimelineItemClick={handleTimelineItemClick}
-                        sendContextToAi={handleContextSelection}
-                        formatItemForAI={formatItemForAI}
-                    />
+                    {/* Tabs Header */}
+                    <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--background-color)' }}>
+                        <button 
+                            onClick={() => setCenterView('timeline')}
+                            style={{ flex: 1, padding: '1rem', border: 'none', background: centerView === 'timeline' ? 'var(--surface-color)' : 'transparent', borderBottom: centerView === 'timeline' ? '2px solid var(--primary-color)' : '2px solid transparent', fontWeight: centerView === 'timeline' ? 700 : 500, color: centerView === 'timeline' ? 'var(--primary-color)' : 'var(--text-light)', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                        >
+                            {ICONS.calendar} Historial
+                        </button>
+                        <button 
+                            onClick={() => setCenterView('diet')}
+                            style={{ flex: 1, padding: '1rem', border: 'none', background: centerView === 'diet' ? 'var(--surface-color)' : 'transparent', borderBottom: centerView === 'diet' ? '2px solid var(--primary-color)' : '2px solid transparent', fontWeight: centerView === 'diet' ? 700 : 500, color: centerView === 'diet' ? 'var(--primary-color)' : 'var(--text-light)', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                        >
+                            {ICONS.diet} Plan Alimenticio
+                        </button>
+                        <button 
+                            onClick={() => setCenterView('exercise')}
+                            style={{ flex: 1, padding: '1rem', border: 'none', background: centerView === 'exercise' ? 'var(--surface-color)' : 'transparent', borderBottom: centerView === 'exercise' ? '2px solid var(--primary-color)' : '2px solid transparent', fontWeight: centerView === 'exercise' ? 700 : 500, color: centerView === 'exercise' ? 'var(--primary-color)' : 'var(--text-light)', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                        >
+                            {ICONS.activity} Plan Entrenamiento
+                        </button>
+                    </div>
+
+                    {/* Content Area */}
+                    <div style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
+                        {centerView === 'timeline' && (
+                            <TimelinePanel 
+                                person={person}
+                                timeline={timeline} 
+                                timelineFilters={timelineFilters} 
+                                setTimelineFilters={setTimelineFilters}
+                                handleTimelineItemClick={handleTimelineItemClick}
+                                sendContextToAi={handleContextSelection}
+                                formatItemForAI={formatItemForAI}
+                            />
+                        )}
+                        
+                        {centerView === 'diet' && (
+                            <div style={{ padding: '1rem', height: '100%' }}>
+                                <DietPlanner 
+                                    equivalentsData={equivalentsData}
+                                    persons={[person]}
+                                    isMobile={isMobile}
+                                    onPlanSaved={() => {
+                                        onDataRefresh(true);
+                                        setCenterView('timeline');
+                                    }}
+                                    initialPlan={null}
+                                    clearInitialPlan={() => {}}
+                                    knowledgeResources={knowledgeResources}
+                                    customModalZIndex={2200}
+                                />
+                            </div>
+                        )}
+
+                        {centerView === 'exercise' && (
+                            <div style={{ padding: '1rem', height: '100%' }}>
+                                <ExercisePlanGenerator 
+                                    person={person}
+                                    lastConsultation={consultations[0] || null}
+                                    onClose={() => setCenterView('timeline')}
+                                    onPlanSaved={() => {
+                                        onDataRefresh(true);
+                                        setCenterView('timeline');
+                                    }}
+                                    isInline={true}
+                                />
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* 3. Right: AI Assistant */}

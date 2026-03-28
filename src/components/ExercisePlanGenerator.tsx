@@ -13,6 +13,7 @@ interface ExercisePlanGeneratorProps {
     lastConsultation: ConsultationWithLabs | null;
     onClose: () => void;
     onPlanSaved: () => void;
+    isInline?: boolean;
 }
 
 const modalRoot = document.getElementById('modal-root');
@@ -29,7 +30,7 @@ const exerciseThinkingMessages = [
     "Compilando la rutina final...",
 ];
 
-const ExercisePlanGenerator: FC<ExercisePlanGeneratorProps> = ({ person, lastConsultation, onClose, onPlanSaved }) => {
+const ExercisePlanGenerator: FC<ExercisePlanGeneratorProps> = ({ person, lastConsultation, onClose, onPlanSaved, isInline }) => {
     const { clinic } = useClinic();
     const [numDays, setNumDays] = useState('7');
     const [healthGoal, setHealthGoal] = useState(person.health_goal || '');
@@ -401,6 +402,106 @@ const ExercisePlanGenerator: FC<ExercisePlanGeneratorProps> = ({ person, lastCon
             </div>
         </div>
     );
+
+    if (isInline) {
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--surface-color)', borderRadius: '8px' }}>
+                <div style={{ ...styles.modalHeader, padding: '1rem', borderBottom: '1px solid var(--border-color)' }}>
+                    <h2 style={{ ...styles.modalTitle, margin: 0 }}>Generador de Rutinas IA</h2>
+                </div>
+                <div style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
+                    {/* The content inside modalBody */}
+                    {conflictDates.length > 0 ? (
+                        <div style={{padding: '1rem', backgroundColor: 'var(--error-bg)', borderRadius: '8px', border: '1px solid var(--error-color)'}}>
+                            <h3 style={{color: 'var(--error-color)', marginTop: 0}}>Conflicto de Fechas</h3>
+                            <p>Ya existen rutinas programadas para las siguientes fechas:</p>
+                            <ul>
+                                {conflictDates.map(date => <li key={date}>{date}</li>)}
+                            </ul>
+                            <p>¿Deseas sobrescribir las rutinas existentes o cancelar?</p>
+                            <div style={{display: 'flex', gap: '1rem', marginTop: '1rem'}}>
+                                <button onClick={() => setConflictDates([])} className="button-secondary">Cancelar</button>
+                                <button onClick={() => { setIsOverwriting(true); savePlanToDatabase(true); }} style={{backgroundColor: 'var(--error-color)', color: 'white', border: 'none'}}>Sobrescribir Rutinas</button>
+                            </div>
+                        </div>
+                    ) : !generatedPlan && !loading && (
+                        <>
+                            <p style={{color: 'var(--text-light)', marginBottom: '1.5rem'}}>
+                                Utiliza la Inteligencia Artificial para diseñar una rutina de entrenamiento personalizada basada en los objetivos y capacidades físicas de <strong>{person.full_name}</strong>.
+                            </p>
+
+                            <label htmlFor="num_days">Días de Entrenamiento</label>
+                            <select id="num_days" value={numDays} onChange={(e) => setNumDays(e.target.value)}>
+                                <option value="3">3 Días (Principiante/Mantenimiento)</option>
+                                <option value="4">4 Días (Intermedio)</option>
+                                <option value="5">5 Días (Avanzado)</option>
+                                <option value="6">6 Días (Intensivo)</option>
+                                <option value="7">7 Días (Incluye días de descanso activo)</option>
+                            </select>
+
+                            <label htmlFor="health_goal">Objetivo Principal</label>
+                            <input
+                                id="health_goal"
+                                type="text"
+                                value={healthGoal}
+                                onChange={(e) => setHealthGoal(e.target.value)}
+                                placeholder="Ej: Pérdida de grasa, Hipertrofia, Resistencia cardiovascular..."
+                            />
+
+                            <label htmlFor="custom_instructions">Instrucciones Adicionales (Opcional)</label>
+                            <textarea
+                                id="custom_instructions"
+                                value={customInstructions}
+                                onChange={(e) => setCustomInstructions(e.target.value)}
+                                rows={3}
+                                placeholder="Ej: Lesión en la rodilla, sin acceso a gimnasio, preferencia por ejercicios de cardio..."
+                            />
+                        </>
+                    )}
+
+                    {loading && (
+                        <div style={{textAlign: 'center', padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'}}>
+                             <div className="spinner" style={{marginBottom: '20px', width: '40px', height: '40px', border: '4px solid var(--surface-hover-color)', borderTop: '4px solid var(--primary-color)', borderRadius: '50%', animation: 'spin 1s linear infinite'}}></div>
+                             <p style={{ minHeight: '2.5em', color: 'var(--text-light)', fontWeight: 500 }}>
+                                 {thinkingMessage}
+                             </p>
+                             <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+                        </div>
+                    )}
+
+                    {error && <p style={styles.error}>{error}</p>}
+                    
+                    {generatedPlan && !loading && conflictDates.length === 0 && (
+                        <div style={{maxHeight: '45vh', overflowY: 'auto', paddingRight: '1rem'}}>
+                            <h3 style={{color: 'var(--primary-dark)', fontSize: '1.1rem'}}>Rutina Sugerida ({numDays} días)</h3>
+                            {generatedPlan.plan_semanal.map((day: any, dayIndex: number) => (
+                                <div key={day.dia + dayIndex} style={{marginBottom: '1rem', backgroundColor: 'var(--surface-hover-color)', padding: '1rem', borderRadius: '8px'}}>
+                                    <h4 style={{borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem', margin: '0 0 0.5rem 0', color: 'var(--primary-color)'}}>{day.dia} - {day.enfoque}</h4>
+                                    {day.ejercicios && day.ejercicios.length > 0 ? (
+                                        <ul style={{paddingLeft: '20px', margin: '0.5rem 0', fontSize: '0.9rem'}}>
+                                            {day.ejercicios.map((ex: any, exIndex: number) => (
+                                                <li key={ex.nombre + exIndex}>
+                                                    <strong>{ex.nombre}:</strong> {ex.series} de {ex.repeticiones}, descanso {ex.descanso}.
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    ) : <p style={{paddingLeft: '20px', fontSize: '0.9rem', fontStyle: 'italic'}}>Descanso o actividad de baja intensidad.</p>}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                <div style={{ ...styles.modalFooter, padding: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                    <button onClick={onClose} className="button-secondary">Cancelar</button>
+                    {generatedPlan && conflictDates.length === 0 ? (
+                         <button onClick={initiateSavePlan} disabled={loading}>{loading ? 'Guardando...' : 'Guardar Rutina'}</button>
+                    ) : !generatedPlan && conflictDates.length === 0 ? (
+                         <button onClick={generatePlan} disabled={loading || !healthGoal}>{loading ? 'Generando...' : 'Generar Rutina'}</button>
+                    ) : null}
+                </div>
+            </div>
+        );
+    }
 
     if (!modalRoot) return null;
 
