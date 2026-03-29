@@ -392,7 +392,7 @@ const ExercisePlanGenerator: FC<ExercisePlanGeneratorProps> = ({ person, lastCon
                     )}
                 </div>
                 <div style={styles.modalFooter}>
-                    <button onClick={onClose} className="button-secondary">Cancelar</button>
+                    {!isInline && <button onClick={onClose} className="button-secondary">Cancelar</button>}
                     {generatedPlan && conflictDates.length === 0 ? (
                          <button onClick={initiateSavePlan} disabled={loading}>{loading ? 'Guardando...' : 'Guardar Rutina'}</button>
                     ) : !generatedPlan && conflictDates.length === 0 ? (
@@ -405,11 +405,11 @@ const ExercisePlanGenerator: FC<ExercisePlanGeneratorProps> = ({ person, lastCon
 
     if (isInline) {
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--surface-color)', borderRadius: '8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', backgroundColor: 'var(--surface-color)', borderRadius: '8px' }}>
                 <div style={{ ...styles.modalHeader, padding: '1rem', borderBottom: '1px solid var(--border-color)' }}>
                     <h2 style={{ ...styles.modalTitle, margin: 0 }}>Generador de Rutinas IA</h2>
                 </div>
-                <div style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
+                <div style={{ padding: '1rem' }}>
                     {/* The content inside modalBody */}
                     {conflictDates.length > 0 ? (
                         <div style={{padding: '1rem', backgroundColor: 'var(--error-bg)', borderRadius: '8px', border: '1px solid var(--error-color)'}}>
@@ -492,7 +492,7 @@ const ExercisePlanGenerator: FC<ExercisePlanGeneratorProps> = ({ person, lastCon
                     )}
                 </div>
                 <div style={{ ...styles.modalFooter, padding: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                    <button onClick={onClose} className="button-secondary">Cancelar</button>
+                    {!isInline && <button onClick={onClose} className="button-secondary">Cancelar</button>}
                     {generatedPlan && conflictDates.length === 0 ? (
                          <button onClick={initiateSavePlan} disabled={loading}>{loading ? 'Guardando...' : 'Guardar Rutina'}</button>
                     ) : !generatedPlan && conflictDates.length === 0 ? (

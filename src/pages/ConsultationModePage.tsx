@@ -633,33 +633,15 @@ INSTRUCCIONES:
                     </div>
                 )}
 
-                {/* 2. Center: Unified Timeline / Planners */}
-                <div style={{ overflow: 'hidden', backgroundColor: 'var(--surface-color)', display: 'flex', flexDirection: 'column', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                    {/* Tabs Header */}
-                    <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--background-color)' }}>
-                        <button 
-                            onClick={() => setCenterView('timeline')}
-                            style={{ flex: 1, padding: '1rem', border: 'none', background: centerView === 'timeline' ? 'var(--surface-color)' : 'transparent', borderBottom: centerView === 'timeline' ? '2px solid var(--primary-color)' : '2px solid transparent', fontWeight: centerView === 'timeline' ? 700 : 500, color: centerView === 'timeline' ? 'var(--primary-color)' : 'var(--text-light)', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-                        >
-                            {ICONS.calendar} Historial
-                        </button>
-                        <button 
-                            onClick={() => setCenterView('diet')}
-                            style={{ flex: 1, padding: '1rem', border: 'none', background: centerView === 'diet' ? 'var(--surface-color)' : 'transparent', borderBottom: centerView === 'diet' ? '2px solid var(--primary-color)' : '2px solid transparent', fontWeight: centerView === 'diet' ? 700 : 500, color: centerView === 'diet' ? 'var(--primary-color)' : 'var(--text-light)', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-                        >
-                            {ICONS.diet} Plan Alimenticio
-                        </button>
-                        <button 
-                            onClick={() => setCenterView('exercise')}
-                            style={{ flex: 1, padding: '1rem', border: 'none', background: centerView === 'exercise' ? 'var(--surface-color)' : 'transparent', borderBottom: centerView === 'exercise' ? '2px solid var(--primary-color)' : '2px solid transparent', fontWeight: centerView === 'exercise' ? 700 : 500, color: centerView === 'exercise' ? 'var(--primary-color)' : 'var(--text-light)', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-                        >
-                            {ICONS.activity} Plan Entrenamiento
-                        </button>
-                    </div>
-
-                    {/* Content Area */}
-                    <div style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
-                        {centerView === 'timeline' && (
+                {/* 2. Center: Unified Tools */}
+                <div style={{ flex: 1, overflowY: 'auto', backgroundColor: 'var(--background-color)', display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem' }}>
+                    
+                    {/* Tool 1: Timeline */}
+                    <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', maxHeight: '400px', flexShrink: 0 }}>
+                        <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--surface-hover-color)' }}>
+                            {ICONS.calendar} Historial del Paciente
+                        </div>
+                        <div style={{ flex: 1, overflowY: 'auto' }}>
                             <TimelinePanel 
                                 person={person}
                                 timeline={timeline} 
@@ -669,41 +651,48 @@ INSTRUCCIONES:
                                 sendContextToAi={handleContextSelection}
                                 formatItemForAI={formatItemForAI}
                             />
-                        )}
-                        
-                        {centerView === 'diet' && (
-                            <div style={{ padding: '1rem', height: '100%' }}>
-                                <DietPlanner 
-                                    equivalentsData={equivalentsData}
-                                    persons={[person]}
-                                    isMobile={isMobile}
-                                    onPlanSaved={() => {
-                                        onDataRefresh(true);
-                                        setCenterView('timeline');
-                                    }}
-                                    initialPlan={null}
-                                    clearInitialPlan={() => {}}
-                                    knowledgeResources={knowledgeResources}
-                                    customModalZIndex={2200}
-                                />
-                            </div>
-                        )}
-
-                        {centerView === 'exercise' && (
-                            <div style={{ padding: '1rem', height: '100%' }}>
-                                <ExercisePlanGenerator 
-                                    person={person}
-                                    lastConsultation={consultations[0] || null}
-                                    onClose={() => setCenterView('timeline')}
-                                    onPlanSaved={() => {
-                                        onDataRefresh(true);
-                                        setCenterView('timeline');
-                                    }}
-                                    isInline={true}
-                                />
-                            </div>
-                        )}
+                        </div>
                     </div>
+
+                    {/* Tool 2: Diet Planner */}
+                    <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+                        <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--surface-hover-color)' }}>
+                            {ICONS.diet} Plan Alimenticio
+                        </div>
+                        <div style={{ padding: '1rem' }}>
+                            <DietPlanner 
+                                equivalentsData={equivalentsData}
+                                persons={[person]}
+                                isMobile={isMobile}
+                                onPlanSaved={() => {
+                                    onDataRefresh(true);
+                                }}
+                                initialPlan={null}
+                                clearInitialPlan={() => {}}
+                                knowledgeResources={knowledgeResources}
+                                customModalZIndex={2200}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Tool 3: Exercise Planner */}
+                    <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+                        <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--surface-hover-color)' }}>
+                            {ICONS.activity} Plan Entrenamiento
+                        </div>
+                        <div style={{ padding: '1rem' }}>
+                            <ExercisePlanGenerator 
+                                person={person}
+                                lastConsultation={consultations[0] || null}
+                                onClose={() => {}}
+                                onPlanSaved={() => {
+                                    onDataRefresh(true);
+                                }}
+                                isInline={true}
+                            />
+                        </div>
+                    </div>
+
                 </div>
 
                 {/* 3. Right: AI Assistant */}
