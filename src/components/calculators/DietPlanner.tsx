@@ -141,9 +141,10 @@ interface DietPlannerProps {
     clearInitialPlan: () => void;
     knowledgeResources: KnowledgeResource[];
     customModalZIndex?: number;
+    isInline?: boolean;
 }
 
-const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile, onPlanSaved, initialPlan, clearInitialPlan, knowledgeResources, customModalZIndex }) => {
+const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile, onPlanSaved, initialPlan, clearInitialPlan, knowledgeResources, customModalZIndex, isInline }) => {
     const { clinic, subscription } = useClinic();
     
     // Calculate the Z-Index for sub-modals. If customModalZIndex is provided (Consultation Mode), use it + 10.
@@ -151,6 +152,7 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
     const subModalZIndex = customModalZIndex ? customModalZIndex + 50 : 1300;
     
     // --- STATE MANAGEMENT ---
+    const [step, setStep] = useState(1); // 1: Config, 2: Distribución, 3: Resultados
     
     // Data State
     const [portions, setPortions] = useState<Record<string, string>>({});
@@ -183,7 +185,7 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
             setPersonName(String(initialPlan.person_name || ''));
             setSelectedPersonId(initialPlan.person_id || '');
             setSearchTerm(String(initialPlan.person_name || ''));
-            // Jump to results if loading
+            setStep(3); // Jump to results if loading
             clearInitialPlan();
         } else {
             // Init empty portions
@@ -287,15 +289,33 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
 
     // --- STEPS COMPONENTS ---
 
+    const StepIndicator = () => (
+        <div style={{display: 'flex', justifyContent: 'center', marginBottom: '2rem', gap: '1rem'}}>
+            {[1, 2, 3].map(s => (
+                <div key={s} onClick={() => setStep(s)} style={{
+                    width: '40px', height: '40px', borderRadius: '50%', 
+                    backgroundColor: step >= s ? 'var(--primary-color)' : 'var(--surface-color)',
+                    color: step >= s ? 'white' : 'var(--text-light)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 700, cursor: 'pointer', border: `2px solid ${step >= s ? 'var(--primary-color)' : 'var(--border-color)'}`,
+                    transition: 'all 0.3s'
+                }}>
+                    {s}
+                </div>
+            ))}
+        </div>
+    );
+
     const MacroFooter = () => (
         <div className="fade-in-up" style={{
-            position: 'fixed', bottom: 0, left: isMobile ? 0 : '260px', right: 0,
+            position: 'sticky', bottom: 0, left: 0, right: 0,
             backgroundColor: 'var(--surface-color)', borderTop: '1px solid var(--border-color)',
-            padding: '1rem 2rem', 
-            // Important: This zIndex must be lower than the sub-modals (1300/2200) but higher than normal content.
-            zIndex: 100, 
+            padding: '1rem', 
+            zIndex: 10, 
             boxShadow: '0 -5px 20px rgba(0,0,0,0.1)',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '2rem'
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '2rem',
+            borderRadius: '0 0 16px 16px',
+            marginTop: '1rem'
         }}>
             <div style={{display: 'flex', gap: '1.5rem', flex: 1}}>
                 {[
@@ -324,6 +344,11 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
             </div>
 
             {/* We don't need a button to go to results since it's unrolled */}
+            {step === 2 && (
+                <button onClick={() => setStep(3)} className="button-primary" style={{padding: '0.8rem 1.5rem'}}>
+                    Ver Resultados →
+                </button>
+            )}
         </div>
     );
 
@@ -351,19 +376,30 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
             )}
             
             {/* Main UI */}
-            <div style={{...styles.pageHeader, marginBottom: '2rem'}}>
-                <div>
-                    <h1 style={{margin: 0}}>Planificador Dietético</h1>
-                    <p style={{color: 'var(--text-light)', margin: 0}}>Calcula y distribuye porciones de equivalentes.</p>
+            {!isInline && (
+                <div style={{...styles.pageHeader, marginBottom: '2rem'}}>
+                    <div>
+                        <h1 style={{margin: 0}}>Planificador Dietético</h1>
+                        <p style={{color: 'var(--text-light)', margin: 0}}>Calcula y distribuye porciones de equivalentes.</p>
+                    </div>
+                    {success && <div style={{padding: '0.5rem 1rem', backgroundColor: '#10B981', color: 'white', borderRadius: '8px', fontSize: '0.9rem'}}>{success}</div>}
                 </div>
-                {success && <div style={{padding: '0.5rem 1rem', backgroundColor: '#10B981', color: 'white', borderRadius: '8px', fontSize: '0.9rem'}}>{success}</div>}
-            </div>
+            )}
+
+            {isInline && success && (
+                <div style={{padding: '0.5rem 1rem', backgroundColor: '#10B981', color: 'white', borderRadius: '8px', fontSize: '0.9rem', marginBottom: '1rem', textAlign: 'center'}}>
+                    {success}
+                </div>
+            )}
+
+            <StepIndicator />
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 {/* STEP 1: CONFIGURATION */}
-                <div className="fade-in" style={{maxWidth: '800px', margin: '0 auto', width: '100%'}}>
-                    <div style={{backgroundColor: 'var(--surface-color)', padding: '2rem', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)'}}>
-                        <h3 style={{marginTop: 0, marginBottom: '1.5rem', color: 'var(--primary-color)'}}>1. Configuración del Plan</h3>
+                {step === 1 && (
+                    <div className="fade-in" style={{maxWidth: '800px', margin: '0 auto', width: '100%'}}>
+                        <div style={{backgroundColor: 'var(--surface-color)', padding: '2rem', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)'}}>
+                            <h3 style={{marginTop: 0, marginBottom: '1.5rem', color: 'var(--primary-color)'}}>1. Configuración del Plan</h3>
                         
                         <div style={{marginBottom: '2rem'}}>
                             <label style={styles.label}>Paciente</label>
@@ -425,13 +461,18 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
                                 <p style={{margin: 0, fontSize: '0.8rem', color: 'var(--text-light)'}}>Gramos Carbos</p>
                                 <p style={{margin: 0, fontWeight: 700, fontSize: '1.2rem', color: MACRO_COLORS.carb}}>{goalGrams.hc.toFixed(0)}g</p>
                             </div>
+                            <div style={{display: 'flex', justifyContent: 'flex-end'}}>
+                                <button onClick={() => setStep(2)} className="button-primary">Siguiente: Distribución →</button>
+                            </div>
+                        </div>
                         </div>
                     </div>
-                </div>
+                )}
 
                 {/* STEP 2: DISTRIBUTION */}
-                <div className="fade-in" style={{ width: '100%' }}>
-                    <div style={{backgroundColor: 'var(--surface-color)', padding: '2rem', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)'}}>
+                {step === 2 && (
+                    <div className="fade-in" style={{ width: '100%' }}>
+                        <div style={{backgroundColor: 'var(--surface-color)', padding: '2rem', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)'}}>
                         <h3 style={{marginTop: 0, marginBottom: '1.5rem', color: 'var(--primary-color)'}}>2. Distribución de Porciones</h3>
                         
                         {/* Category Tabs */}
@@ -470,11 +511,14 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
                         ))}
                     </div>
                     {/* We don't need MacroFooter here if we show the summary below, but we can keep it or just rely on the summary */}
+                    <MacroFooter />
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* STEP 3: RESULTS */}
-            <div className="fade-in" style={{maxWidth: '1000px', margin: '0 auto', width: '100%'}}>
+            {step === 3 && (
+                <div className="fade-in" style={{maxWidth: '1000px', margin: '0 auto', width: '100%'}}>
                     <div style={{display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '2rem'}}>
                         {/* Summary Card */}
                         <div style={{backgroundColor: 'var(--surface-color)', padding: '2rem', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)'}}>
@@ -538,9 +582,10 @@ const DietPlanner: FC<DietPlannerProps> = ({ equivalentsData, persons, isMobile,
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
         </div>
-    );
+    </div>
+);
 };
 
 export default DietPlanner;

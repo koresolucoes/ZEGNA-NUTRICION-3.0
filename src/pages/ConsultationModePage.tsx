@@ -637,7 +637,7 @@ INSTRUCCIONES:
                 <div style={{ flex: 1, overflowY: 'auto', backgroundColor: 'var(--background-color)', display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem' }}>
                     
                     {/* Tool 1: Timeline */}
-                    <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', maxHeight: '400px', flexShrink: 0 }}>
+                    <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', height: '400px', flexShrink: 0 }}>
                         <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--surface-hover-color)' }}>
                             {ICONS.calendar} Historial del Paciente
                         </div>
@@ -671,6 +671,7 @@ INSTRUCCIONES:
                                 clearInitialPlan={() => {}}
                                 knowledgeResources={knowledgeResources}
                                 customModalZIndex={2200}
+                                isInline={true}
                             />
                         </div>
                     </div>

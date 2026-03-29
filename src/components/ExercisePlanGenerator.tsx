@@ -43,6 +43,7 @@ const ExercisePlanGenerator: FC<ExercisePlanGeneratorProps> = ({ person, lastCon
     // Conflict State
     const [conflictDates, setConflictDates] = useState<string[]>([]);
     const [isOverwriting, setIsOverwriting] = useState(false);
+    const [isSaved, setIsSaved] = useState(false);
 
     const intervalRef = useRef<number | null>(null);
 
@@ -263,6 +264,7 @@ const ExercisePlanGenerator: FC<ExercisePlanGeneratorProps> = ({ person, lastCon
                 }).catch(err => console.error("Failed to send notification:", err));
             }
 
+            setIsSaved(true);
             onPlanSaved();
         } catch (err: any) {
              setError(`Error al guardar la rutina: ${err.message}`);
@@ -393,7 +395,12 @@ const ExercisePlanGenerator: FC<ExercisePlanGeneratorProps> = ({ person, lastCon
                 </div>
                 <div style={styles.modalFooter}>
                     {!isInline && <button onClick={onClose} className="button-secondary">Cancelar</button>}
-                    {generatedPlan && conflictDates.length === 0 ? (
+                    {isSaved ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <span style={{ color: 'var(--primary-color)', fontWeight: 600 }}>¡Rutina Guardada!</span>
+                            <button onClick={() => { setGeneratedPlan(null); setIsSaved(false); }} className="button-secondary">Generar Otra</button>
+                        </div>
+                    ) : generatedPlan && conflictDates.length === 0 ? (
                          <button onClick={initiateSavePlan} disabled={loading}>{loading ? 'Guardando...' : 'Guardar Rutina'}</button>
                     ) : !generatedPlan && conflictDates.length === 0 ? (
                          <button onClick={generatePlan} disabled={loading || !healthGoal}>{loading ? 'Generando...' : 'Generar Rutina'}</button>
@@ -493,7 +500,12 @@ const ExercisePlanGenerator: FC<ExercisePlanGeneratorProps> = ({ person, lastCon
                 </div>
                 <div style={{ ...styles.modalFooter, padding: '1rem', borderTop: '1px solid var(--border-color)' }}>
                     {!isInline && <button onClick={onClose} className="button-secondary">Cancelar</button>}
-                    {generatedPlan && conflictDates.length === 0 ? (
+                    {isSaved ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <span style={{ color: 'var(--primary-color)', fontWeight: 600 }}>¡Rutina Guardada!</span>
+                            <button onClick={() => { setGeneratedPlan(null); setIsSaved(false); }} className="button-secondary">Generar Otra</button>
+                        </div>
+                    ) : generatedPlan && conflictDates.length === 0 ? (
                          <button onClick={initiateSavePlan} disabled={loading}>{loading ? 'Guardando...' : 'Guardar Rutina'}</button>
                     ) : !generatedPlan && conflictDates.length === 0 ? (
                          <button onClick={generatePlan} disabled={loading || !healthGoal}>{loading ? 'Generando...' : 'Generar Rutina'}</button>
