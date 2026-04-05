@@ -10,6 +10,8 @@ const themeOptions = [
     { id: 'clinical', name: 'Serenidad Clínica', colors: ['#6A8EAE', '#C5A169', '#383f45', '#272d31'] },
     { id: 'vitality', name: 'Energía Vital', colors: ['#E57A44', '#48B2A7', '#443d3a', '#2c2826'] },
     { id: 'light', name: 'Minimalista Claro', colors: ['#4A90E2', '#50E3C2', '#FFFFFF', '#F4F6F8'] },
+    { id: 'liquidGlassLight', name: 'Liquid Glass (Claro)', colors: ['#007AFF', '#FF2D55', '#F2F2F7', '#FFFFFF'] },
+    { id: 'liquidGlassDark', name: 'Liquid Glass (Oscuro)', colors: ['#0A84FF', '#FF375F', '#000000', '#1C1C1E'] },
 ];
 
 const AllyProfileEditPage: FC<{ onProfileUpdate: () => void; }> = ({ onProfileUpdate }) => {

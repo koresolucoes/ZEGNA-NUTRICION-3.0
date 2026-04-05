@@ -20,6 +20,8 @@ const themeOptions = [
     { id: 'natural', name: 'Salud Natural', description: 'Tonos verdes y tierra para un enfoque holístico.' },
     { id: 'clinical', name: 'Minimalista Gris', description: 'Sobrio, moderno y sin distracciones.' },
     { id: 'vitality', name: 'Energía Vital', description: 'Alto impacto con tonos cálidos oscuros.' },
+    { id: 'liquidGlassLight', name: 'Liquid Glass (Claro)', description: 'Estilo translúcido moderno tipo iOS.' },
+    { id: 'liquidGlassDark', name: 'Liquid Glass (Oscuro)', description: 'Estilo translúcido oscuro tipo iOS.' },
 ];
 
 const fiscalRegimeOptions = [
