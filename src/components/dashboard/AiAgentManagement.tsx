@@ -258,9 +258,11 @@ const AiAgentManagement: FC = () => {
                             <div>
                                 <label style={labelStyle}>Versión del Modelo</label>
                                 <div className="select-wrapper">
-                                    <select name="model_name" value={agent.model_name || 'gemini-3-flash-preview'} onChange={e => setAgent({...agent, model_name: e.target.value})} style={inputStyle}>
-                                        <option value="gemini-3-flash-preview">Gemini 3 Flash Preview (Recomendado - Velocidad)</option>
-                                        <option value="gemini-3-pro-preview">Gemini 3 Pro Preview (Alta Capacidad - Razonamiento)</option>
+                                    <select name="model_name" value={agent.model_name || 'gemini-3.1-pro-preview'} onChange={e => setAgent({...agent, model_name: e.target.value})} style={inputStyle}>
+                                        <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro Preview (Recomendado - Alta Seguridad y Apego Estricto)</option>
+                                        <option value="gemini-3.1-flash-preview">Gemini 3.1 Flash Preview (Velocidad)</option>
+                                        <option value="gemini-3-flash-preview">Gemini 3 Flash Preview (Legado)</option>
+                                        <option value="gemini-3-pro-preview">Gemini 3 Pro Preview (Legado)</option>
                                         <option value="gemini-2.5-flash">Gemini 2.5 Flash (Estable)</option>
                                     </select>
                                 </div>

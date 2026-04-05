@@ -480,18 +480,18 @@ export default async function handler(req: any, res: any) {
         📅 **PRÓXIMAS CITAS PROGRAMADAS**:
         ${appointmentsList}
 
-        **INSTRUCCIONES CRÍTICAS:**
-        1. ANTES de sugerir cualquier alimento o receta, VERIFICA las alergias e intolerancias listadas arriba. NUNCA sugieras algo que contenga un alérgeno del paciente.
-        2. Si el usuario pregunta sobre una dieta o ejercicio, considera sus condiciones médicas.
-        3. Si no estás seguro si un alimento es seguro, advierte al paciente.
-        4. Si el paciente pregunta "¿Cuándo es mi cita?" o "¿Tengo cita?", consulta la lista de "PRÓXIMAS CITAS PROGRAMADAS" provista arriba.
+        🛑 **REGLAS DE ORO: APEGO 100% AL PLAN Y SEGURIDAD** 🛑
+        1. **APEGO ESTRICTO:** DEBES apegarte 100% al plan de alimentación y a las porciones EXACTAS que devuelve la herramienta 'get_my_data_for_ai'. 
+        2. **CERO INVENTOS:** BAJO NINGUNA CIRCUNSTANCIA debes inventar, sugerir, agregar o modificar porciones, alimentos o equivalentes que no estén explícitamente en el plan del paciente.
+        3. **FUERA DEL PLAN:** Si el paciente te pide comer algo fuera del plan (ej. "¿puedo comer pizza?", "¿puedo cambiar X por Y?"), indícale amablemente pero con firmeza que tu deber es mantener su seguridad y apego al plan nutricional establecido por su nutriólogo, y no puedes autorizar alimentos o porciones fuera de lo indicado.
+        4. **SEGURIDAD CLÍNICA:** Nunca des diagnósticos médicos, no recetes medicamentos, y respeta estrictamente las alergias e intolerancias listadas arriba. NUNCA sugieras algo que contenga un alérgeno del paciente.
+        5. **PRIVACIDAD:** Está estrictamente prohibido proporcionar información sobre CUALQUIER otro paciente.
 
-        Tu función principal es ayudarle con su plan de salud.
-        - Para cualquier pregunta sobre su plan de comidas ESPECÍFICO DEL DÍA, rutina de ejercicio, estado del plan de servicio, DEBES usar la herramienta 'get_my_data_for_ai'.
+        **INSTRUCCIONES DE HERRAMIENTAS:**
+        - Para cualquier pregunta sobre su plan de comidas ESPECÍFICO DEL DÍA, porciones, rutina de ejercicio, DEBES usar la herramienta 'get_my_data_for_ai'. Lee cuidadosamente la respuesta de la herramienta y repite las porciones exactamente como vienen ahí.
         - Para preguntas sobre PROGRESO, peso, historia o cambios a lo largo del tiempo, DEBES usar la herramienta 'get_patient_progress'.
         - Para agendar una NUEVA cita, DEBES usar la herramienta 'book_appointment'.
-        - Si la pregunta es un saludo o conversación casual (ej. 'Hola'), responde de forma natural y pregunta en qué puedes ayudar.
-        - Está estrictamente prohibido proporcionar información sobre CUALQUIER otro paciente.`;
+        - Si la pregunta es un saludo o conversación casual (ej. 'Hola'), responde de forma natural y pregunta en qué puedes ayudar.`;
     } else {
         systemInstruction += `\n\nEstás conversando con un usuario no registrado. Puedes proporcionar información general sobre la clínica, pero no puedes acceder o proporcionar datos de ningún paciente.`;
     }
@@ -499,8 +499,8 @@ export default async function handler(req: any, res: any) {
     // 8. First call to Gemini API
     // UPDATED: Use GEMINI_API_KEY
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    // Use the user-selected model or fallback
-    const modelName = agent.model_name || 'gemini-3-flash-preview';
+    // Use the user-selected model or fallback to the most secure/capable model for adherence
+    const modelName = agent.model_name || 'gemini-3.1-pro-preview';
 
     // Construct user message with optional media
     const userParts: any[] = [{ text: messageBody }];
