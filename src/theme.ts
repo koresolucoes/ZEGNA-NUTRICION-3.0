@@ -19,8 +19,6 @@ export interface ThemeType {
     shadow: string;
     shadowHover: string;
     white: string;
-    backgroundImage?: string;
-    isGlass?: boolean;
 }
 
 export const themes: { [key: string]: ThemeType } = {
@@ -148,60 +146,6 @@ export const themes: { [key: string]: ThemeType } = {
         shadowHover: '0 10px 15px -3px rgba(0, 0, 0, 0.5)',
         
         white: '#FFFFFF',
-    },
-    liquidGlassLight: {
-        // "Liquid Glass (iOS)" - Translúcido claro con fondo vibrante
-        primaryColor: '#007AFF', // iOS Blue
-        primaryLight: 'rgba(0, 122, 255, 0.15)',
-        primaryDark: '#0056B3',
-        accentColor: '#FF2D55', // iOS Pink
-        
-        backgroundColor: '#F2F2F7', 
-        surfaceColor: 'rgba(255, 255, 255, 0.65)', 
-        surfaceHoverColor: 'rgba(255, 255, 255, 0.8)',
-        surfaceActive: 'rgba(255, 255, 255, 0.9)',
-        
-        textColor: '#000000',
-        textLight: '#8E8E93',
-        
-        borderColor: 'rgba(255, 255, 255, 0.4)',
-        
-        errorColor: '#FF3B30',
-        errorBg: 'rgba(255, 59, 48, 0.1)',
-        
-        shadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
-        shadowHover: '0 12px 48px rgba(0, 0, 0, 0.12)',
-        
-        white: '#FFFFFF',
-        backgroundImage: 'linear-gradient(135deg, #FF9A9E 0%, #FECFEF 99%, #FECFEF 100%)',
-        isGlass: true,
-    },
-    liquidGlassDark: {
-        // "Liquid Glass Dark" - Translúcido oscuro con fondo vibrante
-        primaryColor: '#0A84FF', // iOS Dark Blue
-        primaryLight: 'rgba(10, 132, 255, 0.15)',
-        primaryDark: '#0060DF',
-        accentColor: '#FF375F', // iOS Dark Pink
-        
-        backgroundColor: '#000000', 
-        surfaceColor: 'rgba(28, 28, 30, 0.65)', 
-        surfaceHoverColor: 'rgba(44, 44, 46, 0.8)',
-        surfaceActive: 'rgba(58, 58, 60, 0.9)',
-        
-        textColor: '#FFFFFF',
-        textLight: '#EBEBF5', 
-        
-        borderColor: 'rgba(255, 255, 255, 0.15)',
-        
-        errorColor: '#FF453A',
-        errorBg: 'rgba(255, 69, 58, 0.1)',
-        
-        shadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
-        shadowHover: '0 12px 48px rgba(0, 0, 0, 0.4)',
-        
-        white: '#FFFFFF',
-        backgroundImage: 'linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%)',
-        isGlass: true,
     }
 };
 
@@ -256,26 +200,10 @@ export const GlobalStyle = createGlobalStyle<{ theme: ThemeType }>`
         height: 100%;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         background-color: var(--background-color);
-        ${({ theme }) => theme.backgroundImage ? `background-image: ${theme.backgroundImage}; background-size: cover; background-attachment: fixed;` : ''}
         color: var(--text-color);
         line-height: 1.5;
         font-size: 15px; 
     }
-
-    /* Glassmorphism support */
-    ${({ theme }) => theme.isGlass ? `
-        div[style*="var(--surface-color)"], 
-        header[style*="var(--surface-color)"], 
-        aside[style*="var(--surface-color)"], 
-        nav[style*="var(--surface-color)"],
-        button[style*="var(--surface-color)"],
-        tr[style*="var(--surface-color)"],
-        li[style*="var(--surface-color)"],
-        .glass-panel {
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-        }
-    ` : ''}
 
     #root {
         height: 100%;
