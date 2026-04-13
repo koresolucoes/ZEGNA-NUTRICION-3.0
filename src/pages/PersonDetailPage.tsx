@@ -445,7 +445,7 @@ INSTRUCCIONES:
 
     // --- WIDGETS ---
     const QuickActionsWidget = () => (
-        <div style={{...styles.detailCard, backgroundColor: 'white', border: '1px solid var(--border-color)', boxShadow: '0 2px 4px rgba(0,0,0,0.02)'}}>
+        <div className="glass-container" style={{...styles.detailCard}}>
             <div style={{padding: '1.25rem', borderBottom: '1px solid var(--border-color)'}}>
                 <h3 style={{margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-color)'}}>Acciones Rápidas</h3>
             </div>
@@ -484,7 +484,7 @@ INSTRUCCIONES:
          const currentPlan = planHistory.length > 0 ? planHistory[0] : null;
         if (!currentPlan || !currentPlan.totals) {
             return (
-                <div style={{...styles.detailCard, backgroundColor: 'white', border: '1px solid var(--border-color)', boxShadow: '0 2px 4px rgba(0,0,0,0.02)'}}>
+                <div className="glass-container" style={{...styles.detailCard}}>
                     <div style={{padding: '1.25rem', borderBottom: '1px solid var(--border-color)'}}>
                         <h3 style={{margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-color)'}}>Distribución de Dieta</h3>
                     </div>
@@ -500,7 +500,7 @@ INSTRUCCIONES:
         const lPercent = totalGrams ? (totals.lipid_g / totalGrams) * 100 : 0;
         const cPercent = totalGrams ? (totals.carb_g / totalGrams) * 100 : 0;
         return (
-            <div style={{...styles.detailCard, backgroundColor: 'white', border: '1px solid var(--border-color)', boxShadow: '0 2px 4px rgba(0,0,0,0.02)'}}>
+            <div className="glass-container" style={{...styles.detailCard}}>
                 <div style={{padding: '1.25rem', borderBottom: '1px solid var(--border-color)'}}>
                     <h3 style={{margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-color)'}}>Distribución de Dieta</h3>
                 </div>
@@ -539,7 +539,7 @@ INSTRUCCIONES:
             .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())[0];
             
         return (
-            <div style={{...styles.detailCard, backgroundColor: 'white', border: '1px solid var(--border-color)', boxShadow: '0 2px 4px rgba(0,0,0,0.02)'}}>
+            <div className="glass-container" style={{...styles.detailCard}}>
                 <div style={{padding: '1.25rem', borderBottom: '1px solid var(--border-color)'}}>
                      <h3 style={{margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-color)'}}>Próxima Cita</h3>
                 </div>
@@ -599,32 +599,30 @@ INSTRUCCIONES:
         };
 
         return (
-            <div style={{
-                backgroundColor: '#FEF08A', 
-                borderRadius: '4px',
-                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)',
-                border: '1px solid #FDE047', 
+            <div className="glass-container" style={{
+                borderRadius: '24px',
                 position: 'relative',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                borderTop: '4px solid #FDE047' // Yellow accent to keep the "note" feel
             }}>
                 <div style={{
                     height: '24px',
                     backgroundColor: 'rgba(0,0,0,0.03)',
-                    borderBottom: '1px solid rgba(0,0,0,0.05)',
+                    borderBottom: '1px solid var(--border-color)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'flex-end',
                     padding: '0 0.5rem'
                 }}>
-                    {isSaving ? <span style={{fontSize: '0.7rem', color: '#854D0E'}}>Guardando...</span> : 
-                     saved ? <span style={{fontSize: '0.7rem', color: '#15803D'}}>Guardado ✓</span> : null}
+                    {isSaving ? <span style={{fontSize: '0.7rem', color: 'var(--text-light)'}}>Guardando...</span> : 
+                     saved ? <span style={{fontSize: '0.7rem', color: 'var(--primary-color)'}}>Guardado ✓</span> : null}
                 </div>
                 
                 <div style={{padding: '1rem'}}>
                     <h3 style={{
                         margin: '0 0 0.5rem 0', 
                         fontSize: '0.9rem', 
-                        color: '#854D0E', 
+                        color: 'var(--text-color)', 
                         fontWeight: 700, 
                         textTransform: 'uppercase', 
                         letterSpacing: '0.5px'
@@ -643,7 +641,7 @@ INSTRUCCIONES:
                             border: 'none',
                             resize: 'none',
                             outline: 'none',
-                            color: '#4B5563',
+                            color: 'var(--text-color)',
                             fontSize: '0.95rem',
                             lineHeight: '1.5',
                             fontFamily: 'inherit'

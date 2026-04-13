@@ -83,11 +83,8 @@ const PatientStickyHeader: FC<PatientStickyHeaderProps> = ({ person, allergies, 
     };
 
     const cardStyle: React.CSSProperties = {
-        backgroundColor: 'var(--surface-color)',
-        borderRadius: '16px',
+        borderRadius: '24px',
         padding: '1.5rem',
-        border: '1px solid var(--border-color)',
-        boxShadow: 'var(--shadow)',
         display: 'flex',
         flexWrap: 'wrap',
         gap: '1.5rem',
@@ -122,7 +119,7 @@ const PatientStickyHeader: FC<PatientStickyHeaderProps> = ({ person, allergies, 
             </div>
 
             {/* Identity Card */}
-            <div style={cardStyle}>
+            <div className="glass-container" style={cardStyle}>
                 <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', flex: 1 }}>
                     <div style={avatarStyle}>
                         {person.avatar_url ? (
