@@ -5,7 +5,7 @@ import { createGlobalStyle } from 'styled-components';
 export const styles: { [key: string]: React.CSSProperties } = {
     // Auth
     authContainer: { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '1.5rem', backgroundColor: 'var(--background-color)' },
-    authBox: { width: '100%', maxWidth: '400px', padding: '2.5rem', backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-hover)', border: '1px solid var(--border-color)' },
+    authBox: { width: '100%', maxWidth: '400px', padding: '2.5rem', backgroundColor: 'var(--surface-color)', borderRadius: '24px', boxShadow: 'var(--shadow-hover)', border: '1px solid var(--border-color)' },
     header: { textAlign: 'center' as const, marginBottom: '2rem' },
     title: { color: 'var(--text-color)', margin: '0 0 0.5rem 0', fontWeight: 700, fontSize: '1.5rem' },
     form: { display: 'flex', flexDirection: 'column' as const },
@@ -44,11 +44,11 @@ export const styles: { [key: string]: React.CSSProperties } = {
     error: { color: 'var(--error-color)', backgroundColor: 'var(--error-bg)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem', textAlign: 'center' as const, fontSize: '0.875rem', fontWeight: 500, border: '1px solid var(--error-color)' },
     
     // Dashboard Layout
-    dashboardLayout: { display: 'flex', minHeight: '100vh', position: 'relative', backgroundColor: 'var(--background-color)' },
+    dashboardLayout: { display: 'flex', minHeight: '100vh', position: 'relative', background: 'var(--background-color)' },
     
     // Sidebar - Modernizada
-    sidebar: { width: '260px', backgroundColor: 'var(--surface-color)', padding: '1.5rem 1rem', display: 'flex', flexDirection: 'column' as const, borderRight: '1px solid var(--border-color)', transition: 'transform 0.3s ease', position: 'fixed', top: 0, left: 0, height: '100vh', zIndex: 1100 },
-    sidebarHidden: { transform: 'translateX(-100%)' },
+    sidebar: { width: '260px', backgroundColor: 'var(--surface-color)', padding: '1.5rem 1rem', display: 'flex', flexDirection: 'column' as const, border: '1px solid var(--border-color)', transition: 'transform 0.3s ease', position: 'fixed', top: '20px', left: '20px', height: 'calc(100vh - 40px)', zIndex: 1100, borderRadius: '24px' },
+    sidebarHidden: { transform: 'translateX(-120%)' },
     sidebarHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', padding: '0 0.5rem' },
     sidebarToggleButton: { background: 'transparent', border: 'none', color: 'var(--text-light)', cursor: 'pointer', padding: '0.5rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' },
     navItem: { display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', marginBottom: '0.25rem', cursor: 'pointer', transition: 'all 0.15s', fontWeight: 500, color: 'var(--text-light)', fontSize: '0.9rem' },
@@ -56,7 +56,7 @@ export const styles: { [key: string]: React.CSSProperties } = {
     // Main Content
     mainContent: { flex: 1, padding: '2rem', overflowY: 'auto' as const, transition: 'margin-left 0.3s ease', maxWidth: '100%', margin: '0 auto' },
     mainContentMobile: { marginLeft: 0, padding: '1rem', width: '100%' },
-    mainContentDesktop: { marginLeft: '260px' },
+    mainContentDesktop: { marginLeft: '300px' }, // 260px width + 20px left + 20px gap
     pageHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap' as const, gap: '1rem' },
     hamburger: { display: 'inline-block', background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem', color: 'var(--text-color)' },
     
@@ -72,19 +72,19 @@ export const styles: { [key: string]: React.CSSProperties } = {
     
     // Modals - Cleaner
     modalOverlay: { position: 'fixed' as const, top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, overflowY: 'auto' as const, padding: '1rem' },
-    modalContent: { backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '550px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' as const, boxShadow: 'var(--shadow-hover)', border: 'none', outline: 'none' },
+    modalContent: { backgroundColor: 'var(--surface-color)', borderRadius: '24px', width: '100%', maxWidth: '550px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' as const, boxShadow: 'var(--shadow-hover)', border: 'none', outline: 'none' },
     modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem', borderBottom: '1px solid var(--border-color)' },
     modalTitle: { margin: 0, fontSize: '1.125rem', color: 'var(--text-color)', fontWeight: 600 },
     modalBody: { padding: '1.5rem', overflowY: 'auto' as const },
-    modalFooter: { display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', padding: '1.25rem 1.5rem', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--surface-hover-color)', borderBottomLeftRadius: 'var(--radius-lg)', borderBottomRightRadius: 'var(--radius-lg)' },
+    modalFooter: { display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', padding: '1.25rem 1.5rem', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--surface-hover-color)', borderBottomLeftRadius: '24px', borderBottomRightRadius: '24px' },
     
     // Cards - Data Focused
-    clientCard: { backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius-md)', padding: '1rem', marginBottom: '0.75rem', boxShadow: 'var(--shadow)', border: '1px solid var(--border-color)', transition: 'transform 0.2s' },
+    clientCard: { backgroundColor: 'var(--surface-color)', borderRadius: '24px', padding: '1rem', marginBottom: '0.75rem', boxShadow: 'var(--shadow)', border: '1px solid var(--border-color)', transition: 'transform 0.2s' },
     
     // Widget Cards for Person Detail
     detailCard: { 
         backgroundColor: 'var(--surface-color)', 
-        borderRadius: '12px', 
+        borderRadius: '24px', 
         boxShadow: '0 2px 4px rgba(0,0,0,0.02)', 
         marginBottom: '0', 
         overflow: 'hidden', 
@@ -100,12 +100,12 @@ export const styles: { [key: string]: React.CSSProperties } = {
     
     // Dashboard Specific - Minimalist Widgets
     dashboardGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' },
-    summaryCard: { backgroundColor: 'var(--surface-color)', padding: '1.5rem', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column' as const, alignItems: 'flex-start', textAlign: 'left' as const, transition: 'transform 0.2s', border: '1px solid var(--border-color)', height: '100%', justifyContent: 'center' },
+    summaryCard: { backgroundColor: 'var(--surface-color)', padding: '1.5rem', borderRadius: '24px', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column' as const, alignItems: 'flex-start', textAlign: 'left' as const, transition: 'transform 0.2s', border: '1px solid var(--border-color)', height: '100%', justifyContent: 'center' },
     summaryCardIcon: { color: 'var(--primary-color)', marginBottom: '0.75rem', padding: '0.5rem', backgroundColor: 'var(--primary-light)', borderRadius: 'var(--radius-sm)', display: 'inline-flex' },
     summaryCardValue: { fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-color)', margin: '0.25rem 0 0 0', lineHeight: 1 },
     summaryCardLabel: { fontSize: '0.875rem', color: 'var(--text-light)', margin: 0, fontWeight: 500 },
     
-    infoCard: { backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow)', overflow: 'hidden', border: '1px solid var(--border-color)', height: '100%', display: 'flex', flexDirection: 'column' as const },
+    infoCard: { backgroundColor: 'var(--surface-color)', borderRadius: '24px', boxShadow: 'var(--shadow)', overflow: 'hidden', border: '1px solid var(--border-color)', height: '100%', display: 'flex', flexDirection: 'column' as const },
     infoCardHeader: { padding: '1rem 1.25rem', borderBottom: '1px solid var(--border-color)', backgroundColor: 'transparent' },
     infoCardBody: { padding: '1.25rem', flex: 1 },
     

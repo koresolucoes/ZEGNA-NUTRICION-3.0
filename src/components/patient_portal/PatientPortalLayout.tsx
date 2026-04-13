@@ -397,15 +397,20 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
                 <aside style={{
                     width: '260px',
                     backgroundColor: 'var(--surface-color)',
-                    borderRight: '1px solid var(--border-color)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '24px',
                     display: 'flex',
                     flexDirection: 'column',
                     position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    bottom: 0,
-                    zIndex: 1000
-                }}>
+                    top: '20px',
+                    left: '20px',
+                    height: 'calc(100vh - 40px)',
+                    zIndex: 1000,
+                    boxShadow: 'var(--shadow)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    overflow: 'hidden'
+                }} className="glass-container">
                     {/* Clinic Brand Header */}
                     <div style={{ 
                          padding: '1.5rem 1rem', 
@@ -454,8 +459,8 @@ const PatientPortalLayout: FC<{ session: Session }> = ({ session }) => {
             <main style={{ 
                 flex: 1, 
                 maxWidth: '100%', 
-                marginLeft: isMobile ? 0 : '260px',
-                width: isMobile ? '100%' : 'calc(100% - 260px)',
+                marginLeft: isMobile ? 0 : '300px',
+                width: isMobile ? '100%' : 'calc(100% - 300px)',
                 position: 'relative'
             }}>
                 {renderContent()}

@@ -23,27 +23,27 @@ export interface ThemeType {
 
 export const themes: { [key: string]: ThemeType } = {
     default: { 
-        // "Zegna Azul (Dark Mode)" - El default original
+        // "Glassmorphism"
         primaryColor: '#38BDF8', 
         primaryLight: 'rgba(56, 189, 248, 0.1)',
         primaryDark: '#0EA5E9', 
         accentColor: '#2DD4BF', 
         
-        backgroundColor: '#0F172A', 
-        surfaceColor: '#1E293B', 
-        surfaceHoverColor: '#334155', 
-        surfaceActive: '#475569', 
+        backgroundColor: 'radial-gradient(circle at top left, #2D3341, #0F172A)', 
+        surfaceColor: 'rgba(255, 255, 255, 0.08)', 
+        surfaceHoverColor: 'rgba(255, 255, 255, 0.15)', 
+        surfaceActive: 'rgba(255, 255, 255, 0.2)', 
         
         textColor: '#F1F5F9', 
         textLight: '#94A3B8', 
         
-        borderColor: '#334155', 
+        borderColor: 'rgba(255, 255, 255, 0.12)', 
         
         errorColor: '#F87171', 
         errorBg: 'rgba(248, 113, 113, 0.1)',
         
-        shadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
-        shadowHover: '0 10px 15px -3px rgba(0, 0, 0, 0.4)',
+        shadow: '0 20px 50px rgba(0,0,0,0.2)',
+        shadowHover: '0 25px 50px rgba(0,0,0,0.3)',
         
         white: '#FFFFFF',
     },
@@ -199,10 +199,27 @@ export const GlobalStyle = createGlobalStyle<{ theme: ThemeType }>`
     html, body {
         height: 100%;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-        background-color: var(--background-color);
+        background: var(--background-color);
+        background-attachment: fixed;
         color: var(--text-color);
         line-height: 1.5;
         font-size: 15px; 
+    }
+
+    /* Glassmorphism Containers */
+    .glass-container, aside, header, .card, .modal-content {
+        backdrop-filter: blur(20px) !important;
+        -webkit-backdrop-filter: blur(20px) !important;
+        background-color: var(--surface-color) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 24px !important;
+        box-shadow: var(--shadow) !important;
+        transition: transform 0.2s ease, background-color 0.2s ease !important;
+    }
+
+    .glass-container:hover, aside:hover, header:hover, .card:hover {
+        background-color: var(--surface-hover-color) !important;
+        transform: scale(1.02) !important;
     }
 
     #root {

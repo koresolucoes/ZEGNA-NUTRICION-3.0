@@ -581,16 +581,21 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                 <header style={{
                     height: '70px',
                     backgroundColor: 'var(--surface-color)',
-                    borderBottom: '1px solid var(--border-color)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '24px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: '0 2rem',
                     position: 'sticky',
-                    top: 0,
+                    top: '20px',
+                    margin: '0 20px 20px 20px',
                     zIndex: 1000,
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
-                }}>
+                    boxShadow: 'var(--shadow)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    transition: 'var(--transition)'
+                }} className="glass-container">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <div style={{
                             width: '36px', height: '36px', borderRadius: '10px', 
@@ -685,16 +690,21 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                         <header style={{
                             height: '64px',
                             backgroundColor: 'var(--surface-color)',
-                            borderBottom: '1px solid var(--border-color)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '24px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             padding: '0 1rem',
                             position: 'sticky',
-                            top: 0,
+                            top: '20px',
+                            margin: '0 20px 20px 20px',
                             zIndex: 1000,
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-                        }}>
+                            boxShadow: 'var(--shadow)',
+                            backdropFilter: 'blur(20px)',
+                            WebkitBackdropFilter: 'blur(20px)',
+                            transition: 'var(--transition)'
+                        }} className="glass-container">
                              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                 <button onClick={() => setIsMobileMenuOpen(true)} style={{...styles.hamburger, padding: '0.5rem', marginRight: '-0.5rem'}}>
                                     {ICONS.menu}
