@@ -20,6 +20,10 @@ const themeOptions = [
     { id: 'natural', name: 'Salud Natural', description: 'Tonos verdes y tierra para un enfoque holístico.' },
     { id: 'clinical', name: 'Minimalista Gris', description: 'Sobrio, moderno y sin distracciones.' },
     { id: 'vitality', name: 'Energía Vital', description: 'Alto impacto con tonos cálidos oscuros.' },
+    { id: 'tulum', name: 'Tulum (Glass)', description: 'Tonos esmeralda y turquesa con efecto cristal.' },
+    { id: 'oaxaca', name: 'Oaxaca (Glass)', description: 'Cálido ámbar y terracota con efecto cristal.' },
+    { id: 'cdmx', name: 'CDMX (Glass)', description: 'Noche urbana, índigo profundo con efecto cristal.' },
+    { id: 'guadalajara', name: 'Guadalajara (Glass)', description: 'Tonos agave y violeta con efecto cristal.' },
 ];
 
 const fiscalRegimeOptions = [

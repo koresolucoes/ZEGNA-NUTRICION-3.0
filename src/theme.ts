@@ -146,6 +146,102 @@ export const themes: { [key: string]: ThemeType } = {
         shadowHover: '0 10px 15px -3px rgba(0, 0, 0, 0.5)',
         
         white: '#FFFFFF',
+    },
+    tulum: {
+        primaryColor: '#2DD4BF', // Teal 400
+        primaryLight: 'rgba(45, 212, 191, 0.2)',
+        primaryDark: '#0F766E', // Teal 700
+        accentColor: '#FBBF24', // Amber 400
+        
+        backgroundColor: 'radial-gradient(circle at top right, #115E59, #042F2E, #020617)', 
+        surfaceColor: 'rgba(255, 255, 255, 0.05)', 
+        surfaceHoverColor: 'rgba(255, 255, 255, 0.1)', 
+        surfaceActive: 'rgba(255, 255, 255, 0.15)', 
+        
+        textColor: '#F8FAFC', 
+        textLight: '#CBD5E1', 
+        
+        borderColor: 'rgba(255, 255, 255, 0.1)', 
+        
+        errorColor: '#F87171', 
+        errorBg: 'rgba(248, 113, 113, 0.1)',
+        
+        shadow: '0 20px 50px rgba(0,0,0,0.3)',
+        shadowHover: '0 25px 50px rgba(0,0,0,0.4)',
+        
+        white: '#FFFFFF',
+    },
+    oaxaca: {
+        primaryColor: '#F97316', // Orange 500
+        primaryLight: 'rgba(249, 115, 22, 0.2)',
+        primaryDark: '#C2410C', // Orange 700
+        accentColor: '#14B8A6', // Teal 500
+        
+        backgroundColor: 'radial-gradient(circle at bottom left, #7C2D12, #431407, #27272A)', 
+        surfaceColor: 'rgba(255, 255, 255, 0.08)', 
+        surfaceHoverColor: 'rgba(255, 255, 255, 0.12)', 
+        surfaceActive: 'rgba(255, 255, 255, 0.18)', 
+        
+        textColor: '#FFF7ED', 
+        textLight: '#FED7AA', 
+        
+        borderColor: 'rgba(255, 255, 255, 0.15)', 
+        
+        errorColor: '#EF4444', 
+        errorBg: 'rgba(239, 68, 68, 0.1)',
+        
+        shadow: '0 20px 50px rgba(0,0,0,0.3)',
+        shadowHover: '0 25px 50px rgba(0,0,0,0.4)',
+        
+        white: '#FFFFFF',
+    },
+    cdmx: {
+        primaryColor: '#8B5CF6', // Violet 500
+        primaryLight: 'rgba(139, 92, 246, 0.2)',
+        primaryDark: '#5B21B6', // Violet 800
+        accentColor: '#EC4899', // Pink 500
+        
+        backgroundColor: 'linear-gradient(135deg, #1E1B4B, #312E81, #111827)', 
+        surfaceColor: 'rgba(255, 255, 255, 0.06)', 
+        surfaceHoverColor: 'rgba(255, 255, 255, 0.1)', 
+        surfaceActive: 'rgba(255, 255, 255, 0.15)', 
+        
+        textColor: '#F3F4F6', 
+        textLight: '#9CA3AF', 
+        
+        borderColor: 'rgba(255, 255, 255, 0.1)', 
+        
+        errorColor: '#F43F5E', 
+        errorBg: 'rgba(244, 63, 94, 0.1)',
+        
+        shadow: '0 20px 50px rgba(0,0,0,0.4)',
+        shadowHover: '0 25px 50px rgba(0,0,0,0.5)',
+        
+        white: '#FFFFFF',
+    },
+    guadalajara: {
+        primaryColor: '#3B82F6', // Blue 500
+        primaryLight: 'rgba(59, 130, 246, 0.2)',
+        primaryDark: '#1D4ED8', // Blue 700
+        accentColor: '#8B5CF6', // Violet 500
+        
+        backgroundColor: 'radial-gradient(circle at center, #1E3A8A, #172554, #020617)', 
+        surfaceColor: 'rgba(255, 255, 255, 0.07)', 
+        surfaceHoverColor: 'rgba(255, 255, 255, 0.12)', 
+        surfaceActive: 'rgba(255, 255, 255, 0.18)', 
+        
+        textColor: '#EFF6FF', 
+        textLight: '#BFDBFE', 
+        
+        borderColor: 'rgba(255, 255, 255, 0.12)', 
+        
+        errorColor: '#EF4444', 
+        errorBg: 'rgba(239, 68, 68, 0.1)',
+        
+        shadow: '0 20px 50px rgba(0,0,0,0.3)',
+        shadowHover: '0 25px 50px rgba(0,0,0,0.4)',
+        
+        white: '#FFFFFF',
     }
 };
 
