@@ -20,6 +20,7 @@ import PrescriptionBuilderModal from '../components/consultation_mode/Prescripti
 import SoapGeneratorModal from '../components/consultation_mode/SoapGeneratorModal';
 import DietPlanner from '../components/calculators/DietPlanner';
 import ExercisePlanGenerator from '../components/ExercisePlanGenerator';
+import EnergyRequirementsTool from '../components/calculators/tools/EnergyRequirementsTool';
 
 interface AiMessage {
     role: 'user' | 'model';
@@ -661,7 +662,37 @@ INSTRUCCIONES:
                         </div>
                     </div>
 
-                    {/* Tool 2: Diet Planner */}
+                    {/* Tool 2: Energy Requirements */}
+                    <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+                        <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--surface-hover-color)' }}>
+                            {ICONS.calculator} Gasto Calórico
+                        </div>
+                        <div style={{ padding: '1rem' }}>
+                            <EnergyRequirementsTool 
+                                selectedPerson={person}
+                                lastConsultation={consultations[0] || null}
+                                handleSaveToLog={async (calculatorKey, logType, description, data) => {
+                                    try {
+                                        const { data: { user } } = await supabase.auth.getUser();
+                                        await supabase.from('logs').insert({
+                                            person_id: person.id,
+                                            log_type: logType,
+                                            description: description,
+                                            created_by_user_id: user?.id
+                                        });
+                                        onDataRefresh(true);
+                                        alert("Cálculo guardado en la bitácora.");
+                                    } catch (e) {
+                                        console.error("Error saving log:", e);
+                                        alert("Error al guardar.");
+                                    }
+                                }}
+                                saveStatus={{}}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Tool 3: Diet Planner */}
                     <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
                         <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--surface-hover-color)' }}>
                             {ICONS.diet} Plan Alimenticio
@@ -683,7 +714,7 @@ INSTRUCCIONES:
                         </div>
                     </div>
 
-                    {/* Tool 3: Exercise Planner */}
+                    {/* Tool 4: Exercise Planner */}
                     <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
                         <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--surface-hover-color)' }}>
                             {ICONS.activity} Plan Entrenamiento
