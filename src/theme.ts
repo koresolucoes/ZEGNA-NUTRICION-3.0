@@ -456,4 +456,10 @@ export const GlobalStyle = createGlobalStyle<{ theme: ThemeType }>`
     /* Tables */
     table { width: 100%; border-collapse: collapse; }
     th { text-align: left; font-weight: 600; font-size: var(--font-xs); text-transform: uppercase; color: var(--text-light); letter-spacing: 0.05em; }
+
+    /* Consultation Mode */
+    body.consultation-mode-active aside,
+    body.consultation-mode-active header {
+        display: none !important;
+    }
 `;

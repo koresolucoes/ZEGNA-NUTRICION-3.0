@@ -104,6 +104,13 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
     const [elapsedTime, setElapsedTime] = useState(0);
 
     useEffect(() => {
+        document.body.classList.add('consultation-mode-active');
+        return () => {
+            document.body.classList.remove('consultation-mode-active');
+        };
+    }, []);
+
+    useEffect(() => {
         const timer = setInterval(() => {
             setElapsedTime(prev => prev + 1);
         }, 1000);
@@ -522,7 +529,7 @@ INSTRUCCIONES:
     return (
         <div className="fade-in" style={{ 
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
-            backgroundColor: 'var(--background-color)', zIndex: 2000, 
+            background: 'var(--background-color)', zIndex: 2000, 
             display: 'flex', flexDirection: 'column' 
         }}>
             {flyingItem && createPortal(
@@ -615,7 +622,7 @@ INSTRUCCIONES:
             </div>
 
             {/* Main Layout - 3 Columns */}
-            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', overflow: 'hidden', gap: '1rem', padding: '1rem', backgroundColor: 'var(--background-color)' }}>
+            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', overflow: 'hidden', gap: '1rem', padding: '1rem', background: 'var(--background-color)' }}>
                 
                 {/* 1. Left: Summary & Quick Actions */}
                 {!isMobile && (
@@ -634,7 +641,7 @@ INSTRUCCIONES:
                 )}
 
                 {/* 2. Center: Unified Tools */}
-                <div style={{ flex: 1, overflowY: 'auto', backgroundColor: 'var(--background-color)', display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem' }}>
+                <div style={{ flex: 1, overflowY: 'auto', background: 'var(--background-color)', display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem' }}>
                     
                     {/* Tool 1: Timeline */}
                     <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', height: '400px', flexShrink: 0 }}>

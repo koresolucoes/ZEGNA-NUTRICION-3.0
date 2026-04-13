@@ -4,7 +4,7 @@ import { createGlobalStyle } from 'styled-components';
 
 export const styles: { [key: string]: React.CSSProperties } = {
     // Auth
-    authContainer: { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '1.5rem', backgroundColor: 'var(--background-color)' },
+    authContainer: { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '1.5rem', background: 'var(--background-color)' },
     authBox: { width: '100%', maxWidth: '400px', padding: '2.5rem', backgroundColor: 'var(--surface-color)', borderRadius: '24px', boxShadow: 'var(--shadow-hover)', border: '1px solid var(--border-color)' },
     header: { textAlign: 'center' as const, marginBottom: '2rem' },
     title: { color: 'var(--text-color)', margin: '0 0 0.5rem 0', fontWeight: 700, fontSize: '1.5rem' },
@@ -140,12 +140,12 @@ export const styles: { [key: string]: React.CSSProperties } = {
         borderRadius: '8px', 
         height: '40px', 
         border: '1px solid var(--border-color)', 
-        backgroundColor: 'var(--background-color)',
+        background: 'var(--background-color)',
         fontSize: '0.9rem',
         transition: 'border-color 0.2s'
     },
     searchInputIcon: { position: 'absolute' as const, top: '50%', left: '0.75rem', transform: 'translateY(-50%)', color: 'var(--text-light)', fontSize: '1rem' },
-    filterButtonGroup: { display: 'flex', gap: '4px', padding: '4px', backgroundColor: 'var(--background-color)', borderRadius: '8px', border: '1px solid var(--border-color)' },
+    filterButtonGroup: { display: 'flex', gap: '4px', padding: '4px', background: 'var(--background-color)', borderRadius: '8px', border: '1px solid var(--border-color)' },
 
     // NIELSEN FOLDER TABS (Heuristic 2 & 8)
     // This simulates a physical folder tab that merges with the content area
@@ -202,7 +202,7 @@ export const styles: { [key: string]: React.CSSProperties } = {
     },
     
     // Patient Portal
-    patientPortalLayout: { display: 'flex', minHeight: '100vh', position: 'relative', backgroundColor: 'var(--background-color)' },
+    patientPortalLayout: { display: 'flex', minHeight: '100vh', position: 'relative', background: 'var(--background-color)' },
     patientPortalHeader: { padding: '1rem', backgroundColor: 'var(--surface-color)', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, position: 'sticky', top: 0, zIndex: 100 },
     patientPortalMain: { flex: 1, transition: 'margin-left 0.3s ease', overflow: 'auto', minWidth: 0 },
     patientSidebar: { width: '280px', backgroundColor: 'var(--surface-color)', padding: '1.5rem', display: 'flex', flexDirection: 'column' as const, borderRight: '1px solid var(--border-color)', transition: 'transform 0.3s ease', position: 'fixed', top: 0, left: 0, height: '100vh', zIndex: 1100 },
