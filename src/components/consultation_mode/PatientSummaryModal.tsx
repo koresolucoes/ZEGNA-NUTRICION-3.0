@@ -1,4 +1,4 @@
-import React, { FC, useState } from 'react';
+import React, { FC, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { PDFDownloadLink, PDFViewer } from '@react-pdf/renderer';
 import { styles } from '../../constants';
@@ -23,6 +23,26 @@ const PatientSummaryModal: FC<PatientSummaryModalProps> = ({
     const [recommendations, setRecommendations] = useState('');
     const [nextAppointment, setNextAppointment] = useState('');
     const [view, setView] = useState<'config' | 'preview'>('config');
+
+    const pdfDocument = useMemo(() => (
+        <PatientSummaryDocument 
+            person={person}
+            clinic={clinic}
+            nutritionistProfile={nutritionistProfile}
+            metrics={metrics}
+            prescriptions={prescriptions}
+            recommendations={recommendations}
+            nextAppointment={nextAppointment}
+        />
+    ), [person, clinic, nutritionistProfile, metrics, prescriptions, recommendations, nextAppointment]);
+
+    const pdfViewerBlock = useMemo(() => (
+        <div style={{height: '100%', minHeight: '500px', border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden'}}>
+            <PDFViewer style={{ width: '100%', height: '100%', border: 'none' }}>
+                {pdfDocument}
+            </PDFViewer>
+        </div>
+    ), [pdfDocument]);
 
     const modalContent = (
         <div style={{...styles.modalOverlay, zIndex: 2300}}>
@@ -87,19 +107,7 @@ const PatientSummaryModal: FC<PatientSummaryModalProps> = ({
                             </div>
                         </div>
                     ) : (
-                        <div style={{height: '100%', minHeight: '500px', border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden'}}>
-                            <PDFViewer style={{ width: '100%', height: '100%', border: 'none' }}>
-                                <PatientSummaryDocument 
-                                    person={person}
-                                    clinic={clinic}
-                                    nutritionistProfile={nutritionistProfile}
-                                    metrics={metrics}
-                                    prescriptions={prescriptions}
-                                    recommendations={recommendations}
-                                    nextAppointment={nextAppointment}
-                                />
-                            </PDFViewer>
-                        </div>
+                        pdfViewerBlock
                     )}
                 </div>
 
@@ -109,7 +117,7 @@ const PatientSummaryModal: FC<PatientSummaryModalProps> = ({
                         <button onClick={() => setView('preview')} className="button-primary">Siguiente: Vista Previa</button>
                     ) : (
                         <PDFDownloadLink
-                            document={<PatientSummaryDocument person={person} clinic={clinic} nutritionistProfile={nutritionistProfile} metrics={metrics} prescriptions={prescriptions} recommendations={recommendations} nextAppointment={nextAppointment} />}
+                            document={pdfDocument}
                             fileName={`Resumen_Consulta_${person.first_name}_${person.last_name}.pdf`}
                             style={{ textDecoration: 'none' }}
                         >
@@ -128,4 +136,4 @@ const PatientSummaryModal: FC<PatientSummaryModalProps> = ({
     return modalRoot ? createPortal(modalContent, modalRoot) : null;
 };
 
-export default PatientSummaryModal;
+export default React.memo(PatientSummaryModal);

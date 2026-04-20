@@ -1,5 +1,5 @@
 
-import React, { FC, useState, useEffect, useMemo, useRef, FormEvent, ReactNode } from 'react';
+import React, { FC, useState, useEffect, useMemo, useRef, FormEvent, ReactNode, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../supabase';
 import { styles } from '../constants';
@@ -177,6 +177,8 @@ const ConsultationModePage: FC<ConsultationModePageProps> = ({
     const [isPatientSummaryOpen, setIsPatientSummaryOpen] = useState(false);
     const [isPrescriptionBuilderOpen, setIsPrescriptionBuilderOpen] = useState(false);
     const [isSoapGeneratorOpen, setIsSoapGeneratorOpen] = useState(false);
+
+    const handleClosePatientSummary = useCallback(() => setIsPatientSummaryOpen(false), []);
 
     // Data for Planners
     const [equivalentsData, setEquivalentsData] = useState<any[]>([]);
@@ -583,7 +585,7 @@ INSTRUCCIONES:
                     nutritionistProfile={nutritionistProfile}
                     metrics={latestMetrics}
                     prescriptions={medications}
-                    onClose={() => setIsPatientSummaryOpen(false)}
+                    onClose={handleClosePatientSummary}
                 />
             )}
 
@@ -607,6 +609,9 @@ INSTRUCCIONES:
                     <span className="animate-pulse" style={{fontSize: '1rem', fontFamily: 'monospace', color: 'var(--text-light)', fontWeight: 600}}>{formatTime(elapsedTime)}</span>
                 </div>
                 <div style={{display: 'flex', gap: '1rem'}}>
+                    <button onClick={() => setIsSoapGeneratorOpen(true)} className="button-secondary" style={{display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#FEF08A', color: '#854D0E', borderColor: '#FDE047'}}>
+                        {ICONS.sparkles} Generar Notas
+                    </button>
                     <button onClick={() => setIsPrescriptionBuilderOpen(true)} className="button-secondary" style={{display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#E0F2FE', color: '#0284C7', borderColor: '#BAE6FD'}}>
                         {ICONS.file} Crear Receta
                     </button>
@@ -644,25 +649,7 @@ INSTRUCCIONES:
                 {/* 2. Center: Unified Tools */}
                 <div style={{ flex: 1, overflowY: 'auto', background: 'var(--background-color)', display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem' }}>
                     
-                    {/* Tool 1: Timeline */}
-                    <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', height: '400px', flexShrink: 0 }}>
-                        <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--surface-hover-color)' }}>
-                            {ICONS.calendar} Historial del Paciente
-                        </div>
-                        <div style={{ flex: 1, overflowY: 'auto' }}>
-                            <TimelinePanel 
-                                person={person}
-                                timeline={timeline} 
-                                timelineFilters={timelineFilters} 
-                                setTimelineFilters={setTimelineFilters}
-                                handleTimelineItemClick={handleTimelineItemClick}
-                                sendContextToAi={handleContextSelection}
-                                formatItemForAI={formatItemForAI}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Tool 2: Energy Requirements */}
+                    {/* Tool 1: Energy Requirements */}
                     <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
                         <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--surface-hover-color)' }}>
                             {ICONS.calculator} Gasto Calórico
@@ -692,7 +679,7 @@ INSTRUCCIONES:
                         </div>
                     </div>
 
-                    {/* Tool 3: Diet Planner */}
+                    {/* Tool 2: Diet Planner */}
                     <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
                         <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--surface-hover-color)' }}>
                             {ICONS.diet} Plan Alimenticio
@@ -714,7 +701,7 @@ INSTRUCCIONES:
                         </div>
                     </div>
 
-                    {/* Tool 4: Exercise Planner */}
+                    {/* Tool 3: Exercise Planner */}
                     <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
                         <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--surface-hover-color)' }}>
                             {ICONS.activity} Plan Entrenamiento
@@ -728,6 +715,24 @@ INSTRUCCIONES:
                                     onDataRefresh(true);
                                 }}
                                 isInline={true}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Tool 4: Timeline */}
+                    <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', height: '400px', flexShrink: 0 }}>
+                        <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--surface-hover-color)' }}>
+                            {ICONS.calendar} Historial del Paciente
+                        </div>
+                        <div style={{ flex: 1, overflowY: 'auto' }}>
+                            <TimelinePanel 
+                                person={person}
+                                timeline={timeline} 
+                                timelineFilters={timelineFilters} 
+                                setTimelineFilters={setTimelineFilters}
+                                handleTimelineItemClick={handleTimelineItemClick}
+                                sendContextToAi={handleContextSelection}
+                                formatItemForAI={formatItemForAI}
                             />
                         </div>
                     </div>
@@ -747,7 +752,6 @@ INSTRUCCIONES:
                             userInput={aiInput}
                             setUserInput={setAiInput}
                             aiInputRef={aiInputRef}
-                            onOpenSoapGenerator={() => setIsSoapGeneratorOpen(true)}
                          />
                     </div>
                 )}

@@ -105,7 +105,7 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
     }, [filteredConsultations, person.health_goal]);
 
     // Construct the document component
-    const MyDocument = (
+    const MyDocument = useMemo(() => (
         <MedicalReportDocument 
             person={person}
             nutritionistProfile={nutritionistProfile}
@@ -116,7 +116,7 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
             reportData={reportData}
             options={options}
         />
-    );
+    ), [person, nutritionistProfile, clinic, filteredConsultations, futureDietLogs, futureExerciseLogs, reportData, options]);
 
     const handlePrint = async () => {
         setIsPrinting(true);
@@ -311,6 +311,14 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
         </>
     );
 
+    const pdfViewerBlock = useMemo(() => (
+        <div style={{ flex: 1, backgroundColor: '#525659', display: 'flex', justifyContent: 'center', overflow: 'hidden' }}>
+            <PDFViewer style={{ width: '100%', height: '100%', border: 'none' }} showToolbar={true}>
+                {MyDocument}
+            </PDFViewer>
+        </div>
+    ), [MyDocument]);
+
     const renderPreviewView = () => (
         <>
             <div style={{...styles.modalHeader, borderBottom: 'none', backgroundColor: '#323639', color: 'white'}}>
@@ -348,11 +356,7 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
                     </PDFDownloadLink>
                 </div>
             </div>
-            <div style={{ flex: 1, backgroundColor: '#525659', display: 'flex', justifyContent: 'center', overflow: 'hidden' }}>
-                <PDFViewer style={{ width: '100%', height: '100%', border: 'none' }} showToolbar={true}>
-                    {MyDocument}
-                </PDFViewer>
-            </div>
+            {pdfViewerBlock}
         </>
     );
 
@@ -366,4 +370,4 @@ const ReportModal: FC<ReportModalProps> = ({ person, consultations, dietLogs, ex
     );
 };
 
-export default ReportModal;
+export default React.memo(ReportModal);

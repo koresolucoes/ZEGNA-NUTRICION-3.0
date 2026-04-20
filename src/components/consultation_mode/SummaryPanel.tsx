@@ -51,8 +51,9 @@ const SyncItem: FC<{
     onActionClick?: (e: React.MouseEvent) => void,
     values?: string[],
     isSelected?: boolean,
-    onSelect?: () => void
-}> = ({ label, action, subItems, onActionClick, values, isSelected, onSelect }) => (
+    onSelect?: () => void,
+    onPreviewClick?: (text: string) => void
+}> = ({ label, action, subItems, onActionClick, values, isSelected, onSelect, onPreviewClick }) => (
     <div style={{ padding: '0.75rem 0', borderBottom: '1px solid var(--border-color)', backgroundColor: isSelected ? 'var(--primary-light)' : 'transparent', transition: 'background-color 0.2s', cursor: onSelect ? 'pointer' : 'default', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }} onClick={onSelect}>
         {onSelect && (
             <div style={{ paddingTop: '0.1rem' }}>
@@ -90,7 +91,21 @@ const SyncItem: FC<{
             )}
             {!subItems && values && values.length > 0 && (
                  <div style={{ marginTop: '0.25rem', fontSize: '0.85rem', color: 'var(--text-color)' }}>
-                    {values.map((v, i) => <div key={i}>• {v}</div>)}
+                    {values.map((v, i) => {
+                        if (label === 'Notas' && v.length > 100) {
+                            return (
+                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); onPreviewClick?.(v); }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '0.25rem 0.5rem', fontSize: '0.8rem', cursor: 'pointer', color: 'var(--text-color)' }}
+                                    >
+                                        <span style={{ color: 'var(--primary-color)' }}>{ICONS.info}</span> Ver Nota Completa
+                                    </button>
+                                </div>
+                            );
+                        }
+                        return <div key={i}>• {v}</div>;
+                    })}
                  </div>
             )}
         </div>
@@ -104,6 +119,7 @@ const SummaryPanel: FC<SummaryPanelProps> = ({
         isOpen: false, type: '', label: '', action: '', fields: []
     });
     const [formData, setFormData] = useState<any>({});
+    const [previewNote, setPreviewNote] = useState<string | null>(null);
     const buttonRef = useRef<DOMRect | undefined>(undefined);
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
@@ -360,6 +376,7 @@ const SummaryPanel: FC<SummaryPanelProps> = ({
                     values={person?.notes ? [person.notes] : []}
                     isSelected={selectedItems.includes('Notas')}
                     onSelect={() => toggleSelection('Notas')}
+                    onPreviewClick={setPreviewNote}
                 />
                 <SyncItem 
                     label="Fecha de Nacimiento" 
@@ -387,6 +404,20 @@ const SummaryPanel: FC<SummaryPanelProps> = ({
                     onSelect={() => toggleSelection('Objetivo')}
                 />
             </div>
+
+            {previewNote && (
+                <div style={{...styles.modalOverlay, zIndex: 4000}} onClick={() => setPreviewNote(null)}>
+                    <div style={{...styles.modalContent, maxWidth: '500px', maxHeight: '80vh', display: 'flex', flexDirection: 'column'}} onClick={e => e.stopPropagation()}>
+                        <div style={styles.modalHeader}>
+                            <h3 style={styles.modalTitle}>Vista Previa de Nota</h3>
+                            <button onClick={() => setPreviewNote(null)} style={{...styles.iconButton, border: 'none'}}>{ICONS.close}</button>
+                        </div>
+                        <div style={{...styles.modalBody, flex: 1, overflowY: 'auto', whiteSpace: 'pre-wrap', lineHeight: '1.5'}}>
+                            {previewNote}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
