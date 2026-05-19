@@ -736,7 +736,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                         width: isMobile ? '280px' : (isSidebarCollapsed ? '80px' : '260px'),
                         transition: 'width 0.3s ease, transform 0.3s ease',
                         ...(isMobile ? {
-                            transform: isMobileMenuOpen ? 'translateX(0)' : 'translateX(-100%)',
+                            transform: isMobileMenuOpen ? 'translateX(0)' : 'translateX(calc(-100% - 20px))',
                             position: 'fixed',
                             boxShadow: isMobileMenuOpen ? '4px 0 15px rgba(0,0,0,0.1)' : 'none'
                         } : {
@@ -879,16 +879,17 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
 
             <main style={{
                 flex: 1,
+                position: 'relative',
                 padding: isMobile ? '1rem' : '2rem',
-                width: isMobile ? '100%' : (showSidebar ? (isSidebarCollapsed ? 'calc(100% - 80px)' : 'calc(100% - 260px)') : '100%'),
+                width: isMobile ? '100%' : (showSidebar ? (isSidebarCollapsed ? 'calc(100% - 100px)' : 'calc(100% - 280px)') : '100%'),
                 margin: 0,
                 overflowX: 'hidden',
-                marginLeft: isMobile ? 0 : (showSidebar ? (isSidebarCollapsed ? '80px' : '260px') : 0),
+                marginLeft: isMobile ? 0 : (showSidebar ? (isSidebarCollapsed ? '100px' : '280px') : 0),
                 transition: 'margin-left 0.3s ease, width 0.3s ease',
                 marginTop: (navigationLayout === 'header' && !isMobile) ? 0 : 0
             }}>
                 {showSidebar && !isMobile && (
-                    <header style={{display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1rem', height: '50px'}}>
+                    <header style={{position: 'absolute', top: '1.5rem', right: '2rem', zIndex: 1000}}>
                         <NotificationsMenu onNavigate={navigate} />
                     </header>
                 )}

@@ -162,16 +162,21 @@ const NotificationsMenu: FC<NotificationsMenuProps> = ({ onNavigate }) => {
             <button 
                 onClick={() => setIsOpen(!isOpen)} 
                 style={{
-                    background: 'transparent',
-                    border: 'none',
+                    background: 'var(--surface-color)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '50%',
+                    width: '42px',
+                    height: '42px',
                     color: 'var(--text-color)',
-                    padding: '0.5rem',
                     cursor: 'pointer',
                     position: 'relative',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                    transition: 'all 0.2s ease'
                 }}
+                className="nav-item-hover"
                 title="Notificaciones"
             >
                 <div style={{ color: 'var(--text-light)', fontSize: '1.2rem' }}>{ICONS.bell}</div>
