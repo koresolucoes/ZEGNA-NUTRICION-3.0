@@ -129,16 +129,16 @@ export const PlansTab: FC<PlansTabProps> = ({
     // Compute batches from filtered logs
     const batches = useMemo(() => groupLogsByBatch(filteredLogs), [filteredLogs]);
 
-    // Auto-expand newest batch on load or tab change if valid
+    // Auto-expand all batches on load or when data changes
     useEffect(() => {
         if (batches.length > 0) {
             setExpandedBatches(prev => {
-                // Only auto-expand if it's the very first load of this tab or empty
-                if (prev.size === 0) return new Set([batches[0].id]);
-                return prev;
+                const next = new Set(prev);
+                batches.forEach(b => next.add(b.id));
+                return next;
             });
         }
-    }, [activePlanTab, batches.length]); // Depend on tab change and data availability
+    }, [activePlanTab, batches]);
 
     const toggleBatch = (id: string) => {
         setExpandedBatches(prev => {
