@@ -382,7 +382,39 @@ INSTRUCCIONES:
     const handleCallPatient = () => { if (checkedInAppointmentForToday) { setAppointmentToCall(checkedInAppointmentForToday); setIsRoomModalOpen(true); } };
     const handleConfirmRoom = async (room: string) => { if (appointmentToCall) { await supabase.from('appointments').update({ status: 'called', consulting_room: room }).eq('id', appointmentToCall.id); setIsRoomModalOpen(false); setAppointmentToCall(null); fetchData(true); } };
     
-    const handleSaveAppointment = async (formData: any) => { fetchData(); setIsAppointmentModalOpen(false); };
+    const handleSaveAppointment = async (formData: any) => {
+        if (!clinic) return;
+        try {
+            const payload = {
+                clinic_id: clinic.id,
+                user_id: formData.user_id,
+                person_id: formData.person_id || null,
+                title: formData.title,
+                notes: formData.notes,
+                status: formData.status,
+                start_time: new Date(formData.start_time).toISOString(),
+                end_time: new Date(formData.end_time).toISOString(),
+            };
+    
+            // Gamification logic could be added here if needed, 
+            // but simply saving the appointment is the core requirement.
+            const isNowCompleted = formData.status === 'completed';
+            
+            if (formData.id) { // Update
+                const { error } = await supabase.from('appointments').update(payload).eq('id', formData.id);
+                if (error) throw error;
+            } else { // Insert
+                const { data, error } = await supabase.from('appointments').insert(payload).select().single();
+                if (error) throw error;
+            }
+            
+            fetchData();
+            setIsAppointmentModalOpen(false);
+        } catch (err: any) {
+            console.error("Error saving appointment:", err);
+            alert("Error al guardar la cita.");
+        }
+    };
     const handleDeleteAppointment = async (id: string) => { await supabase.from('appointments').delete().eq('id', id); fetchData(); setIsAppointmentModalOpen(false); };
     
     const handleRegisterConsent = async () => { if (person) await supabase.from('persons').update({ consent_given_at: new Date().toISOString() }).eq('id', person.id); fetchData(); };
