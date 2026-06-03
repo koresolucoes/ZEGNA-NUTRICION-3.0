@@ -428,7 +428,7 @@ const ExercisePlanGenerator: FC<ExercisePlanGeneratorProps> = ({ person, lastCon
                             <p>¿Deseas sobrescribir las rutinas existentes o cancelar?</p>
                             <div style={{display: 'flex', gap: '1rem', marginTop: '1rem'}}>
                                 <button onClick={() => setConflictDates([])} className="button-secondary">Cancelar</button>
-                                <button onClick={() => { setIsOverwriting(true); savePlanToDatabase(true); }} style={{backgroundColor: 'var(--error-color)', color: 'white', border: 'none'}}>Sobrescribir Rutinas</button>
+                                <button onClick={() => { setIsOverwriting(true); executeSave(true); }} style={{backgroundColor: 'var(--error-color)', color: 'white', border: 'none'}}>Sobrescribir Rutinas</button>
                             </div>
                         </div>
                     ) : !generatedPlan && !loading && (

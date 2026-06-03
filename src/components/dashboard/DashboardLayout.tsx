@@ -560,7 +560,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
     const showSidebar = isMobile || navigationLayout === 'sidebar';
 
     return (
-        <div style={{ ...styles.dashboardLayout, flexDirection: 'column' }}>
+        <div style={{ ...styles.dashboardLayout, flexDirection: 'column', width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
             {isQuickConsultModalOpen && (
                  <QuickConsultationModal
                     isOpen={isQuickConsultModalOpen}
@@ -688,28 +688,28 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                 <>
                     {isMobile && (
                         <header style={{
-                            height: '64px',
+                            height: '56px',
                             backgroundColor: 'var(--surface-color)',
                             border: '1px solid var(--border-color)',
-                            borderRadius: '24px',
+                            borderRadius: '16px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            padding: '0 1rem',
+                            padding: '0 0.75rem',
                             position: 'sticky',
-                            top: '20px',
-                            margin: '0 20px 20px 20px',
+                            top: '10px',
+                            margin: '0 0.5rem 0.5rem 0.5rem',
                             zIndex: 1000,
                             boxShadow: 'var(--shadow)',
                             backdropFilter: 'blur(20px)',
                             WebkitBackdropFilter: 'blur(20px)',
                             transition: 'var(--transition)'
                         }} className="glass-container">
-                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                <button onClick={() => setIsMobileMenuOpen(true)} style={{...styles.hamburger, padding: '0.5rem', marginRight: '-0.5rem'}}>
+                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                <button onClick={() => setIsMobileMenuOpen(true)} style={{...styles.hamburger, padding: '0.375rem', marginRight: '0'}}>
                                     {ICONS.menu}
                                 </button>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                     <img 
                                         src={clinic?.logo_url || `https://api.dicebear.com/8.x/initials/svg?seed=${clinic?.name}&radius=50`} 
                                         alt="Logo" 
@@ -734,15 +734,22 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
                     <aside style={{
                         ...styles.sidebar,
                         width: isMobile ? '280px' : (isSidebarCollapsed ? '80px' : '260px'),
-                        transition: 'width 0.3s ease, transform 0.3s ease',
+                        transition: 'width 0.3s ease, transform 0.3s ease, visibility 0.3s ease',
                         ...(isMobile ? {
-                            transform: isMobileMenuOpen ? 'translateX(0)' : 'translateX(calc(-100% - 20px))',
+                            left: '0px',
+                            top: '0px',
+                            height: '100vh',
+                            borderRadius: '0px',
+                            transform: isMobileMenuOpen ? 'translateX(0)' : 'translateX(-110%)',
                             position: 'fixed',
-                            boxShadow: isMobileMenuOpen ? '4px 0 15px rgba(0,0,0,0.1)' : 'none'
+                            zIndex: 1200,
+                            boxShadow: isMobileMenuOpen ? '4px 0 15px rgba(0,0,0,0.15)' : 'none',
+                            visibility: isMobileMenuOpen ? 'visible' : 'hidden'
                         } : {
                             transform: 'none',
                             position: 'fixed',
-                            boxShadow: '1px 0 0 var(--border-color)'
+                            boxShadow: '1px 0 0 var(--border-color)',
+                            visibility: 'visible'
                         })
                     }}>
                          {/* Sidebar Content */}
@@ -880,18 +887,20 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
             <main style={{
                 flex: 1,
                 position: 'relative',
-                padding: isMobile ? '1rem' : '2rem',
+                padding: isMobile ? '0.25rem' : '2rem',
                 width: isMobile ? '100%' : (showSidebar ? (isSidebarCollapsed ? 'calc(100% - 100px)' : 'calc(100% - 280px)') : '100%'),
                 margin: 0,
                 overflowX: 'hidden',
+                maxWidth: '100%',
+                boxSizing: 'border-box',
                 marginLeft: isMobile ? 0 : (showSidebar ? (isSidebarCollapsed ? '100px' : '280px') : 0),
                 transition: 'margin-left 0.3s ease, width 0.3s ease',
                 marginTop: (navigationLayout === 'header' && !isMobile) ? 0 : 0
             }}>
                 {showSidebar && !isMobile && (
-                    <header style={{position: 'absolute', top: '1.5rem', right: '2rem', zIndex: 1000}}>
+                    <div style={{position: 'absolute', top: '1.5rem', right: '2rem', zIndex: 1000, display: 'inline-block'}}>
                         <NotificationsMenu onNavigate={navigate} />
-                    </header>
+                    </div>
                 )}
                 
                 {renderContent()}

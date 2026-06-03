@@ -54,7 +54,7 @@ const ThemePreview: FC<{ themeKey: string, layout: 'sidebar' | 'header' }> = ({ 
     const theme = themes[themeKey] || themes.default;
     
     return (
-        <div style={{
+        <div className="theme-preview-card" style={{
             backgroundColor: theme.backgroundColor,
             color: theme.textColor,
             padding: '1.5rem',
@@ -285,7 +285,7 @@ const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile, navig
     };
 
     const renderTabs = () => (
-        <div style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', gap: '0.5rem', overflowX: isMobile ? 'auto' : 'hidden' }}>
+        <div className="hide-scrollbar" style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', gap: '0.5rem', overflowX: isMobile ? 'auto' : 'hidden' }}>
             {[
                 { id: 'general', label: 'General', icon: ICONS.home },
                 { id: 'theme', label: 'Apariencia', icon: ICONS.sparkles },
@@ -318,36 +318,132 @@ const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile, navig
     );
 
     return (
-        <div className="fade-in" style={{ maxWidth: '1100px', margin: '0 auto', paddingBottom: '4rem' }}>
+        <div id="clinic-settings-container" className="fade-in" style={{ maxWidth: '1100px', margin: '0 auto', paddingBottom: '4rem', paddingLeft: isMobile ? '0.5rem' : '1.5rem', paddingRight: isMobile ? '0.5rem' : '1.5rem', boxSizing: 'border-box', width: '100%', overflowX: 'hidden' }}>
+            <style dangerouslySetInnerHTML={{ __html: `
+                @media (max-width: 1100px) {
+                    #clinic-settings-container {
+                        padding-left: 0.25rem !important;
+                        padding-right: 0.25rem !important;
+                        overflow-x: hidden !important;
+                    }
+                    #clinic-settings-container h1 {
+                        font-size: 1.35rem !important;
+                        margin-bottom: 0.75rem !important;
+                    }
+                    #clinic-settings-grid {
+                        gap: 0.75rem !important;
+                    }
+                    #clinic-form {
+                        padding: 0.875rem !important;
+                        border-radius: 12px !important;
+                        border-width: 1px !important;
+                        overflow-x: hidden !important;
+                    }
+                    #clinic-form h2 {
+                        font-size: 1.15rem !important;
+                        margin-bottom: 1rem !important;
+                        padding-bottom: 0.5rem !important;
+                    }
+                    #clinic-form h3 {
+                        font-size: 0.95rem !important;
+                        margin-bottom: 0.75rem !important;
+                    }
+                    #clinic-form label {
+                        font-size: 0.8rem !important;
+                        margin-bottom: 0.25rem !important;
+                    }
+                    #clinic-form input, #clinic-form select, #clinic-form textarea {
+                        padding: 0.5rem 0.75rem !important;
+                        font-size: 0.875rem !important;
+                        margin-bottom: 0.875rem !important;
+                    }
+                    /* Disposición del menú (Menu layout layout wrapper card) */
+                    #clinic-form h3 + div {
+                        flex-direction: column !important;
+                        gap: 0.5rem !important;
+                    }
+                    #clinic-form h3 + div > div {
+                        padding: 0.75rem !important;
+                    }
+                    #clinic-form h3 + div > div svg {
+                        width: 20px !important;
+                        height: 20px !important;
+                    }
+                    /* Operating schedule overrides (Horarios containers) */
+                    #clinic-form div > div[style*="backgroundColor"] {
+                        padding: 0.15rem !important;
+                    }
+                    /* Operating schedule rows */
+                    #clinic-form div[style*="gridTemplateColumns"] {
+                        grid-template-columns: 45px 120px !important;
+                        padding: 0.5rem 0.375rem !important;
+                        gap: 0.25rem 0.5rem !important;
+                    }
+                    #clinic-form div[style*="gridTemplateColumns"] > div[style*="gridColumn"] {
+                        grid-column: 1 / -1 !important;
+                        margin-top: 0.375rem !important;
+                        display: flex !important;
+                        gap: 0.375rem !important;
+                        align-items: center !important;
+                    }
+                    #clinic-form div[style*="gridTemplateColumns"] > div[style*="gridColumn"] input {
+                        width: 85px !important;
+                        min-width: 80px !important;
+                        padding: 0.375rem !important;
+                        margin-bottom: 0 !important;
+                    }
+                    /* Theme-preview column positioning */
+                    #clinic-settings-grid > div:last-child {
+                        position: static !important;
+                        margin-top: 1rem !important;
+                    }
+                    .theme-preview-card {
+                        padding: 1rem !important;
+                    }
+                    /* Form footer submit and styling */
+                    #clinic-form > div[style*="justifyContent"] {
+                        margin-top: 1.5rem !important;
+                        padding-top: 1rem !important;
+                    }
+                    #clinic-form > div[style*="justifyContent"] button {
+                        width: 100% !important;
+                    }
+                }
+            `}} />
             <div style={styles.pageHeader}>
-                <h1>Configuración de la Clínica</h1>
+                <h1 style={{ fontSize: isMobile ? '1.5rem' : '2.25rem' }}>Configuración de la Clínica</h1>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '240px 1fr', gap: '2rem', alignItems: 'start' }}>
+            <div id="clinic-settings-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '240px 1fr', gap: isMobile ? '1rem' : '2rem', alignItems: 'start', width: '100%', boxSizing: 'border-box' }}>
                 
                 {/* Sidebar Navigation */}
                 <div style={{
                     backgroundColor: 'var(--surface-color)',
-                    padding: '1rem',
+                    padding: isMobile ? '0.375rem' : '1rem',
                     borderRadius: '12px',
                     position: isMobile ? 'static' : 'sticky',
                     top: '120px',
-                    border: '1px solid var(--border-color)'
+                    border: '1px solid var(--border-color)',
+                    marginBottom: isMobile ? '0.5rem' : '0',
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    minWidth: 0
                 }}>
                     {renderTabs()}
                 </div>
 
                 {/* Main Content Area */}
-                <form id="clinic-form" onSubmit={handleClinicUpdate} style={{ backgroundColor: 'var(--surface-color)', padding: isMobile ? '1.5rem' : '2.5rem', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)' }}>
+                <form id="clinic-form" onSubmit={handleClinicUpdate} style={{ backgroundColor: 'var(--surface-color)', padding: isMobile ? '1rem' : '2.5rem', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)', width: '100%', overflowX: 'hidden', boxSizing: 'border-box', minWidth: 0 }}>
                     
                     {clinicError && <div style={{...styles.error, marginBottom: '1.5rem'}}>{clinicError}</div>}
                     {clinicSuccess && <div style={{...styles.error, backgroundColor: 'var(--primary-light)', color: 'var(--primary-dark)', borderColor: 'var(--primary-color)', marginBottom: '1.5rem'}}>{clinicSuccess}</div>}
 
                     {activeTab === 'general' && (
                         <div className="fade-in">
-                            <h2 style={{marginTop: 0, marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem'}}>Información General</h2>
-                            <div style={{display: 'flex', gap: '2rem', alignItems: 'center', marginBottom: '2rem'}}>
-                                <div style={{position: 'relative', width: '100px', height: '100px'}}>
+                            <h2 style={{marginTop: 0, lgMarginTop: 0, fontSize: isMobile ? '1.25rem' : '1.5rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem'}}>Información General</h2>
+                            
+                            <div style={{display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '1rem' : '2rem', alignItems: 'center', marginBottom: '2rem', textAlign: isMobile ? 'center' : 'left'}}>
+                                <div style={{position: 'relative', width: '100px', height: '100px', flexShrink: 0}}>
                                     <img 
                                         src={logoPreview || `https://api.dicebear.com/8.x/initials/svg?seed=${clinicFormData.name || '?'}&radius=50`} 
                                         alt="Logo" 
@@ -359,29 +455,29 @@ const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile, navig
                                     <input id="logo" name="logo" type="file" onChange={handleLogoFileChange} accept="image/*" style={{display: 'none'}} />
                                 </div>
                                 <div>
-                                    <h3 style={{margin: 0}}>{clinicFormData.name || 'Nueva Clínica'}</h3>
+                                    <h3 style={{margin: 0, fontSize: isMobile ? '1.15rem' : '1.35rem'}}>{clinicFormData.name || 'Nueva Clínica'}</h3>
                                     <p style={{margin: '0.25rem 0 0 0', color: 'var(--text-light)', fontSize: '0.9rem'}}>Logotipo visible en reportes y portal.</p>
                                 </div>
                             </div>
 
-                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem'}}>
-                                <div style={{gridColumn: isMobile ? 'span 2' : 'span 1'}}>
+                            <div style={{display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '1rem' : '1.5rem', width: '100%'}}>
+                                <div>
                                     <label htmlFor="name">Nombre de la Clínica *</label>
                                     <input id="name" name="name" type="text" value={clinicFormData.name} onChange={handleClinicDataChange} required />
                                 </div>
-                                <div style={{gridColumn: isMobile ? 'span 2' : 'span 1'}}>
+                                <div>
                                     <label htmlFor="phone_number">Teléfono de Contacto</label>
                                     <input id="phone_number" name="phone_number" type="tel" value={clinicFormData.phone_number} onChange={handleClinicDataChange} />
                                 </div>
-                                <div style={{gridColumn: isMobile ? 'span 2' : 'span 1'}}>
+                                <div>
                                     <label htmlFor="email">Correo Electrónico</label>
                                     <input id="email" name="email" type="email" value={clinicFormData.email} onChange={handleClinicDataChange} />
                                 </div>
-                                <div style={{gridColumn: isMobile ? 'span 2' : 'span 1'}}>
+                                <div>
                                     <label htmlFor="website">Sitio Web</label>
                                     <input id="website" name="website" type="url" value={clinicFormData.website} onChange={handleClinicDataChange} placeholder="https://" />
                                 </div>
-                                <div style={{gridColumn: isMobile ? 'span 2' : 'span 1'}}>
+                                <div>
                                     <label htmlFor="timezone">Zona Horaria</label>
                                     <select id="timezone" name="timezone" value={clinicFormData.timezone} onChange={handleClinicDataChange}>
                                         {timezoneOptions.map(opt => (
@@ -389,7 +485,7 @@ const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile, navig
                                         ))}
                                     </select>
                                 </div>
-                                <div style={{gridColumn: 'span 2'}}>
+                                <div style={{gridColumn: isMobile ? '1 / -1' : 'span 2'}}>
                                     <label htmlFor="address">Dirección Física</label>
                                     <textarea id="address" name="address" value={clinicFormData.address} onChange={handleClinicDataChange} rows={3} />
                                 </div>
@@ -399,15 +495,15 @@ const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile, navig
 
                     {activeTab === 'theme' && (
                         <div className="fade-in">
-                            <h2 style={{marginTop: 0, marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem'}}>Apariencia del Sistema</h2>
+                            <h2 style={{marginTop: 0, fontSize: isMobile ? '1.25rem' : '1.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem'}}>Apariencia del Sistema</h2>
                             
-                            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '2rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '1.5rem' : '2rem' }}>
                                 {/* Left Column: Settings */}
                                 <div>
                                     {/* Layout Section */}
                                     <div style={{marginBottom: '2rem'}}>
                                         <h3 style={{fontSize: '1rem', fontWeight: 700, color: 'var(--text-color)', marginBottom: '1rem'}}>Disposición del Menú</h3>
-                                        <div style={{display: 'flex', gap: '1rem'}}>
+                                        <div style={{display: 'flex', gap: '1rem', flexDirection: isMobile ? 'column' : 'row'}}>
                                             <div 
                                                 onClick={() => setClinicFormData(prev => ({...prev, navigation_layout: 'sidebar'}))}
                                                 style={{
@@ -471,14 +567,14 @@ const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile, navig
                                                             transition: 'all 0.2s'
                                                         }}
                                                     >
-                                                        <div style={{display: 'flex', gap: '-5px'}}>
+                                                        <div style={{display: 'flex', gap: '-5px', flexShrink: 0}}>
                                                             <div style={{width: '24px', height: '24px', borderRadius: '50%', backgroundColor: themeDef.primaryColor, border: '2px solid var(--surface-color)'}}></div>
                                                             <div style={{width: '24px', height: '24px', borderRadius: '50%', backgroundColor: themeDef.accentColor, marginLeft: '-8px', border: '2px solid var(--surface-color)'}}></div>
                                                             <div style={{width: '24px', height: '24px', borderRadius: '50%', backgroundColor: themeDef.backgroundColor, marginLeft: '-8px', border: '2px solid var(--surface-color)'}}></div>
                                                         </div>
                                                         <div>
-                                                            <p style={{margin: 0, fontWeight: 600}}>{theme.name}</p>
-                                                            <p style={{margin: 0, fontSize: '0.8rem', color: 'var(--text-light)'}}>{theme.description}</p>
+                                                            <p style={{margin: 0, fontWeight: 600, fontSize: '0.9rem'}}>{theme.name}</p>
+                                                            <p style={{margin: 0, fontSize: '0.75rem', color: 'var(--text-light)'}}>{theme.description}</p>
                                                         </div>
                                                     </div>
                                                 );
@@ -488,7 +584,7 @@ const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile, navig
                                 </div>
 
                                 {/* Right Column: Preview */}
-                                <div style={{position: isMobile ? 'static' : 'sticky', top: '20px'}}>
+                                <div style={{position: isMobile ? 'static' : 'sticky', top: '20px', width: '100%', boxSizing: 'border-box'}}>
                                     <h3 style={{fontSize: '1rem', color: 'var(--text-light)', marginBottom: '0.5rem'}}>Vista Previa</h3>
                                     <ThemePreview themeKey={clinicFormData.theme} layout={clinicFormData.navigation_layout} />
                                 </div>
@@ -498,10 +594,10 @@ const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile, navig
 
                     {activeTab === 'schedule' && (
                          <div className="fade-in">
-                            <h2 style={{marginTop: 0, marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem'}}>Horario de Atención</h2>
-                            <p style={{color: 'var(--text-light)', marginBottom: '1.5rem'}}>Define los días y horas en los que tu clínica está abierta. Esto afectará la disponibilidad en la agenda y las respuestas del agente IA.</p>
+                            <h2 style={{marginTop: 0, fontSize: isMobile ? '1.25rem' : '1.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem'}}>Horario de Atención</h2>
+                            <p style={{color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem'}}>Define los días y horas en los que tu clínica está abierta. Esto afectará la disponibilidad en la agenda y las respuestas del agente IA.</p>
                             
-                            <div style={{backgroundColor: 'var(--surface-hover-color)', borderRadius: '12px', padding: '0.5rem'}}>
+                            <div style={{backgroundColor: 'var(--surface-hover-color)', borderRadius: '12px', padding: isMobile ? '0.25rem' : '0.5rem'}}>
                                 {dayNames.map((day, index) => {
                                     const scheduleDay = clinicFormData.operating_schedule?.[index];
                                     if (!scheduleDay) return null;
@@ -509,10 +605,10 @@ const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile, navig
                                     return (
                                         <div key={day} style={{ 
                                             display: 'grid', 
-                                            gridTemplateColumns: isMobile ? 'auto 1fr' : '40px 120px 1fr 1fr', 
-                                            gap: '1rem', 
+                                            gridTemplateColumns: isMobile ? '50px 1fr' : '40px 120px 1fr 1fr', 
+                                            gap: isMobile ? '0.25rem 0.5rem' : '1rem', 
                                             alignItems: 'center', 
-                                            padding: '1rem', 
+                                            padding: isMobile ? '0.75rem 0.5rem' : '1rem', 
                                             borderRadius: '8px', 
                                             backgroundColor: isDayActive ? 'var(--surface-color)' : 'transparent',
                                             marginBottom: '0.5rem',
@@ -523,16 +619,26 @@ const ClinicSettingsPage: FC<ClinicSettingsPageProps> = ({ user, isMobile, navig
                                                 <input type="checkbox" checked={isDayActive} onChange={() => handleDayToggle(index)} id={`day-toggle-${index}`} />
                                                 <span className="slider round"></span>
                                             </label>
-                                            <label htmlFor={`day-toggle-${index}`} style={{marginBottom: 0, fontWeight: 600, cursor: 'pointer'}}>{day}</label>
+                                            <label htmlFor={`day-toggle-${index}`} style={{marginBottom: 0, fontWeight: 600, cursor: 'pointer', fontSize: isMobile ? '0.9rem' : '1rem'}}>{day}</label>
                                             
                                             {isDayActive ? (
-                                                <div style={{gridColumn: isMobile ? '1 / -1' : 'auto', display: 'flex', gap: '1rem', alignItems: 'center'}}>
-                                                    <input type="time" value={scheduleDay.start} onChange={e => handleTimeChange(index, 'start', e.target.value)} style={{margin: 0}} />
-                                                    <span style={{color: 'var(--text-light)'}}>a</span>
-                                                    <input type="time" value={scheduleDay.end} onChange={e => handleTimeChange(index, 'end', e.target.value)} style={{margin: 0}} />
+                                                <div style={{gridColumn: isMobile ? '1 / -1' : 'auto', display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: isMobile ? '0.5rem' : 0}}>
+                                                    <input 
+                                                        type="time" 
+                                                        value={scheduleDay.start} 
+                                                        onChange={e => handleTimeChange(index, 'start', e.target.value)} 
+                                                        style={{margin: 0, width: '100px', minWidth: '85px', padding: '0.375rem'}} 
+                                                    />
+                                                    <span style={{color: 'var(--text-light)', fontSize: '0.85rem'}}>a</span>
+                                                    <input 
+                                                        type="time" 
+                                                        value={scheduleDay.end} 
+                                                        onChange={e => handleTimeChange(index, 'end', e.target.value)} 
+                                                        style={{margin: 0, width: '100px', minWidth: '85px', padding: '0.375rem'}} 
+                                                    />
                                                 </div>
                                             ) : (
-                                                <div style={{gridColumn: isMobile ? '1 / -1' : '3 / -1', fontSize: '0.9rem', color: 'var(--text-light)', fontStyle: 'italic'}}>Cerrado</div>
+                                                <div style={{gridColumn: isMobile ? '1 / -1' : '3 / -1', fontSize: '0.85rem', color: 'var(--text-light)', fontStyle: 'italic', marginTop: isMobile ? '0.25rem' : 0}}>Cerrado</div>
                                             )}
                                         </div>
                                     )

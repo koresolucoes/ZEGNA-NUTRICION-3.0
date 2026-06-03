@@ -1,248 +1,251 @@
-
-import { createGlobalStyle } from 'styled-components';
+import { createGlobalStyle } from "styled-components";
 
 // Definición de Tipos para el Tema
 export interface ThemeType {
-    primaryColor: string;
-    primaryLight: string;
-    primaryDark: string;
-    accentColor: string;
-    backgroundColor: string;
-    surfaceColor: string;
-    surfaceHoverColor: string;
-    surfaceActive: string;
-    textColor: string;
-    textLight: string;
-    borderColor: string;
-    errorColor: string;
-    errorBg: string;
-    shadow: string;
-    shadowHover: string;
-    white: string;
+  primaryColor: string;
+  primaryLight: string;
+  primaryDark: string;
+  accentColor: string;
+  backgroundColor: string;
+  surfaceColor: string;
+  surfaceHoverColor: string;
+  surfaceActive: string;
+  textColor: string;
+  textLight: string;
+  borderColor: string;
+  errorColor: string;
+  errorBg: string;
+  shadow: string;
+  shadowHover: string;
+  white: string;
 }
 
 export const themes: { [key: string]: ThemeType } = {
-    default: { 
-        // "Glassmorphism"
-        primaryColor: '#38BDF8', 
-        primaryLight: 'rgba(56, 189, 248, 0.1)',
-        primaryDark: '#0EA5E9', 
-        accentColor: '#2DD4BF', 
-        
-        backgroundColor: 'radial-gradient(circle at top left, #2D3341, #0F172A)', 
-        surfaceColor: 'rgba(255, 255, 255, 0.08)', 
-        surfaceHoverColor: 'rgba(255, 255, 255, 0.15)', 
-        surfaceActive: 'rgba(255, 255, 255, 0.2)', 
-        
-        textColor: '#F1F5F9', 
-        textLight: '#94A3B8', 
-        
-        borderColor: 'rgba(255, 255, 255, 0.12)', 
-        
-        errorColor: '#F87171', 
-        errorBg: 'rgba(248, 113, 113, 0.1)',
-        
-        shadow: '0 20px 50px rgba(0,0,0,0.2)',
-        shadowHover: '0 25px 50px rgba(0,0,0,0.3)',
-        
-        white: '#FFFFFF',
-    },
-    light: { 
-        // "Zegna Azul (Light Mode)"
-        primaryColor: '#0284C7', 
-        primaryLight: '#E0F2FE', 
-        primaryDark: '#0C4A6E', 
-        accentColor: '#0F766E', 
-        
-        backgroundColor: '#F8FAFC', 
-        surfaceColor: '#FFFFFF', 
-        surfaceHoverColor: '#F1F5F9', 
-        surfaceActive: '#E2E8F0', 
-        
-        textColor: '#0F172A', 
-        textLight: '#64748B', 
-        
-        borderColor: '#E2E8F0', 
-        
-        errorColor: '#EF4444', 
-        errorBg: '#FEF2F2', 
-        
-        shadow: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)', 
-        shadowHover: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -1px rgb(0 0 0 / 0.1)', 
-        
-        white: '#FFFFFF',
-    },
-    natural: {
-        // "Salud y Frescura" - Verdes y Tierras
-        primaryColor: '#16A34A', // Green 600
-        primaryLight: '#DCFCE7', // Green 100
-        primaryDark: '#14532D', // Green 900
-        accentColor: '#D97706', // Amber 600
-        
-        backgroundColor: '#FAFAF9', // Stone 50
-        surfaceColor: '#FFFFFF',
-        surfaceHoverColor: '#F5F5F4', // Stone 100
-        surfaceActive: '#E7E5E4', // Stone 200
-        
-        textColor: '#1C1917', // Stone 900
-        textLight: '#78716C', // Stone 500
-        
-        borderColor: '#E7E5E4', // Stone 200
-        
-        errorColor: '#DC2626',
-        errorBg: '#FEF2F2',
-        
-        shadow: '0 1px 3px 0 rgba(0,0,0,0.1)',
-        shadowHover: '0 4px 6px -1px rgba(0,0,0,0.1)',
-        
-        white: '#FFFFFF',
-    },
-    clinical: {
-        // "Serenidad Clínica" - Azules grisáceos y dorados apagados
-        primaryColor: '#475569', // Slate 600
-        primaryLight: '#F1F5F9', // Slate 100
-        primaryDark: '#0F172A', // Slate 900
-        accentColor: '#0891B2', // Cyan 600
-        
-        backgroundColor: '#FFFFFF',
-        surfaceColor: '#F8FAFC', // Slate 50
-        surfaceHoverColor: '#E2E8F0', // Slate 200
-        surfaceActive: '#CBD5E1', // Slate 300
-        
-        textColor: '#334155', // Slate 700
-        textLight: '#94A3B8', // Slate 400
-        
-        borderColor: '#CBD5E1',
-        
-        errorColor: '#BE123C', // Rose 700
-        errorBg: '#FFF1F2',
-        
-        shadow: 'none',
-        shadowHover: '0 1px 2px 0 rgba(0,0,0,0.05)',
-        
-        white: '#FFFFFF',
-    },
-    vitality: {
-        // "Energía y Vitalidad" - Naranjas y Grises oscuros
-        primaryColor: '#EA580C', // Orange 600
-        primaryLight: '#FFEDD5', // Orange 100
-        primaryDark: '#9A3412', // Orange 800
-        accentColor: '#0D9488', // Teal 600
-        
-        backgroundColor: '#171717', // Neutral 900
-        surfaceColor: '#262626', // Neutral 800
-        surfaceHoverColor: '#404040', // Neutral 700
-        surfaceActive: '#525252', // Neutral 600
-        
-        textColor: '#FAFAFA', // Neutral 50
-        textLight: '#A3A3A3', // Neutral 400
-        
-        borderColor: '#404040',
-        
-        errorColor: '#EF4444',
-        errorBg: 'rgba(239, 68, 68, 0.1)',
-        
-        shadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5)',
-        shadowHover: '0 10px 15px -3px rgba(0, 0, 0, 0.5)',
-        
-        white: '#FFFFFF',
-    },
-    tulum: {
-        primaryColor: '#2DD4BF', // Teal 400
-        primaryLight: 'rgba(45, 212, 191, 0.2)',
-        primaryDark: '#0F766E', // Teal 700
-        accentColor: '#FBBF24', // Amber 400
-        
-        backgroundColor: 'radial-gradient(circle at top right, #115E59, #042F2E, #020617)', 
-        surfaceColor: 'rgba(255, 255, 255, 0.05)', 
-        surfaceHoverColor: 'rgba(255, 255, 255, 0.1)', 
-        surfaceActive: 'rgba(255, 255, 255, 0.15)', 
-        
-        textColor: '#F8FAFC', 
-        textLight: '#CBD5E1', 
-        
-        borderColor: 'rgba(255, 255, 255, 0.1)', 
-        
-        errorColor: '#F87171', 
-        errorBg: 'rgba(248, 113, 113, 0.1)',
-        
-        shadow: '0 20px 50px rgba(0,0,0,0.3)',
-        shadowHover: '0 25px 50px rgba(0,0,0,0.4)',
-        
-        white: '#FFFFFF',
-    },
-    oaxaca: {
-        primaryColor: '#F97316', // Orange 500
-        primaryLight: 'rgba(249, 115, 22, 0.2)',
-        primaryDark: '#C2410C', // Orange 700
-        accentColor: '#14B8A6', // Teal 500
-        
-        backgroundColor: 'radial-gradient(circle at bottom left, #7C2D12, #431407, #27272A)', 
-        surfaceColor: 'rgba(255, 255, 255, 0.08)', 
-        surfaceHoverColor: 'rgba(255, 255, 255, 0.12)', 
-        surfaceActive: 'rgba(255, 255, 255, 0.18)', 
-        
-        textColor: '#FFF7ED', 
-        textLight: '#FED7AA', 
-        
-        borderColor: 'rgba(255, 255, 255, 0.15)', 
-        
-        errorColor: '#EF4444', 
-        errorBg: 'rgba(239, 68, 68, 0.1)',
-        
-        shadow: '0 20px 50px rgba(0,0,0,0.3)',
-        shadowHover: '0 25px 50px rgba(0,0,0,0.4)',
-        
-        white: '#FFFFFF',
-    },
-    cdmx: {
-        primaryColor: '#8B5CF6', // Violet 500
-        primaryLight: 'rgba(139, 92, 246, 0.2)',
-        primaryDark: '#5B21B6', // Violet 800
-        accentColor: '#EC4899', // Pink 500
-        
-        backgroundColor: 'linear-gradient(135deg, #1E1B4B, #312E81, #111827)', 
-        surfaceColor: 'rgba(255, 255, 255, 0.06)', 
-        surfaceHoverColor: 'rgba(255, 255, 255, 0.1)', 
-        surfaceActive: 'rgba(255, 255, 255, 0.15)', 
-        
-        textColor: '#F3F4F6', 
-        textLight: '#9CA3AF', 
-        
-        borderColor: 'rgba(255, 255, 255, 0.1)', 
-        
-        errorColor: '#F43F5E', 
-        errorBg: 'rgba(244, 63, 94, 0.1)',
-        
-        shadow: '0 20px 50px rgba(0,0,0,0.4)',
-        shadowHover: '0 25px 50px rgba(0,0,0,0.5)',
-        
-        white: '#FFFFFF',
-    },
-    guadalajara: {
-        primaryColor: '#3B82F6', // Blue 500
-        primaryLight: 'rgba(59, 130, 246, 0.2)',
-        primaryDark: '#1D4ED8', // Blue 700
-        accentColor: '#8B5CF6', // Violet 500
-        
-        backgroundColor: 'radial-gradient(circle at center, #1E3A8A, #172554, #020617)', 
-        surfaceColor: 'rgba(255, 255, 255, 0.07)', 
-        surfaceHoverColor: 'rgba(255, 255, 255, 0.12)', 
-        surfaceActive: 'rgba(255, 255, 255, 0.18)', 
-        
-        textColor: '#EFF6FF', 
-        textLight: '#BFDBFE', 
-        
-        borderColor: 'rgba(255, 255, 255, 0.12)', 
-        
-        errorColor: '#EF4444', 
-        errorBg: 'rgba(239, 68, 68, 0.1)',
-        
-        shadow: '0 20px 50px rgba(0,0,0,0.3)',
-        shadowHover: '0 25px 50px rgba(0,0,0,0.4)',
-        
-        white: '#FFFFFF',
-    }
+  default: {
+    // "Glassmorphism"
+    primaryColor: "#38BDF8",
+    primaryLight: "rgba(56, 189, 248, 0.1)",
+    primaryDark: "#0EA5E9",
+    accentColor: "#2DD4BF",
+
+    backgroundColor: "radial-gradient(circle at top left, #2D3341, #0F172A)",
+    surfaceColor: "rgba(255, 255, 255, 0.08)",
+    surfaceHoverColor: "rgba(255, 255, 255, 0.15)",
+    surfaceActive: "rgba(255, 255, 255, 0.2)",
+
+    textColor: "#F1F5F9",
+    textLight: "#94A3B8",
+
+    borderColor: "rgba(255, 255, 255, 0.12)",
+
+    errorColor: "#F87171",
+    errorBg: "rgba(248, 113, 113, 0.1)",
+
+    shadow: "0 20px 50px rgba(0,0,0,0.2)",
+    shadowHover: "0 25px 50px rgba(0,0,0,0.3)",
+
+    white: "#FFFFFF",
+  },
+  light: {
+    // "Zegna Azul (Light Mode)"
+    primaryColor: "#0284C7",
+    primaryLight: "#E0F2FE",
+    primaryDark: "#0C4A6E",
+    accentColor: "#0F766E",
+
+    backgroundColor: "#F8FAFC",
+    surfaceColor: "#FFFFFF",
+    surfaceHoverColor: "#F1F5F9",
+    surfaceActive: "#E2E8F0",
+
+    textColor: "#0F172A",
+    textLight: "#64748B",
+
+    borderColor: "#E2E8F0",
+
+    errorColor: "#EF4444",
+    errorBg: "#FEF2F2",
+
+    shadow: "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
+    shadowHover:
+      "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -1px rgb(0 0 0 / 0.1)",
+
+    white: "#FFFFFF",
+  },
+  natural: {
+    // "Salud y Frescura" - Verdes y Tierras
+    primaryColor: "#16A34A", // Green 600
+    primaryLight: "#DCFCE7", // Green 100
+    primaryDark: "#14532D", // Green 900
+    accentColor: "#D97706", // Amber 600
+
+    backgroundColor: "#FAFAF9", // Stone 50
+    surfaceColor: "#FFFFFF",
+    surfaceHoverColor: "#F5F5F4", // Stone 100
+    surfaceActive: "#E7E5E4", // Stone 200
+
+    textColor: "#1C1917", // Stone 900
+    textLight: "#78716C", // Stone 500
+
+    borderColor: "#E7E5E4", // Stone 200
+
+    errorColor: "#DC2626",
+    errorBg: "#FEF2F2",
+
+    shadow: "0 1px 3px 0 rgba(0,0,0,0.1)",
+    shadowHover: "0 4px 6px -1px rgba(0,0,0,0.1)",
+
+    white: "#FFFFFF",
+  },
+  clinical: {
+    // "Serenidad Clínica" - Azules grisáceos y dorados apagados
+    primaryColor: "#475569", // Slate 600
+    primaryLight: "#F1F5F9", // Slate 100
+    primaryDark: "#0F172A", // Slate 900
+    accentColor: "#0891B2", // Cyan 600
+
+    backgroundColor: "#FFFFFF",
+    surfaceColor: "#F8FAFC", // Slate 50
+    surfaceHoverColor: "#E2E8F0", // Slate 200
+    surfaceActive: "#CBD5E1", // Slate 300
+
+    textColor: "#334155", // Slate 700
+    textLight: "#94A3B8", // Slate 400
+
+    borderColor: "#CBD5E1",
+
+    errorColor: "#BE123C", // Rose 700
+    errorBg: "#FFF1F2",
+
+    shadow: "none",
+    shadowHover: "0 1px 2px 0 rgba(0,0,0,0.05)",
+
+    white: "#FFFFFF",
+  },
+  vitality: {
+    // "Energía y Vitalidad" - Naranjas y Grises oscuros
+    primaryColor: "#EA580C", // Orange 600
+    primaryLight: "#FFEDD5", // Orange 100
+    primaryDark: "#9A3412", // Orange 800
+    accentColor: "#0D9488", // Teal 600
+
+    backgroundColor: "#171717", // Neutral 900
+    surfaceColor: "#262626", // Neutral 800
+    surfaceHoverColor: "#404040", // Neutral 700
+    surfaceActive: "#525252", // Neutral 600
+
+    textColor: "#FAFAFA", // Neutral 50
+    textLight: "#A3A3A3", // Neutral 400
+
+    borderColor: "#404040",
+
+    errorColor: "#EF4444",
+    errorBg: "rgba(239, 68, 68, 0.1)",
+
+    shadow: "0 4px 6px -1px rgba(0, 0, 0, 0.5)",
+    shadowHover: "0 10px 15px -3px rgba(0, 0, 0, 0.5)",
+
+    white: "#FFFFFF",
+  },
+  tulum: {
+    primaryColor: "#2DD4BF", // Teal 400
+    primaryLight: "rgba(45, 212, 191, 0.2)",
+    primaryDark: "#0F766E", // Teal 700
+    accentColor: "#FBBF24", // Amber 400
+
+    backgroundColor:
+      "radial-gradient(circle at top right, #115E59, #042F2E, #020617)",
+    surfaceColor: "rgba(255, 255, 255, 0.05)",
+    surfaceHoverColor: "rgba(255, 255, 255, 0.1)",
+    surfaceActive: "rgba(255, 255, 255, 0.15)",
+
+    textColor: "#F8FAFC",
+    textLight: "#CBD5E1",
+
+    borderColor: "rgba(255, 255, 255, 0.1)",
+
+    errorColor: "#F87171",
+    errorBg: "rgba(248, 113, 113, 0.1)",
+
+    shadow: "0 20px 50px rgba(0,0,0,0.3)",
+    shadowHover: "0 25px 50px rgba(0,0,0,0.4)",
+
+    white: "#FFFFFF",
+  },
+  oaxaca: {
+    primaryColor: "#F97316", // Orange 500
+    primaryLight: "rgba(249, 115, 22, 0.2)",
+    primaryDark: "#C2410C", // Orange 700
+    accentColor: "#14B8A6", // Teal 500
+
+    backgroundColor:
+      "radial-gradient(circle at bottom left, #7C2D12, #431407, #27272A)",
+    surfaceColor: "rgba(255, 255, 255, 0.08)",
+    surfaceHoverColor: "rgba(255, 255, 255, 0.12)",
+    surfaceActive: "rgba(255, 255, 255, 0.18)",
+
+    textColor: "#FFF7ED",
+    textLight: "#FED7AA",
+
+    borderColor: "rgba(255, 255, 255, 0.15)",
+
+    errorColor: "#EF4444",
+    errorBg: "rgba(239, 68, 68, 0.1)",
+
+    shadow: "0 20px 50px rgba(0,0,0,0.3)",
+    shadowHover: "0 25px 50px rgba(0,0,0,0.4)",
+
+    white: "#FFFFFF",
+  },
+  cdmx: {
+    primaryColor: "#8B5CF6", // Violet 500
+    primaryLight: "rgba(139, 92, 246, 0.2)",
+    primaryDark: "#5B21B6", // Violet 800
+    accentColor: "#EC4899", // Pink 500
+
+    backgroundColor: "linear-gradient(135deg, #1E1B4B, #312E81, #111827)",
+    surfaceColor: "rgba(255, 255, 255, 0.06)",
+    surfaceHoverColor: "rgba(255, 255, 255, 0.1)",
+    surfaceActive: "rgba(255, 255, 255, 0.15)",
+
+    textColor: "#F3F4F6",
+    textLight: "#9CA3AF",
+
+    borderColor: "rgba(255, 255, 255, 0.1)",
+
+    errorColor: "#F43F5E",
+    errorBg: "rgba(244, 63, 94, 0.1)",
+
+    shadow: "0 20px 50px rgba(0,0,0,0.4)",
+    shadowHover: "0 25px 50px rgba(0,0,0,0.5)",
+
+    white: "#FFFFFF",
+  },
+  guadalajara: {
+    primaryColor: "#3B82F6", // Blue 500
+    primaryLight: "rgba(59, 130, 246, 0.2)",
+    primaryDark: "#1D4ED8", // Blue 700
+    accentColor: "#8B5CF6", // Violet 500
+
+    backgroundColor:
+      "radial-gradient(circle at center, #1E3A8A, #172554, #020617)",
+    surfaceColor: "rgba(255, 255, 255, 0.07)",
+    surfaceHoverColor: "rgba(255, 255, 255, 0.12)",
+    surfaceActive: "rgba(255, 255, 255, 0.18)",
+
+    textColor: "#EFF6FF",
+    textLight: "#BFDBFE",
+
+    borderColor: "rgba(255, 255, 255, 0.12)",
+
+    errorColor: "#EF4444",
+    errorBg: "rgba(239, 68, 68, 0.1)",
+
+    shadow: "0 20px 50px rgba(0,0,0,0.3)",
+    shadowHover: "0 25px 50px rgba(0,0,0,0.4)",
+
+    white: "#FFFFFF",
+  },
 };
 
 export const GlobalStyle = createGlobalStyle<{ theme: ThemeType }>`
@@ -313,9 +316,13 @@ export const GlobalStyle = createGlobalStyle<{ theme: ThemeType }>`
         transition: transform 0.2s ease, background-color 0.2s ease !important;
     }
 
-    .glass-container:hover, aside:hover, header:hover, .card:hover {
+    .glass-container:hover, header:hover, .card:hover {
         background-color: var(--surface-hover-color) !important;
         transform: scale(1.02) !important;
+    }
+
+    aside:hover {
+        background-color: var(--surface-hover-color) !important;
     }
 
     #root {
@@ -353,6 +360,7 @@ export const GlobalStyle = createGlobalStyle<{ theme: ThemeType }>`
     /* Modern Inputs */
     input, textarea, select {
         width: 100%;
+        box-sizing: border-box;
         padding: 0.75rem 1rem;
         margin-bottom: 1.25rem;
         border: 1px solid var(--border-color);
@@ -462,4 +470,49 @@ export const GlobalStyle = createGlobalStyle<{ theme: ThemeType }>`
     body.consultation-mode-active header {
         display: none !important;
     }
+
+    /* Mobile Overrides */
+    @media (max-width: 1100px) {
+        .card { 
+            padding: 1rem !important; 
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            overflow-x: hidden !important;
+        }
+        .modal-content { 
+            padding: 1rem !important; 
+            width: 100% !important; 
+            max-width: 100% !important; 
+            margin: 0 auto !important;
+            box-sizing: border-box !important;
+        }
+        h1 { font-size: 1.5rem !important; margin-bottom: 0.75rem !important; }
+        h2 { font-size: 1.25rem !important; margin-bottom: 0.5rem !important; }
+        input, select, textarea { padding: 0.625rem 0.75rem !important; font-size: 0.875rem !important; margin-bottom: 0.75rem !important; }
+        
+        .fade-in { max-width: 100% !important; padding: 0 !important;}
+        .glass-container { border-radius: 16px !important; }
+        
+        /* Modals overrides */
+        div[style*="rgba(0, 0, 0, 0.4)"] {
+            padding: 0px !important;
+            align-items: flex-end !important; /* slide up on mobile */
+        }
+        div[style*="rgba(0, 0, 0, 0.4)"] > div,
+        div[style*="rgba(0, 0, 0, 0.4)"] > form {
+            width: 100% !important;
+            max-width: 100% !important;
+            max-height: 90vh !important;
+            border-bottom-left-radius: 0 !important;
+            border-bottom-right-radius: 0 !important;
+            border-top-left-radius: 24px !important;
+            border-top-right-radius: 24px !important;
+            box-sizing: border-box !important;
+            animation: slideUp 0.3s ease-out !important;
+            margin: 0 !important;
+        }
+    }
+    
+    @keyframes slideUp { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
 `;

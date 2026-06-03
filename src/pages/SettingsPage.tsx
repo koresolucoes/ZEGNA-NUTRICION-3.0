@@ -137,7 +137,8 @@ const SettingsPage: FC<SettingsPageProps> = ({ user, initialTab }) => {
         <button
             onClick={() => setActiveTab(id)}
             style={{
-                width: '100%',
+                width: isMobile ? 'auto' : '100%',
+                flexShrink: 0,
                 textAlign: 'left',
                 padding: '1rem',
                 backgroundColor: activeTab === id ? 'var(--surface-hover-color)' : 'transparent',
@@ -150,12 +151,12 @@ const SettingsPage: FC<SettingsPageProps> = ({ user, initialTab }) => {
                 gap: '0.75rem',
                 transition: 'all 0.2s ease',
                 cursor: 'pointer',
-                marginBottom: '0.25rem'
+                marginBottom: isMobile ? '0' : '0.25rem'
             }}
         >
             <span style={{ fontSize: '1.2rem', display: 'flex', alignItems: 'center' }}>{icon}</span>
-            <span>{label}</span>
-            {activeTab === id && <span style={{marginLeft: 'auto', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--primary-color)'}}></span>}
+            <span style={{ whiteSpace: isMobile ? 'nowrap' : 'normal' }}>{label}</span>
+            {activeTab === id && !isMobile && <span style={{marginLeft: 'auto', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--primary-color)'}}></span>}
         </button>
     );
 
@@ -191,7 +192,7 @@ const SettingsPage: FC<SettingsPageProps> = ({ user, initialTab }) => {
                     
                     <div style={inputGroupStyle}>
                         <label style={labelStyle}>Nuevo Correo Electrónico</label>
-                        <div style={{ display: 'flex', gap: '1rem' }}>
+                        <div style={{ display: 'flex', gap: '1rem', flexDirection: isMobile ? 'column' : 'row' }}>
                             <input 
                                 type="email" 
                                 value={newEmail} 
@@ -200,7 +201,7 @@ const SettingsPage: FC<SettingsPageProps> = ({ user, initialTab }) => {
                                 style={{...inputStyle, flex: 1}}
                                 placeholder="ejemplo@correo.com"
                             />
-                            <button type="submit" disabled={emailLoading} className="button-secondary" style={{ height: '42px', padding: '0 1.5rem' }}>
+                            <button type="submit" disabled={emailLoading} className="button-secondary" style={{ height: '42px', padding: '0 1.5rem', width: isMobile ? '100%' : 'auto' }}>
                                 {emailLoading ? '...' : 'Actualizar'}
                             </button>
                         </div>
@@ -209,7 +210,7 @@ const SettingsPage: FC<SettingsPageProps> = ({ user, initialTab }) => {
             </div>
 
             {/* Password Section */}
-            <div style={cardStyle}>
+            <div style={{ ...cardStyle }}>
                 <div style={cardHeaderStyle}>
                     <span style={{color: 'var(--primary-color)', fontSize: '1.5rem'}}>🔒</span>
                     <div>
@@ -227,7 +228,7 @@ const SettingsPage: FC<SettingsPageProps> = ({ user, initialTab }) => {
                         <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required style={inputStyle} placeholder="••••••••" />
                     </div>
                     
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                         <div>
                             <label style={labelStyle}>Nueva Contraseña</label>
                             <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={6} style={inputStyle} placeholder="Mínimo 6 caracteres" />
@@ -238,8 +239,8 @@ const SettingsPage: FC<SettingsPageProps> = ({ user, initialTab }) => {
                         </div>
                     </div>
                     
-                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <button type="submit" disabled={passwordLoading} className="button-primary">
+                    <div style={{ display: 'flex', justifyContent: isMobile ? 'center' : 'flex-end' }}>
+                        <button type="submit" disabled={passwordLoading} className="button-primary" style={{ width: isMobile ? '100%' : 'auto' }}>
                             {passwordLoading ? 'Guardando...' : 'Cambiar Contraseña'}
                         </button>
                     </div>
@@ -248,12 +249,12 @@ const SettingsPage: FC<SettingsPageProps> = ({ user, initialTab }) => {
 
             {/* Session Zone */}
             <div style={{ ...cardStyle, backgroundColor: 'var(--error-bg)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
-                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                 <div style={{display: 'flex', justifyContent: isMobile ? 'center' : 'space-between', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '1rem' : 0}}>
                     <div>
                         <h4 style={{ margin: '0 0 0.25rem 0', color: 'var(--error-color)', fontSize: '1.1rem' }}>Sesión Activa</h4>
                         <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--error-color)', opacity: 0.8 }}>Cerrar sesión en este dispositivo.</p>
                     </div>
-                    <button onClick={handleLogout} className="button-danger" style={{ borderColor: 'transparent' }}>
+                    <button onClick={handleLogout} className="button-danger" style={{ borderColor: 'transparent', width: isMobile ? '100%' : 'auto' }}>
                         {ICONS.logout} Salir
                     </button>
                 </div>

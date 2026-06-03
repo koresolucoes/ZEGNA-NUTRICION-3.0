@@ -76,7 +76,7 @@ const ServiceFormModal: FC<ServiceFormModalProps> = ({ isOpen, onClose, onSave, 
             if (serviceToEdit) {
                 const { error } = await supabase
                     .from('services')
-                    .update(payload)
+                    .update(payload as any)
                     .eq('id', serviceToEdit.id);
                 if (error) throw error;
             } else {
@@ -85,7 +85,7 @@ const ServiceFormModal: FC<ServiceFormModalProps> = ({ isOpen, onClose, onSave, 
                     .insert({
                         ...payload,
                         clinic_id: clinic.id,
-                    });
+                    } as any);
                 if (error) throw error;
             }
             onSave();

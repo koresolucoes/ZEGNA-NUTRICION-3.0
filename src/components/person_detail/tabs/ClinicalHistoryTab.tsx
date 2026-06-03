@@ -20,13 +20,16 @@ interface ClinicalHistoryTabProps {
     onEditMedicalHistory: (history: MedicalHistory | null) => void;
     onEditMedication: (medication: Medication | null) => void;
     onEditLifestyle: () => void;
+    onAddConsultation: () => void;
+    onEditConsultation: (id: string) => void;
+    onViewConsultation: (consultation: ConsultationWithLabs) => void;
     openModal: (action: 'deleteAllergy' | 'deleteMedicalHistory' | 'deleteMedication' | 'deleteConsultation', id: string, text: string) => void;
     onOpenSoapGenerator?: () => void;
 }
 
 export const ClinicalHistoryTab: FC<ClinicalHistoryTabProps> = ({
     allergies, medicalHistory, medications, lifestyleHabits, consultations, memberMap,
-    onEditAllergy, onEditMedicalHistory, onEditMedication, onEditLifestyle, openModal, onOpenSoapGenerator
+    onEditAllergy, onEditMedicalHistory, onEditMedication, onEditLifestyle, onAddConsultation, onEditConsultation, onViewConsultation, openModal, onOpenSoapGenerator
 }) => {
     const [activeSubTab, setActiveSubTab] = useState('allergies');
 
@@ -105,7 +108,7 @@ export const ClinicalHistoryTab: FC<ClinicalHistoryTabProps> = ({
                         <AllergiesManager allergies={allergies} onAdd={() => onEditAllergy(null)} onEdit={onEditAllergy} onDelete={(id, name) => openModal('deleteAllergy', id, `¿Eliminar la alergia a "${name}"?`)} memberMap={memberMap} />
                         
                         <div style={{marginTop: '3rem', borderTop: '1px solid var(--border-color)', paddingTop: '2rem'}}>
-                             <ConsultationsTab consultations={consultations} memberMap={memberMap} onAdd={() => {}} onEdit={() => {}} onView={() => {}} openModal={openModal as any} />
+                             <ConsultationsTab consultations={consultations} memberMap={memberMap} onAdd={onAddConsultation} onEdit={onEditConsultation} onView={onViewConsultation} openModal={openModal as any} />
                         </div>
                     </div>
                 )}
@@ -125,7 +128,7 @@ export const ClinicalHistoryTab: FC<ClinicalHistoryTabProps> = ({
                         </div>
 
                         <div style={{marginTop: '3rem', borderTop: '1px solid var(--border-color)', paddingTop: '2rem'}}>
-                             <ConsultationsTab consultations={consultations} memberMap={memberMap} onAdd={() => {}} onEdit={() => {}} onView={() => {}} openModal={openModal as any} />
+                             <ConsultationsTab consultations={consultations} memberMap={memberMap} onAdd={onAddConsultation} onEdit={onEditConsultation} onView={onViewConsultation} openModal={openModal as any} />
                         </div>
                     </div>
                 )}

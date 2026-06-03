@@ -104,7 +104,7 @@ const ServicePlanFormModal: FC<ServicePlanFormModalProps> = ({ isOpen, onClose, 
             if (planToEdit) {
                 const { error } = await supabase
                     .from('patient_service_plans')
-                    .update(payload)
+                    .update(payload as any)
                     .eq('id', planToEdit.id);
                 if (error) throw error;
             } else {
@@ -113,7 +113,7 @@ const ServicePlanFormModal: FC<ServicePlanFormModalProps> = ({ isOpen, onClose, 
                     .insert({
                         ...payload,
                         clinic_id: clinic.id,
-                    });
+                    } as any);
                 if (error) throw error;
             }
             onSave();
