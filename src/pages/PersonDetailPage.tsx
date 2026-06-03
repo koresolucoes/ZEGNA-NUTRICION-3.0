@@ -42,7 +42,6 @@ import ReferPersonModal from '../components/person_detail/ReferPersonModal';
 import ConfirmationModal from '../components/shared/ConfirmationModal';
 import ReportModal from '../components/ReportModal';
 import ConsultationDetailModal from '../components/modals/ConsultationDetailModal';
-import ConsultationFormModal from '../components/forms/ConsultationFormModal';
 import LogDetailModal from '../components/modals/LogDetailModal';
 import DietLogDetailModal from '../components/modals/DietLogDetailModal';
 import ExerciseLogDetailModal from '../components/modals/ExerciseLogDetailModal';
@@ -179,8 +178,6 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
     const [editingAllergy, setEditingAllergy] = useState<Allergy | null>(null);
     const [isMedicalHistoryModalOpen, setMedicalHistoryModalOpen] = useState(false);
     const [editingMedicalHistory, setEditingMedicalHistory] = useState<MedicalHistory | null>(null);
-    const [isConsultationFormModalOpen, setConsultationFormModalOpen] = useState(false);
-    const [editingConsultationForm, setEditingConsultationForm] = useState<ConsultationWithLabs | null>(null);
     const [isMedicationModalOpen, setMedicationModalOpen] = useState(false);
     const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
     const [isLifestyleModalOpen, setLifestyleModalOpen] = useState(false);
@@ -675,7 +672,6 @@ INSTRUCCIONES:
             {isFileUploadModalOpen && <FileUploadModal isOpen={isFileUploadModalOpen} onClose={()=>{handleFileUploadSuccess();fetchData()}} personId={personId} />}
             {isReportModalOpen && person && <ReportModal person={person} consultations={consultations} dietLogs={allDietLogs} exerciseLogs={allExerciseLogs} allergies={allergies} medicalHistory={medicalHistory} medications={medications} lifestyleHabits={lifestyleHabits} onClose={() => setReportModalOpen(false)} isMobile={isMobile} nutritionistProfile={nutritionistProfile} clinic={clinic} />}
             {isSoapGeneratorOpen && person && <SoapGeneratorModal isOpen={isSoapGeneratorOpen} onClose={() => setIsSoapGeneratorOpen(false)} onGenerate={handleGenerateSoapNote} person={person} loading={aiLoading} />}
-            {isConsultationFormModalOpen && <ConsultationFormModal consultation={editingConsultationForm} personId={personId} zIndex={9999} onClose={() => {setConsultationFormModalOpen(false); setEditingConsultationForm(null);}} onSave={() => {setConsultationFormModalOpen(false); setEditingConsultationForm(null); fetchData();}} />}
             {viewingConsultation && <ConsultationDetailModal consultation={viewingConsultation} onClose={() => setViewingConsultation(null)} zIndex={isConsultationMode ? 2200 : 1050} />}
             {viewingLog && <LogDetailModal log={viewingLog} onClose={() => setViewingLog(null)} zIndex={isConsultationMode ? 2200 : 1050} />}
             {viewingDietLog && <DietLogDetailModal log={viewingDietLog} onClose={() => setViewingDietLog(null)} zIndex={isConsultationMode ? 2200 : 1050} />}
@@ -765,14 +761,8 @@ INSTRUCCIONES:
                                         onEditMedicalHistory={(h) => handleOpenClinicalHistoryModal('medical', h)} 
                                         onEditMedication={(m) => handleOpenClinicalHistoryModal('medication', m)} 
                                         onEditLifestyle={() => setLifestyleModalOpen(true)} 
-                                        onAddConsultation={() => {setEditingConsultationForm(null); setConsultationFormModalOpen(true);}}
-                                        onEditConsultation={(id) => {
-                                            const c = consultations.find(c => c.id === id);
-                                            if (c) {
-                                                setEditingConsultationForm(c);
-                                                setConsultationFormModalOpen(true);
-                                            }
-                                        }}
+                                        onAddConsultation={() => navigate('consultation-form', { personId, personType })}
+                                        onEditConsultation={(id) => navigate('consultation-form', { personId, personType, consultationId: id })}
                                         onViewConsultation={(c) => setViewingConsultation(c)}
                                         openModal={openModal} 
                                         onOpenSoapGenerator={() => setIsSoapGeneratorOpen(true)}
