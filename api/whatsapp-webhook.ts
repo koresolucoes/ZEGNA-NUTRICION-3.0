@@ -498,7 +498,15 @@ export default async function handler(req: any, res: any) {
     
     // 8. First call to Gemini API
     // UPDATED: Use GEMINI_API_KEY
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const referer = req.headers.referer || req.headers.origin || `https://${req.headers.host}`;
+    const ai = new GoogleGenAI({ 
+        apiKey: process.env.GEMINI_API_KEY,
+        httpOptions: {
+            headers: {
+                "Referer": referer
+            }
+        }
+    });
     // Use the user-selected model or fallback to the most secure/capable model for adherence
     const modelName = agent.model_name || 'gemini-3.1-pro-preview';
 

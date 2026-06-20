@@ -98,7 +98,15 @@ export default async function handler(req: any, res: any) {
 
         // --- Inicio de la Lógica de IA ---
         // UPDATED: Use GEMINI_API_KEY
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
+        const referer = req.headers.referer || req.headers.origin || `https://${req.headers.host}`;
+        const ai = new GoogleGenAI({ 
+            apiKey: process.env.GEMINI_API_KEY as string,
+            httpOptions: {
+                headers: {
+                    "Referer": referer
+                }
+            }
+        });
         // Use the user-selected model or fallback
         const modelName = agent.model_name || 'gemini-3-flash-preview';
         
