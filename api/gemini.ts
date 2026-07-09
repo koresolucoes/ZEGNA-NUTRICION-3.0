@@ -117,6 +117,105 @@ function mapModelToOpenRouter(modelName: string): string {
   }
 }
 
+function convertGeminiSchemaToStandard(schema: any): any {
+  if (!schema || typeof schema !== 'object') {
+    return schema;
+  }
+
+  const copy: any = Array.isArray(schema) ? [] : { ...schema };
+
+  if (Array.isArray(schema)) {
+    return schema.map(item => convertGeminiSchemaToStandard(item));
+  }
+
+  if (typeof copy.type === 'string') {
+    copy.type = copy.type.toLowerCase();
+  }
+
+  if (copy.properties && typeof copy.properties === 'object') {
+    const newProps: any = {};
+    for (const [key, val] of Object.entries(copy.properties)) {
+      newProps[key] = convertGeminiSchemaToStandard(val);
+    }
+    copy.properties = newProps;
+  }
+
+  if (copy.items && typeof copy.items === 'object') {
+    copy.items = convertGeminiSchemaToStandard(copy.items);
+  }
+
+  return copy;
+}
+
+function generateSchemaPromptInstructions(schema: any): string {
+  if (!schema) return '';
+  
+  const describeSchema = (s: any, indent = ''): string => {
+    if (!s) return '';
+    const type = String(s.type || '').toLowerCase();
+    const desc = s.description ? ` // ${s.description}` : '';
+    
+    if (type === 'object' && s.properties) {
+      let lines = [`{` + desc];
+      for (const [key, val] of Object.entries(s.properties)) {
+        const isRequired = Array.isArray(s.required) && s.required.includes(key);
+        const reqStr = isRequired ? ' [REQUIRED]' : '';
+        lines.push(`${indent}  "${key}": ${describeSchema(val, indent + '  ')}${reqStr}`);
+      }
+      lines.push(`${indent}}`);
+      return lines.join('\n');
+    }
+    
+    if (type === 'array' && s.items) {
+      return `[\n${indent}  ${describeSchema(s.items, indent + '  ')}\n${indent}]${desc}`;
+    }
+    
+    return `"${type}"${desc}`;
+  };
+
+  try {
+    const stdSchema = convertGeminiSchemaToStandard(schema);
+    return `\n\nDebes responder ESTRICTAMENTE con un objeto JSON que cumpla exactamente con la siguiente estructura de datos:\n\`\`\`json\n${describeSchema(stdSchema)}\n\`\`\``;
+  } catch (err) {
+    return '';
+  }
+}
+
+function cleanJsonResponseText(responseText: string): string {
+  let cleaned = responseText.trim();
+  
+  // Strip ```json and ``` wraps if present
+  if (cleaned.startsWith('```json')) {
+    cleaned = cleaned.substring(7);
+  } else if (cleaned.startsWith('```')) {
+    cleaned = cleaned.substring(3);
+  }
+  
+  if (cleaned.endsWith('```')) {
+    cleaned = cleaned.substring(0, cleaned.length - 3);
+  }
+  
+  cleaned = cleaned.trim();
+  
+  // Extract the first '{' to last '}' or '[' to ']' to handle any surrounding commentary
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+  const firstBracket = cleaned.indexOf('[');
+  const lastBracket = cleaned.lastIndexOf(']');
+  
+  if (firstBrace !== -1 && lastBrace !== -1) {
+    if (firstBracket !== -1 && firstBracket < firstBrace && lastBracket > lastBrace) {
+      cleaned = cleaned.substring(firstBracket, lastBracket + 1);
+    } else {
+      cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+    }
+  } else if (firstBracket !== -1 && lastBracket !== -1) {
+    cleaned = cleaned.substring(firstBracket, lastBracket + 1);
+  }
+  
+  return cleaned;
+}
+
 export default async function handler(req: any, res: any) {
   // Only allow POST requests
   if (req.method !== 'POST') {
@@ -221,10 +320,39 @@ export default async function handler(req: any, res: any) {
     let responseFormat: any = undefined;
     if (config?.responseMimeType === "application/json") {
       responseFormat = { type: "json_object" };
-      // Append instruction to make sure the model outputs valid JSON matching the format
-      const lastMsg = messages[messages.length - 1];
-      if (lastMsg && typeof lastMsg.content === 'string') {
-        lastMsg.content += "\n\nIMPORTANT: Return your response strictly as a single JSON object. Do not include markdown code block formatting (like ```json ... ```) in your raw response.";
+      
+      // If a schema is provided, we can convert and pass it to OpenRouter
+      if (config.responseSchema) {
+        try {
+          const standardSchema = convertGeminiSchemaToStandard(config.responseSchema);
+          responseFormat.schema = standardSchema;
+          
+          // Also generate a visual string blueprint to append to the last user instruction
+          const schemaInstructions = generateSchemaPromptInstructions(config.responseSchema);
+          if (schemaInstructions) {
+            const lastMsg = messages[messages.length - 1];
+            if (lastMsg) {
+              if (typeof lastMsg.content === 'string') {
+                lastMsg.content += schemaInstructions;
+              } else if (Array.isArray(lastMsg.content)) {
+                lastMsg.content.push({ type: 'text', text: schemaInstructions });
+              }
+            }
+          }
+        } catch (schemaErr) {
+          console.error('[OpenRouter API] Error parsing or injecting schema:', schemaErr);
+        }
+      } else {
+        // Append general instruction to make sure the model outputs valid JSON matching the format
+        const lastMsg = messages[messages.length - 1];
+        if (lastMsg) {
+          const jsonInstruction = "\n\nIMPORTANT: Return your response strictly as a single JSON object. Do not include markdown code block formatting (like ```json ... ```) in your raw response.";
+          if (typeof lastMsg.content === 'string') {
+            lastMsg.content += jsonInstruction;
+          } else if (Array.isArray(lastMsg.content)) {
+            lastMsg.content.push({ type: 'text', text: jsonInstruction });
+          }
+        }
       }
     }
 
@@ -254,7 +382,11 @@ export default async function handler(req: any, res: any) {
     }
 
     const responseData = await openRouterResponse.json();
-    const responseText = responseData.choices?.[0]?.message?.content || '';
+    let responseText = responseData.choices?.[0]?.message?.content || '';
+
+    if (config?.responseMimeType === "application/json") {
+      responseText = cleanJsonResponseText(responseText);
+    }
 
     // Reconstruct the response format to match Gemini's structure expected by client
     res.status(200).json({ 
