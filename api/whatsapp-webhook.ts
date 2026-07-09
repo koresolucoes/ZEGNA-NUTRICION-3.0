@@ -23,6 +23,249 @@ const formatHistoryForGemini = (history: any[]): Content[] => {
     }));
 };
 
+// Helper to map Gemini model names to OpenRouter equivalents
+const mapModelToOpenRouter = (modelName: string): string => {
+  if (!modelName) return 'google/gemini-2.5-flash-lite';
+  if (modelName.includes('/')) return modelName;
+  
+  switch (modelName) {
+    case 'gemini-3.1-flash-lite':
+    case 'gemini-3-flash-preview':
+    case 'gemini-2.5-flash-lite':
+    case 'gemini-1.5-flash-lite':
+    case 'gemini-flash-lite':
+      return 'google/gemini-2.5-flash-lite';
+    case 'gemini-3.1-flash':
+    case 'gemini-2.5-flash':
+    case 'gemini-1.5-flash':
+    case 'gemini-flash-latest':
+      return 'google/gemini-2.5-flash';
+    case 'gemini-3.1-pro-preview':
+    case 'gemini-2.5-pro':
+    case 'gemini-1.5-pro':
+    case 'gemini-pro':
+      return 'google/gemini-2.5-pro';
+    default:
+      return 'google/gemini-2.5-flash-lite';
+  }
+};
+
+// Helper to convert Gemini Content history to OpenRouter (OpenAI-compatible) Messages
+const convertGeminiHistoryToOpenAi = (contents: Content[]): any[] => {
+  const messages: any[] = [];
+  const lastToolCallIdByName: { [key: string]: string } = {};
+
+  for (const item of contents) {
+    const role = item.role === 'model' ? 'assistant' : (item.role === 'tool' ? 'tool' : 'user');
+    
+    if (role === 'tool') {
+      const parts = item.parts || [];
+      for (const part of parts) {
+        if (part.functionResponse) {
+          const name = part.functionResponse.name;
+          const contentStr = JSON.stringify(part.functionResponse.response);
+          const toolCallId = lastToolCallIdByName[name] || `call_${Math.random().toString(36).substring(2, 11)}`;
+          
+          messages.push({
+            role: 'tool',
+            tool_call_id: toolCallId,
+            name: name,
+            content: contentStr
+          });
+        }
+      }
+    } else {
+      const parts = item.parts || [];
+      const textParts = parts.filter(p => typeof p.text === 'string').map(p => p.text);
+      const combinedText = textParts.join('\n') || null;
+
+      const functionCalls = parts.filter(p => p.functionCall).map(p => p.functionCall);
+
+      if (functionCalls.length > 0) {
+        const toolCalls = functionCalls.map((fc, idx) => {
+          const toolCallId = fc.id || `call_${Math.random().toString(36).substring(2, 11)}_${idx}`;
+          lastToolCallIdByName[fc.name] = toolCallId;
+          return {
+            id: toolCallId,
+            type: 'function',
+            function: {
+              name: fc.name,
+              arguments: JSON.stringify(fc.args || {})
+            }
+          };
+        });
+
+        messages.push({
+          role: 'assistant',
+          content: combinedText,
+          tool_calls: toolCalls
+        });
+      } else {
+        const hasMedia = parts.some(p => p.inlineData || p.fileData || (p as any).image_url);
+        if (hasMedia) {
+          const contentArray: any[] = [];
+          for (const p of parts) {
+            if (typeof p.text === 'string') {
+              contentArray.push({ type: 'text', text: p.text });
+            } else if (p.inlineData) {
+              const mimeType = p.inlineData.mimeType || 'image/jpeg';
+              contentArray.push({
+                type: 'image_url',
+                image_url: {
+                  url: `data:${mimeType};base64,${p.inlineData.data}`
+                }
+              });
+            }
+          }
+          messages.push({ role, content: contentArray });
+        } else {
+          messages.push({ role, content: combinedText || '' });
+        }
+      }
+    }
+  }
+  
+  return messages;
+};
+
+// Unified AI content generator that utilizes OpenRouter or falls back to GoogleGenAI
+const generateAiContent = async ({
+  model,
+  contents,
+  config,
+  clinicId,
+  reqReferer
+}: {
+  model: string;
+  contents: Content[];
+  config?: any;
+  clinicId: string;
+  reqReferer?: string;
+}): Promise<{
+  text: string;
+  functionCalls?: any[];
+  candidates: any[];
+}> => {
+  // Try to retrieve AI configurations
+  let agent: any = null;
+  try {
+    const { data } = await supabaseAdmin
+      .from('ai_agents')
+      .select('provider_api_key, model_name')
+      .eq('clinic_id', clinicId)
+      .single();
+    agent = data;
+  } catch (err) {
+    console.warn('[AI Client] Could not fetch clinic agent profile:', err);
+  }
+
+  const openRouterKey = (process.env.OPENROUTER_API_KEY || agent?.provider_api_key)?.trim();
+
+  if (openRouterKey) {
+    console.log(`[AI Client] Routing request via OpenRouter for clinic ${clinicId}`);
+    
+    const openRouterModel = process.env.OPENROUTER_MODEL || mapModelToOpenRouter(model);
+    
+    // Format tools/function calling schemas if present
+    const tools = config?.tools?.[0]?.functionDeclarations ? config.tools[0].functionDeclarations.map((fd: any) => ({
+      type: 'function',
+      function: {
+        name: fd.name,
+        description: fd.description,
+        parameters: fd.parameters
+      }
+    })) : undefined;
+
+    // Convert Gemini messages to OpenAI-compatible messages
+    let messages = convertGeminiHistoryToOpenAi(contents);
+    
+    // Handle systemInstructions
+    if (config?.systemInstruction) {
+      let sysText = '';
+      if (typeof config.systemInstruction === 'string') {
+        sysText = config.systemInstruction;
+      } else if (config.systemInstruction.parts) {
+        sysText = config.systemInstruction.parts.map((p: any) => p.text || '').join('\n');
+      }
+      if (sysText) {
+        messages = [{ role: 'system', content: sysText }, ...messages];
+      }
+    }
+
+    const referer = reqReferer || 'https://openrouter.ai';
+
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openRouterKey}`,
+        'HTTP-Referer': referer,
+        'X-Title': 'Clinic AI Ecosystem'
+      },
+      body: JSON.stringify({
+        model: openRouterModel,
+        messages: messages,
+        tools: tools,
+        temperature: config?.temperature !== undefined ? config.temperature : 0.7,
+      })
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`OpenRouter API call failed: ${errText}`);
+    }
+
+    const resData = await res.json();
+    const responseMessage = resData.choices?.[0]?.message;
+    const text = responseMessage?.content || '';
+    
+    const toolCalls = responseMessage?.tool_calls;
+    const functionCalls = toolCalls?.map((tc: any) => ({
+      id: tc.id,
+      name: tc.function.name,
+      args: JSON.parse(tc.function.arguments || '{}')
+    }));
+
+    return {
+      text: text,
+      functionCalls: functionCalls || [],
+      candidates: [
+        {
+          content: {
+            role: 'model',
+            parts: [
+              ...(text ? [{ text }] : []),
+              ...(functionCalls ? functionCalls.map((fc: any) => ({ functionCall: fc })) : [])
+            ]
+          }
+        }
+      ]
+    };
+  } else {
+    console.log(`[AI Client] Falling back to standard GoogleGenAI for clinic ${clinicId}`);
+    const ai = new GoogleGenAI({ 
+      apiKey: process.env.GEMINI_API_KEY,
+      httpOptions: {
+        headers: {
+          "Referer": reqReferer || ""
+        }
+      }
+    });
+    
+    const response = await ai.models.generateContent({
+      model: model,
+      contents: contents,
+      config: config
+    });
+
+    return {
+      text: response.text || '',
+      functionCalls: response.functionCalls || [],
+      candidates: response.candidates || []
+    };
+  }
+};
+
 // Helper to convert ArrayBuffer to base64
 const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
     let binary = '';
@@ -82,10 +325,10 @@ export default async function handler(req: any, res: any) {
     console.error('Server configuration error: SUPABASE_SERVICE_ROLE is not set.');
     return res.status(500).json({ error: 'Internal server configuration error.' });
   }
-  // UPDATED: Check for GEMINI_API_KEY
-  if (!process.env.GEMINI_API_KEY) {
-    console.error('Server configuration error: Gemini API key (GEMINI_API_KEY) is not set.');
-    return res.status(500).json({ error: 'Internal server configuration error.' });
+  // Ensure we have at least one valid AI provider key
+  if (!process.env.OPENROUTER_API_KEY && !process.env.GEMINI_API_KEY) {
+    console.error('Server configuration error: Neither OPENROUTER_API_KEY nor GEMINI_API_KEY is set.');
+    return res.status(500).json({ error: 'Internal server configuration error: AI provider key is not configured.' });
   }
 
   try {
@@ -496,17 +739,8 @@ export default async function handler(req: any, res: any) {
         systemInstruction += `\n\nEstás conversando con un usuario no registrado. Puedes proporcionar información general sobre la clínica, pero no puedes acceder o proporcionar datos de ningún paciente.`;
     }
     
-    // 8. First call to Gemini API
-    // UPDATED: Use GEMINI_API_KEY
+    // 8. First call to AI (OpenRouter with Gemini SDK fallback)
     const referer = req.headers.referer || req.headers.origin || `https://${req.headers.host}`;
-    const ai = new GoogleGenAI({ 
-        apiKey: process.env.GEMINI_API_KEY,
-        httpOptions: {
-            headers: {
-                "Referer": referer
-            }
-        }
-    });
     // Use the user-selected model or fallback to the most secure/capable model for adherence
     const modelName = agent.model_name || 'gemini-3.1-pro-preview';
 
@@ -522,13 +756,15 @@ export default async function handler(req: any, res: any) {
         finalContents.push({ role: 'user', parts: userParts });
     }
 
-    const firstResponse = await ai.models.generateContent({ 
+    const firstResponse = await generateAiContent({ 
         model: modelName, 
         contents: finalContents, 
         config: { 
             systemInstruction: systemInstruction,
             tools: functionDeclarations.length > 0 ? [{ functionDeclarations }] : undefined
-        } 
+        },
+        clinicId: clinicId,
+        reqReferer: referer
     });
     
     let agentReplyText = firstResponse.text;
@@ -602,7 +838,7 @@ export default async function handler(req: any, res: any) {
             functionResponses.push({ id: funcCall.id, name: funcCall.name, response: functionResult });
         }
         
-        // 10. Second call to Gemini with function results
+        // 10. Second call to AI with function results
         const historyForSecondCall: Content[] = [
             ...finalContents,
             firstResponse.candidates[0].content,
@@ -614,10 +850,12 @@ export default async function handler(req: any, res: any) {
             }
         ];
 
-        const secondResponse = await ai.models.generateContent({
+        const secondResponse = await generateAiContent({
             model: modelName,
             contents: historyForSecondCall,
-            config: { systemInstruction: systemInstruction }
+            config: { systemInstruction: systemInstruction },
+            clinicId: clinicId,
+            reqReferer: referer
         });
         agentReplyText = secondResponse.text;
     }
