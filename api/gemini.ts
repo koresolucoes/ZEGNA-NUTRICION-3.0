@@ -1,5 +1,3 @@
-
-import { GoogleGenAI } from "@google/genai";
 import { createClient } from '@supabase/supabase-js';
 
 // This is a serverless function, so we can use the service role key.
@@ -7,6 +5,117 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE!
 );
+
+function parsePartsToMessage(role: string, parts: any): any {
+  if (typeof parts === 'string') {
+    return { role, content: parts };
+  }
+
+  if (Array.isArray(parts)) {
+    // Check if there are any multimodal parts (inlineData, fileData, or image_url)
+    const hasMedia = parts.some((p: any) => p && (p.inlineData || p.fileData || p.image_url));
+    
+    if (hasMedia) {
+      const contentArray: any[] = [];
+      for (const p of parts) {
+        if (!p) continue;
+        if (typeof p.text === 'string') {
+          contentArray.push({ type: 'text', text: p.text });
+        } else if (p.inlineData) {
+          const mimeType = p.inlineData.mimeType || 'image/jpeg';
+          const base64Data = p.inlineData.data;
+          contentArray.push({
+            type: 'image_url',
+            image_url: {
+              url: `data:${mimeType};base64,${base64Data}`
+            }
+          });
+        } else if (p.image_url) {
+          contentArray.push({ type: 'image_url', image_url: p.image_url });
+        }
+      }
+      return { role, content: contentArray };
+    } else {
+      // Just text parts
+      const text = parts
+        .filter((p: any) => p && typeof p.text === 'string')
+        .map((p: any) => p.text)
+        .join('\n');
+      return { role, content: text };
+    }
+  }
+
+  return { role, content: String(parts) };
+}
+
+function convertGeminiToOpenRouter(contents: any): any[] {
+  if (!contents) return [];
+
+  // If contents is a string
+  if (typeof contents === 'string') {
+    return [{ role: 'user', content: contents }];
+  }
+
+  // If contents is a single object (e.g. { parts: [...] })
+  if (typeof contents === 'object' && !Array.isArray(contents)) {
+    if (contents.parts) {
+      return [parsePartsToMessage(contents.role || 'user', contents.parts)];
+    }
+    return [{ role: 'user', content: JSON.stringify(contents) }];
+  }
+
+  // If contents is an array
+  if (Array.isArray(contents)) {
+    return contents.map((item: any) => {
+      if (typeof item === 'string') {
+        return { role: 'user', content: item };
+      }
+      
+      const role = item.role === 'model' ? 'assistant' : (item.role || 'user');
+      
+      if (item.parts) {
+        return parsePartsToMessage(role, item.parts);
+      } else if (item.content) {
+        return { role, content: typeof item.content === 'string' ? item.content : JSON.stringify(item.content) };
+      }
+      
+      return { role, content: JSON.stringify(item) };
+    });
+  }
+
+  return [{ role: 'user', content: String(contents) }];
+}
+
+function mapModelToOpenRouter(modelName: string): string {
+  if (!modelName) return 'google/gemini-2.5-flash-lite';
+  
+  // If model name is already a full path (contains slash), keep it
+  if (modelName.includes('/')) {
+    return modelName;
+  }
+  
+  // Map common names
+  switch (modelName) {
+    case 'gemini-3.1-flash-lite':
+    case 'gemini-3-flash-preview':
+    case 'gemini-2.5-flash-lite':
+    case 'gemini-1.5-flash-lite':
+    case 'gemini-flash-lite':
+      return 'google/gemini-2.5-flash-lite';
+    case 'gemini-3.1-flash':
+    case 'gemini-2.5-flash':
+    case 'gemini-1.5-flash':
+    case 'gemini-flash-latest':
+      return 'google/gemini-2.5-flash';
+    case 'gemini-3.1-pro-preview':
+    case 'gemini-2.5-pro':
+    case 'gemini-1.5-pro':
+    case 'gemini-pro':
+      return 'google/gemini-2.5-pro';
+    default:
+      return 'google/gemini-2.5-flash-lite';
+  }
+}
 
 export default async function handler(req: any, res: any) {
   // Only allow POST requests
@@ -22,7 +131,7 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: 'Request body must contain "contents".' });
     }
     if (!clinic_id) {
-        return res.status(400).json({ error: 'Request body must contain "clinic_id".' });
+      return res.status(400).json({ error: 'Request body must contain "clinic_id".' });
     }
 
     // Fetch agent configuration for the clinic
@@ -32,118 +141,137 @@ export default async function handler(req: any, res: any) {
       .eq('clinic_id', clinic_id)
       .single();
 
-    if (agentError && agentError.code !== 'PGRST116') throw new Error(`Could not fetch AI agent configuration: ${agentError.message}`);
+    if (agentError && agentError.code !== 'PGRST116') {
+      throw new Error(`Could not fetch AI agent configuration: ${agentError.message}`);
+    }
     
-    // Default to system key if not provided by the user
-    // UPDATED: Use GEMINI_API_KEY environment variable
-    const apiKey = (agent?.provider_api_key || process.env.GEMINI_API_KEY)?.trim();
+    // Secure OpenRouter API key prioritized over standard keys
+    const apiKey = (process.env.OPENROUTER_API_KEY || agent?.provider_api_key || process.env.GEMINI_API_KEY)?.trim();
     
     if (!apiKey) {
-      console.error('Gemini API key (GEMINI_API_KEY) is not configured in environment variables or database.');
+      console.error('OpenRouter API key (OPENROUTER_API_KEY) is not configured.');
       return res.status(500).json({ error: 'API key not configured on the server.' });
     }
     
-    // Use the model selected by the user, or fallback to gemini-3-flash-preview
-    const model = agent?.model_name || 'gemini-3-flash-preview';
+    // Determine the model
+    // User can set OPENROUTER_MODEL in environment variables to override
+    const defaultModel = agent?.model_name ? mapModelToOpenRouter(agent.model_name) : 'google/gemini-2.5-flash-lite';
+    const model = process.env.OPENROUTER_MODEL || defaultModel;
     
     // Add HTTP referer from the request to bypass API key restrictions
-    const referer = req.headers.referer || req.headers.origin || `https://${req.headers.host}`;
+    const referer = req.headers.referer || req.headers.origin || `https://${req.headers.host}` || 'https://openrouter.ai';
     
-    const ai = new GoogleGenAI({ 
-      apiKey: apiKey,
-      httpOptions: {
-        headers: {
-          "Referer": referer
+    // Convert contents to OpenRouter messages
+    let messages = convertGeminiToOpenRouter(contents);
+
+    // Extract systemInstruction if present
+    let systemInstructionText = '';
+    if (config?.systemInstruction) {
+      if (typeof config.systemInstruction === 'string') {
+        systemInstructionText = config.systemInstruction;
+      } else if (config.systemInstruction.parts) {
+        const parts = config.systemInstruction.parts;
+        if (Array.isArray(parts)) {
+          systemInstructionText = parts.map((p: any) => p.text || '').join('\n');
+        } else if (typeof parts === 'string') {
+          systemInstructionText = parts;
         }
+      }
+    }
+
+    if (systemInstructionText) {
+      messages = [{ role: 'system', content: systemInstructionText }, ...messages];
+    }
+
+    // Handle file URL (RAG)
+    if (file_url) {
+      console.log(`[OpenRouter API] Processing file RAG for URL: ${file_url}`);
+      try {
+        const fileResponse = await fetch(file_url);
+        if (fileResponse.ok) {
+          const mimeType = fileResponse.headers.get('content-type') || '';
+          if (mimeType.startsWith('image/')) {
+            const arrayBuffer = await fileResponse.arrayBuffer();
+            const base64 = Buffer.from(arrayBuffer).toString('base64');
+            const dataUrl = `data:${mimeType};base64,${base64}`;
+            
+            // Attach image to the last user message
+            const lastMsg = messages[messages.length - 1];
+            if (lastMsg) {
+              if (typeof lastMsg.content === 'string') {
+                lastMsg.content = [
+                  { type: 'text', text: lastMsg.content },
+                  { type: 'image_url', image_url: { url: dataUrl } }
+                ];
+              } else if (Array.isArray(lastMsg.content)) {
+                lastMsg.content.push({ type: 'image_url', image_url: { url: dataUrl } });
+              }
+            }
+            console.log(`[OpenRouter API] Attached image from file_url directly as base64`);
+          } else {
+            console.log(`[OpenRouter API] Non-image file URL detected (${mimeType}). Text content is expected to be inline in the prompt context from client.`);
+          }
+        }
+      } catch (fileErr) {
+        console.error('[OpenRouter API] Error fetching/processing file_url:', fileErr);
+      }
+    }
+
+    // Handle response formats (JSON mode)
+    let responseFormat: any = undefined;
+    if (config?.responseMimeType === "application/json") {
+      responseFormat = { type: "json_object" };
+      // Append instruction to make sure the model outputs valid JSON matching the format
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg && typeof lastMsg.content === 'string') {
+        lastMsg.content += "\n\nIMPORTANT: Return your response strictly as a single JSON object. Do not include markdown code block formatting (like ```json ... ```) in your raw response.";
+      }
+    }
+
+    console.log(`[OpenRouter API] Calling model ${model}`);
+    
+    // Make request to OpenRouter
+    const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': referer,
+        'X-Title': 'Clinic AI Ecosystem'
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: messages,
+        response_format: responseFormat,
+        temperature: config?.temperature !== undefined ? config.temperature : 0.7,
+        max_tokens: config?.maxOutputTokens !== undefined ? config.maxOutputTokens : undefined,
+      })
+    });
+
+    if (!openRouterResponse.ok) {
+      const errorText = await openRouterResponse.text();
+      throw new Error(`OpenRouter API error (${openRouterResponse.status}): ${errorText}`);
+    }
+
+    const responseData = await openRouterResponse.json();
+    const responseText = responseData.choices?.[0]?.message?.content || '';
+
+    // Reconstruct the response format to match Gemini's structure expected by client
+    res.status(200).json({ 
+      text: responseText,
+      functionCalls: [],
+      candidateContent: {
+        role: 'model',
+        parts: [{ text: responseText }]
       }
     });
 
-    let finalContents = contents;
-
-    // --- RAG / FILE HANDLING START ---
-    if (file_url) {
-        console.log(`[Gemini API] Processing file RAG for URL: ${file_url}`);
-        
-        // 1. Fetch file from Supabase
-        // file_url is expected to be the public URL or a signed URL.
-        const fileResponse = await fetch(file_url);
-        if (!fileResponse.ok) throw new Error(`Failed to fetch file from Supabase: ${fileResponse.statusText}`);
-        
-        const arrayBuffer = await fileResponse.arrayBuffer();
-        
-        // Determine mime type from response or default
-        const mimeType = fileResponse.headers.get('content-type') || 'application/pdf';
-
-        // 2. Upload to Gemini Files API
-        // Note: For production, consider caching these URIs or checking if file already exists to save bandwidth/time.
-        const uploadResult = await ai.files.upload({
-            file: new Blob([arrayBuffer], { type: mimeType }), // GoogleGenAI expects a Blob or File object in Node env via polyfill or Buffer logic
-            config: { mimeType: mimeType }
-        });
-        
-        console.log(`[Gemini API] File uploaded to Google: ${uploadResult.name} (${uploadResult.uri})`);
-
-        // 3. Attach File URI to the content generation request
-        // If 'contents' is a string, wrap it. If it's an array, append to the user part.
-        if (typeof finalContents === 'string') {
-            finalContents = [
-                {
-                    role: 'user',
-                    parts: [
-                        { fileData: { fileUri: uploadResult.uri, mimeType: uploadResult.mimeType } },
-                        { text: finalContents }
-                    ]
-                }
-            ];
-        } else if (Array.isArray(finalContents)) {
-            // Find the last user message and attach the file
-            const lastUserMsg = finalContents[finalContents.length - 1];
-            if (lastUserMsg && lastUserMsg.role === 'user') {
-                // Ensure parts is an array
-                if (!Array.isArray(lastUserMsg.parts)) {
-                    lastUserMsg.parts = [{ text: lastUserMsg.parts }];
-                }
-                lastUserMsg.parts.unshift({ 
-                    fileData: { fileUri: uploadResult.uri, mimeType: uploadResult.mimeType } 
-                });
-            } else {
-                 finalContents.push({
-                    role: 'user',
-                    parts: [
-                        { fileData: { fileUri: uploadResult.uri, mimeType: uploadResult.mimeType } },
-                        { text: "Analiza este documento." }
-                    ]
-                });
-            }
-        }
-    }
-    // --- RAG / FILE HANDLING END ---
-
-    const response = await ai.models.generateContent({
-      model: model,
-      contents: finalContents,
-      config: config,
-    });
-    
-    // Extract relevant data to send back to client
-    // We need the text AND potential function calls
-    const candidate = response.candidates?.[0];
-    const functionCalls = candidate?.content?.parts?.filter((p: any) => p.functionCall).map((p: any) => p.functionCall);
-    
-    res.status(200).json({ 
-        text: response.text,
-        functionCalls: functionCalls || [],
-        // Send back the raw content part to easily append to history in client
-        candidateContent: candidate?.content
-    });
-
   } catch (error: any) {
-    console.error('Error calling AI API:', error);
+    console.error('Error calling OpenRouter AI API:', error);
     
-    // Improve error message for client
     let errorMessage = error.message;
     if (errorMessage.includes('429')) {
-        errorMessage = 'El servicio de IA está saturado (Cuota excedida). Por favor intenta de nuevo en unos minutos.';
+      errorMessage = 'El servicio de IA está saturado (Cuota excedida). Por favor intenta de nuevo en unos minutos.';
     }
 
     res.status(500).json({ error: errorMessage });
