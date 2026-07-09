@@ -121,6 +121,26 @@ const convertGeminiHistoryToOpenAi = (contents: Content[]): any[] => {
   return messages;
 };
 
+// Helper to recursively lowercase type declarations in schema for OpenAI/OpenRouter compliance
+const sanitizeSchemaForOpenAi = (schema: any): any => {
+  if (!schema) return schema;
+  const newSchema = { ...schema };
+  if (typeof newSchema.type === 'string') {
+    newSchema.type = newSchema.type.toLowerCase();
+  }
+  if (newSchema.properties) {
+    const newProps: any = {};
+    for (const key of Object.keys(newSchema.properties)) {
+      newProps[key] = sanitizeSchemaForOpenAi(newSchema.properties[key]);
+    }
+    newSchema.properties = newProps;
+  }
+  if (newSchema.items) {
+    newSchema.items = sanitizeSchemaForOpenAi(newSchema.items);
+  }
+  return newSchema;
+};
+
 // Unified AI content generator that utilizes OpenRouter or falls back to GoogleGenAI
 const generateAiContent = async ({
   model,
@@ -165,7 +185,7 @@ const generateAiContent = async ({
       function: {
         name: fd.name,
         description: fd.description,
-        parameters: fd.parameters
+        parameters: sanitizeSchemaForOpenAi(fd.parameters)
       }
     })) : undefined;
 
