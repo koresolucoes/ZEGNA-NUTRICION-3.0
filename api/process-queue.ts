@@ -18,28 +18,18 @@ const formatHistoryForGemini = (history: any[]): Content[] => {
 
 // Helper to map Gemini model names to OpenRouter equivalents
 const mapModelToOpenRouter = (modelName: string): string => {
-  if (!modelName) return 'google/gemini-2.5-flash-lite';
+  if (!modelName) return 'google/gemini-3.5-flash';
   if (modelName.includes('/')) return modelName;
   
   switch (modelName) {
     case 'gemini-3.1-flash-lite':
-    case 'gemini-3-flash-preview':
-    case 'gemini-2.5-flash-lite':
-    case 'gemini-1.5-flash-lite':
-    case 'gemini-flash-lite':
-      return 'google/gemini-2.5-flash-lite';
-    case 'gemini-3.1-flash':
-    case 'gemini-2.5-flash':
-    case 'gemini-1.5-flash':
-    case 'gemini-flash-latest':
-      return 'google/gemini-2.5-flash';
+      return 'google/gemini-3.1-flash-lite';
+    case 'gemini-3.5-flash':
+      return 'google/gemini-3.5-flash';
     case 'gemini-3.1-pro-preview':
-    case 'gemini-2.5-pro':
-    case 'gemini-1.5-pro':
-    case 'gemini-pro':
-      return 'google/gemini-2.5-pro';
+      return 'google/gemini-3.1-pro-preview';
     default:
-      return 'google/gemini-2.5-flash-lite';
+      return `google/${modelName}`;
   }
 };
 

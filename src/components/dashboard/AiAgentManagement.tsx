@@ -259,15 +259,13 @@ const AiAgentManagement: FC = () => {
                                 <label style={labelStyle}>Versión del Modelo</label>
                                 <div className="select-wrapper">
                                     <select name="model_name" value={agent.model_name || 'gemini-3.1-pro-preview'} onChange={e => setAgent({...agent, model_name: e.target.value})} style={inputStyle}>
-                                        <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro Preview (Recomendado - Alta Seguridad y Apego Estricto)</option>
-                                        <option value="gemini-3.1-flash-preview">Gemini 3.1 Flash Preview (Velocidad)</option>
-                                        <option value="gemini-3-flash-preview">Gemini 3 Flash Preview (Legado)</option>
-                                        <option value="gemini-3-pro-preview">Gemini 3 Pro Preview (Legado)</option>
-                                        <option value="gemini-2.5-flash">Gemini 2.5 Flash (Estable)</option>
+                                        <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Alta Seguridad y Apego Estricto para Casos Complejos)</option>
+                                        <option value="gemini-3.5-flash">Gemini 3.5 Flash (Equilibrio Ideal entre Velocidad y Razonamiento)</option>
+                                        <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite (Respuestas Ultra Rápidas para Consultas Simples)</option>
                                     </select>
                                 </div>
                                 <p style={{fontSize: '0.8rem', color: 'var(--text-light)', marginTop: '0.5rem'}}>
-                                    <strong>Gemini 3 Flash</strong> es ideal para respuestas rápidas. Usa <strong>Pro</strong> para casos clínicos complejos.
+                                    <strong>Gemini 3.5 Flash</strong> es ideal para tareas cotidianas. Usa <strong>3.1 Pro</strong> para análisis clínicos complejos y <strong>3.1 Flash Lite</strong> para respuestas inmediatas.
                                 </p>
                             </div>
                         </div>
