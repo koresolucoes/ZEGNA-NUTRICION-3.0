@@ -4,6 +4,7 @@ import { Person, ConsultationWithLabs, Allergy, MedicalHistory, PatientServicePl
 import { styles } from '../../../constants';
 import PlanStatusIndicator from '../../shared/PlanStatusIndicator';
 import { ICONS } from '../../../pages/AuthPage';
+import { Grid } from '../../layout';
 
 interface InfoTabProps {
     person: Person;
@@ -78,16 +79,16 @@ export const InfoTab: FC<InfoTabProps> = ({
         <div className="fade-in">
             <input type="file" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} accept=".pdf,.jpg,.jpeg,.png"/>
             
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
+            <Grid $columns={1} $tabletColumns={2} $gap="1.5rem">
                 
                 {/* 1. Identidad y Contacto */}
                 <InfoCard title="Identidad y Contacto" icon={ICONS.user}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <Grid $columns={1} $tabletColumns={2} $gap="1.5rem">
                         <DataRow label="Fecha de Nacimiento" value={person.birth_date ? new Date(person.birth_date.replace(/-/g, '/')).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No definida'} />
                         <DataRow label="Edad" value={calculateAge(person.birth_date)} />
                         <DataRow label="Género" value={person.gender === 'male' ? 'Hombre' : person.gender === 'female' ? 'Mujer' : 'No definido'} />
                         <DataRow label="Teléfono" value={person.phone_number} />
-                    </div>
+                    </Grid>
                     <DataRow label="Domicilio" value={person.address} />
                     <div style={{ marginTop: '0.5rem', padding: '1rem', backgroundColor: 'var(--surface-hover-color)', borderRadius: '8px' }}>
                         <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem'}}>
@@ -101,10 +102,10 @@ export const InfoTab: FC<InfoTabProps> = ({
 
                 {/* 2. Datos Administrativos */}
                 <InfoCard title="Datos Administrativos" icon={ICONS.briefcase}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <Grid $columns={1} $tabletColumns={2} $gap="1.5rem">
                         <DataRow label="Folio Interno" value={<code style={{ backgroundColor: 'var(--surface-hover-color)', padding: '2px 6px', borderRadius: '4px' }}>{person.folio}</code>} />
                         <DataRow label="CURP" value={person.curp} />
-                    </div>
+                    </Grid>
                     
                     <div style={{ marginTop: '0.5rem' }}>
                          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem'}}>
@@ -128,10 +129,10 @@ export const InfoTab: FC<InfoTabProps> = ({
                 {/* 3. Resumen Clínico */}
                 <InfoCard title="Resumen Clínico Inicial" icon={ICONS.activity}>
                      <DataRow label="Objetivo de Salud" value={person.health_goal} />
-                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                     <Grid $columns={1} $tabletColumns={2} $gap="1.5rem">
                         <DataRow label="Último Peso" value={latestConsultation?.weight_kg ? `${latestConsultation.weight_kg} kg` : 'N/A'} />
                         <DataRow label="Último IMC" value={latestConsultation?.imc ? latestConsultation.imc : 'N/A'} />
-                    </div>
+                    </Grid>
                      <DataRow label="Antecedentes Heredo-familiares" value={<span style={{fontSize: '0.9rem', lineHeight: 1.5}}>{person.family_history}</span>} />
                 </InfoCard>
 
@@ -178,7 +179,7 @@ export const InfoTab: FC<InfoTabProps> = ({
                          </button>
                     </div>
                 </InfoCard>
-            </div>
+            </Grid>
         </div>
     );
 };

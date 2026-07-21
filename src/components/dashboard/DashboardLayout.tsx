@@ -560,7 +560,7 @@ const DashboardLayout: FC<{ session: Session }> = ({ session }) => {
     const showSidebar = isMobile || navigationLayout === 'sidebar';
 
     return (
-        <div style={{ ...styles.dashboardLayout, flexDirection: 'column', width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
+        <div style={{ ...styles.dashboardLayout, flexDirection: 'column', width: '100%', overflowX: 'hidden' }}>
             {isQuickConsultModalOpen && (
                  <QuickConsultationModal
                     isOpen={isQuickConsultModalOpen}

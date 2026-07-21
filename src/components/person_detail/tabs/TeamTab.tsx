@@ -4,7 +4,6 @@ import { User } from '@supabase/supabase-js';
 import { CareTeamMemberProfile, TeamMember, InternalNoteWithAuthor } from '../../../types';
 import CareTeamManager from '../../client_detail/CareTeamManager';
 import InternalNotesManager from '../../client_detail/InternalNotesManager';
-import { styles } from '../../../constants';
 
 interface TeamTabProps {
     careTeam: CareTeamMemberProfile[];
@@ -23,23 +22,44 @@ export const TeamTab: FC<TeamTabProps> = ({
 
     return (
         <section className="fade-in" style={{ overflow: 'visible' }}>
-            {/* Sub-navigation using Folder Tabs metaphor */}
-            <div style={{...styles.tabContainer, paddingLeft: 0, marginBottom: '-1px'}}>
+            {/* Sub-navigation Pill Bar */}
+            <div style={{
+                backgroundColor: 'var(--surface-hover-color)',
+                borderRadius: '14px',
+                padding: '0.35rem',
+                border: '1px solid var(--border-color)',
+                marginBottom: '1rem',
+                display: 'inline-flex',
+                gap: '0.5rem'
+            }}>
                 {[
-                    { key: 'care_team', label: 'Equipo de Cuidado' },
-                    { key: 'internal_notes', label: 'Notas Internas' }
+                    { key: 'care_team', label: '👥 Equipo de Cuidado' },
+                    { key: 'internal_notes', label: '📝 Notas Internas' }
                 ].map(tab => (
                     <button
                         key={tab.key}
                         onClick={() => setActiveSubTab(tab.key)}
-                        style={activeSubTab === tab.key ? {...styles.folderTab, ...styles.folderTabActive} : styles.folderTab}
+                        style={{
+                            fontSize: '0.8rem',
+                            fontWeight: activeSubTab === tab.key ? 700 : 500,
+                            padding: '0.5rem 1rem',
+                            borderRadius: '10px',
+                            minHeight: '36px',
+                            backgroundColor: activeSubTab === tab.key ? 'var(--surface-color)' : 'transparent',
+                            color: activeSubTab === tab.key ? 'var(--primary-color)' : 'var(--text-light)',
+                            boxShadow: activeSubTab === tab.key ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            transition: 'all 0.2s ease'
+                        }}
                     >
                         {tab.label}
                     </button>
                 ))}
             </div>
 
-            <div style={styles.nestedFolderContent}>
+            <div style={{ paddingTop: '0.5rem' }}>
                 {activeSubTab === 'care_team' && (
                     <CareTeamManager 
                         careTeam={careTeam} 

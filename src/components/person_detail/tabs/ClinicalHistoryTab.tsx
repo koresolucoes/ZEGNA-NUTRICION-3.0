@@ -8,13 +8,14 @@ import LifestyleManager from '../../client_detail/LifestyleManager';
 import { ConsultationsTab } from './ConsultationsTab';
 import ProgressChart from '../../shared/ProgressChart';
 import { styles } from '../../../constants';
+import { ScrollablePills, Pill, Grid } from '../../layout';
 
 interface ClinicalHistoryTabProps {
     allergies: Allergy[];
     medicalHistory: MedicalHistory[];
     medications: Medication[];
     lifestyleHabits: LifestyleHabits | null;
-    consultations: ConsultationWithLabs[]; // Added prop
+    consultations: ConsultationWithLabs[];
     memberMap: Map<string, TeamMember>;
     onEditAllergy: (allergy: Allergy | null) => void;
     onEditMedicalHistory: (history: MedicalHistory | null) => void;
@@ -25,11 +26,12 @@ interface ClinicalHistoryTabProps {
     onViewConsultation: (consultation: ConsultationWithLabs) => void;
     openModal: (action: 'deleteAllergy' | 'deleteMedicalHistory' | 'deleteMedication' | 'deleteConsultation', id: string, text: string) => void;
     onOpenSoapGenerator?: () => void;
+    isMobile?: boolean;
 }
 
 export const ClinicalHistoryTab: FC<ClinicalHistoryTabProps> = ({
     allergies, medicalHistory, medications, lifestyleHabits, consultations, memberMap,
-    onEditAllergy, onEditMedicalHistory, onEditMedication, onEditLifestyle, onAddConsultation, onEditConsultation, onViewConsultation, openModal, onOpenSoapGenerator
+    onEditAllergy, onEditMedicalHistory, onEditMedication, onEditLifestyle, onAddConsultation, onEditConsultation, onViewConsultation, openModal, onOpenSoapGenerator, isMobile = window.innerWidth <= 768
 }) => {
     const [activeSubTab, setActiveSubTab] = useState('allergies');
 
@@ -57,23 +59,54 @@ export const ClinicalHistoryTab: FC<ClinicalHistoryTabProps> = ({
 
     return (
         <section className="fade-in" style={{ overflow: 'visible' }}>
-            {/* Sub-navigation using Folder Tabs metaphor */}
-            <div style={{...styles.tabContainer, paddingLeft: 0, marginBottom: '-1px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}} className="hide-scrollbar">
-                <div style={{display: 'flex'}}>
-                    {[
-                        { key: 'allergies', label: 'Alergias' },
-                        { key: 'medical', label: 'Historial Médico' },
-                        { key: 'medications', label: 'Medicamentos' },
-                        { key: 'lifestyle', label: 'Hábitos y Laboratorio' }
-                    ].map(tab => (
-                        <button
-                            key={tab.key}
-                            onClick={() => setActiveSubTab(tab.key)}
-                            style={activeSubTab === tab.key ? {...styles.folderTab, ...styles.folderTabActive} : styles.folderTab}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
+            {/* Sub-navigation Pill Bar */}
+            <div style={{
+                display: 'flex', 
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'space-between', 
+                alignItems: isMobile ? 'stretch' : 'center',
+                gap: '0.75rem',
+                marginBottom: '1rem'
+            }}>
+                <div style={{
+                    backgroundColor: 'var(--surface-hover-color)',
+                    borderRadius: '14px',
+                    padding: '0.35rem',
+                    border: '1px solid var(--border-color)',
+                    flex: 1
+                }}>
+                    <ScrollablePills style={{ paddingBottom: '0' }}>
+                        {[
+                            { key: 'allergies', label: '🩺 Alergias' },
+                            { key: 'medical', label: '🏥 Historial' },
+                            { key: 'medications', label: '💊 Medicamentos' },
+                            { key: 'lifestyle', label: '🧪 Hábitos y Lab' }
+                        ].map(tab => (
+                            <button
+                                key={tab.key}
+                                type="button"
+                                onClick={() => setActiveSubTab(tab.key)}
+                                style={{
+                                    fontSize: '0.8rem',
+                                    fontWeight: activeSubTab === tab.key ? 700 : 600,
+                                    padding: '0.5rem 1rem',
+                                    borderRadius: '10px',
+                                    minHeight: '36px',
+                                    backgroundColor: activeSubTab === tab.key ? 'var(--surface-color)' : 'transparent',
+                                    color: activeSubTab === tab.key ? 'var(--primary-color)' : 'var(--text-light)',
+                                    boxShadow: activeSubTab === tab.key ? '0 2px 6px rgba(0,0,0,0.08)' : 'none',
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap',
+                                    flexShrink: 0,
+                                    border: 'none',
+                                    outline: 'none',
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </ScrollablePills>
                 </div>
                 {onOpenSoapGenerator && (
                     <button 
@@ -120,10 +153,10 @@ export const ClinicalHistoryTab: FC<ClinicalHistoryTabProps> = ({
                         
                         <div style={{marginTop: '3rem'}}>
                             <h3 style={{fontSize: '1.1rem', marginBottom: '1.5rem', color: 'var(--text-color)'}}>Progreso Reciente (Últimas 2 visitas)</h3>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                            <Grid $columns={1} $tabletColumns={2} $gap="1.5rem">
                                 {weightData.length > 0 && <ProgressChart title="Peso" data={weightData} unit="kg" />}
                                 {imcData.length > 0 && <ProgressChart title="IMC" data={imcData} unit="pts" />}
-                            </div>
+                            </Grid>
                              {weightData.length === 0 && <p style={{color: 'var(--text-light)', fontStyle: 'italic'}}>No hay suficientes datos recientes para graficar progreso.</p>}
                         </div>
 
@@ -147,12 +180,12 @@ export const ClinicalHistoryTab: FC<ClinicalHistoryTabProps> = ({
                         
                         <div style={{marginTop: '3rem'}}>
                              <h3 style={{fontSize: '1.1rem', marginBottom: '1.5rem', color: 'var(--text-color)'}}>Biomarcadores de Laboratorio</h3>
-                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                             <Grid $columns={1} $tabletColumns={2} $gap="1.5rem">
                                 {glucoseData.length > 0 && <ProgressChart title="Glucosa" data={glucoseData} unit="mg/dl" />}
                                 {cholesterolData.length > 0 && <ProgressChart title="Colesterol" data={cholesterolData} unit="mg/dl" />}
                                 {triglyceridesData.length > 0 && <ProgressChart title="Triglicéridos" data={triglyceridesData} unit="mg/dl" />}
                                 {hba1cData.length > 0 && <ProgressChart title="HbA1c" data={hba1cData} unit="%" />}
-                            </div>
+                            </Grid>
                             {glucoseData.length === 0 && cholesterolData.length === 0 && (
                                 <p style={{color: 'var(--text-light)', fontStyle: 'italic', textAlign: 'center', marginTop: '1rem'}}>
                                     Registra resultados de laboratorio en las consultas para ver las gráficas.

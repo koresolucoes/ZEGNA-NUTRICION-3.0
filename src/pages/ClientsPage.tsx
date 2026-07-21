@@ -9,6 +9,7 @@ import ConfirmationModal from '../components/shared/ConfirmationModal';
 import { useClinic } from '../contexts/ClinicContext';
 import HelpTooltip from '../components/calculators/tools/shared/HelpTooltip';
 import SkeletonLoader from '../components/shared/SkeletonLoader';
+import { Grid, Flex, ResponsiveFlex, Card, ScrollablePills, Pill } from '../components/layout';
 
 const getInitials = (name: string | null | undefined) => {
     return (name || '').trim().charAt(0).toUpperCase() || '?';
@@ -35,20 +36,16 @@ const ClientCard: FC<{
     onEditClient: (id: string) => void;
     onDeleteClient: (person: Person) => void;
 }> = ({ person, onViewDetails, onEditClient, onDeleteClient }) => (
-    <div 
+    <Card 
         className="card-hover" 
         onClick={() => onViewDetails(person.id)}
         style={{
-            backgroundColor: 'var(--surface-color)',
-            borderRadius: '16px',
-            border: '1px solid var(--border-color)',
             display: 'flex',
             flexDirection: 'column',
             cursor: 'pointer',
-            transition: 'all 0.2s',
+            padding: 0,
             overflow: 'hidden',
-            position: 'relative',
-            boxShadow: 'var(--shadow)'
+            position: 'relative'
         }}
     >
         {/* Top Section: Status Badge (Absolute) */}
@@ -86,14 +83,14 @@ const ClientCard: FC<{
             display: 'flex',
             gap: '0.75rem'
         }}>
-            <button onClick={(e) => { e.stopPropagation(); onEditClient(person.id); }} className="button-secondary" style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.85rem'}}>
+            <button onClick={(e) => { e.stopPropagation(); onEditClient(person.id); }} className="button-secondary" style={{flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.85rem', minHeight: '44px'}}>
                 {ICONS.edit} Editar
             </button>
-            <button onClick={(e) => { e.stopPropagation(); onDeleteClient(person); }} className="button-secondary" style={{flex: 1, color: 'var(--error-color)', borderColor: 'var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.85rem'}} title="Eliminar">
+            <button onClick={(e) => { e.stopPropagation(); onDeleteClient(person); }} className="button-secondary" style={{flex: 1, color: 'var(--error-color)', borderColor: 'var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.85rem', minHeight: '44px'}} title="Eliminar">
                 {ICONS.delete} Eliminar
             </button>
         </div>
-    </div>
+    </Card>
 );
 
 const TableActionButton: FC<{ onClick: (e: React.MouseEvent) => void, icon: React.ReactNode, title: string, danger?: boolean }> = ({ onClick, icon, title, danger }) => (
@@ -102,13 +99,16 @@ const TableActionButton: FC<{ onClick: (e: React.MouseEvent) => void, icon: Reac
         title={title}
         style={{
             ...styles.iconButton,
-            width: '32px',
-            height: '32px',
+            width: '44px',
+            height: '44px',
             padding: '6px',
             borderRadius: '6px',
             backgroundColor: 'var(--surface-hover-color)',
             border: '1px solid var(--border-color)',
             color: danger ? 'var(--error-color)' : 'var(--text-color)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
         }}
     >
         {icon}
@@ -217,6 +217,9 @@ const ClientsPage: FC<{ isMobile: boolean; onViewDetails: (personId: string) => 
         closeModal();
     };
 
+    // Force grid on mobile
+    const effectiveViewMode = isMobile ? 'grid' : viewMode;
+
     return (
         <div className="fade-in">
             <ConfirmationModal
@@ -238,36 +241,38 @@ const ClientsPage: FC<{ isMobile: boolean; onViewDetails: (personId: string) => 
                 confirmButtonClass={modalState.action === 'delete' ? 'button-danger' : 'button-primary'}
             />
             
-            <div style={{...styles.pageHeader, alignItems: 'center'}}>
-                <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+            <ResponsiveFlex $align="center" $justify="space-between" $gap="1rem" style={{ marginBottom: '1.5rem' }}>
+                <Flex $align="center" $gap="1rem" style={{ width: 'auto' }}>
                     <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0 }}>
                         Gestión de Pacientes
                         <HelpTooltip content="Pacientes directos que contratan tus servicios por cuenta propia." />
                     </h1>
-                    {/* View Toggle Switch */}
-                    <div style={{display: 'flex', gap: '0.25rem', backgroundColor: 'var(--surface-color)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-color)'}}>
-                        <button 
-                            onClick={() => setViewMode('grid')} 
-                            style={{...styles.iconButton, backgroundColor: viewMode === 'grid' ? 'var(--primary-light)' : 'transparent', color: viewMode === 'grid' ? 'var(--primary-color)' : 'var(--text-light)', borderRadius: '6px', padding: '6px'}}
-                            title="Vista Cuadrícula"
-                        >
-                            {ICONS.grid}
-                        </button>
-                        <button 
-                            onClick={() => setViewMode('list')} 
-                            style={{...styles.iconButton, backgroundColor: viewMode === 'list' ? 'var(--primary-light)' : 'transparent', color: viewMode === 'list' ? 'var(--primary-color)' : 'var(--text-light)', borderRadius: '6px', padding: '6px'}}
-                            title="Vista Lista"
-                        >
-                            {ICONS.list}
-                        </button>
-                    </div>
-                </div>
-                <button onClick={onAddClient} disabled={isPatientLimitReached} className="button-primary" title={isPatientLimitReached ? `Límite de ${maxPatients} alcanzado.` : 'Agregar nuevo paciente'}>
+                    {/* View Toggle Switch (Hidden on mobile) */}
+                    {!isMobile && (
+                        <div style={{display: 'flex', gap: '0.25rem', backgroundColor: 'var(--surface-color)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-color)'}}>
+                            <button 
+                                onClick={() => setViewMode('grid')} 
+                                style={{...styles.iconButton, minHeight: '36px', minWidth: '36px', backgroundColor: viewMode === 'grid' ? 'var(--primary-light)' : 'transparent', color: viewMode === 'grid' ? 'var(--primary-color)' : 'var(--text-light)', borderRadius: '6px', padding: '6px'}}
+                                title="Vista Cuadrícula"
+                            >
+                                {ICONS.grid}
+                            </button>
+                            <button 
+                                onClick={() => setViewMode('list')} 
+                                style={{...styles.iconButton, minHeight: '36px', minWidth: '36px', backgroundColor: viewMode === 'list' ? 'var(--primary-light)' : 'transparent', color: viewMode === 'list' ? 'var(--primary-color)' : 'var(--text-light)', borderRadius: '6px', padding: '6px'}}
+                                title="Vista Lista"
+                            >
+                                {ICONS.list}
+                            </button>
+                        </div>
+                    )}
+                </Flex>
+                <button onClick={onAddClient} disabled={isPatientLimitReached} className="button-primary" title={isPatientLimitReached ? `Límite de ${maxPatients} alcanzado.` : 'Agregar nuevo paciente'} style={{ minHeight: '44px', width: isMobile ? '100%' : 'auto' }}>
                     {ICONS.add} Nuevo Paciente
                 </button>
-            </div>
+            </ResponsiveFlex>
 
-            <div style={styles.filterBar}>
+            <Flex $direction="column" $gap="1rem" style={{ marginBottom: '2rem' }}>
                 <div style={styles.searchInputContainer}>
                     <span style={styles.searchInputIcon}>🔍</span>
                     <input 
@@ -275,17 +280,26 @@ const ClientsPage: FC<{ isMobile: boolean; onViewDetails: (personId: string) => 
                         placeholder="Buscar por nombre o folio..."
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
-                        style={styles.searchInput}
+                        style={{...styles.searchInput, margin: 0, minHeight: '44px'}}
                     />
                 </div>
-                <div style={styles.filterButtonGroup}>
-                    <button onClick={() => setStatusFilter('all')} className={`filter-button ${statusFilter === 'all' ? 'active' : ''}`}>Todos</button>
-                    <button onClick={() => setStatusFilter('active')} className={`filter-button ${statusFilter === 'active' ? 'active' : ''}`}>Activos</button>
-                    <button onClick={() => setStatusFilter('expired')} className={`filter-button ${statusFilter === 'expired' ? 'active' : ''}`}>Vencidos</button>
-                </div>
-            </div>
+                
+                {isMobile ? (
+                    <ScrollablePills>
+                        <Pill $active={statusFilter === 'all'} onClick={() => setStatusFilter('all')}>Todos</Pill>
+                        <Pill $active={statusFilter === 'active'} onClick={() => setStatusFilter('active')}>Activos</Pill>
+                        <Pill $active={statusFilter === 'expired'} onClick={() => setStatusFilter('expired')}>Vencidos</Pill>
+                    </ScrollablePills>
+                ) : (
+                    <div style={styles.filterButtonGroup}>
+                        <button onClick={() => setStatusFilter('all')} className={`filter-button ${statusFilter === 'all' ? 'active' : ''}`}>Todos</button>
+                        <button onClick={() => setStatusFilter('active')} className={`filter-button ${statusFilter === 'active' ? 'active' : ''}`}>Activos</button>
+                        <button onClick={() => setStatusFilter('expired')} className={`filter-button ${statusFilter === 'expired' ? 'active' : ''}`}>Vencidos</button>
+                    </div>
+                )}
+            </Flex>
 
-            {loading && <SkeletonLoader type={viewMode === 'grid' ? 'card' : 'table'} count={6} />}
+            {loading && <SkeletonLoader type={effectiveViewMode === 'grid' ? 'card' : 'table'} count={6} />}
             {error && <p style={styles.error}>{error}</p>}
             
             {!loading && !error && (
@@ -297,8 +311,8 @@ const ClientsPage: FC<{ isMobile: boolean; onViewDetails: (personId: string) => 
                             <button onClick={() => {setSearchTerm(''); setStatusFilter('all');}} style={{marginTop: '1rem', background: 'transparent', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', textDecoration: 'underline'}}>Limpiar filtros</button>
                         </div>
                     ) : (
-                        viewMode === 'grid' ? (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                        effectiveViewMode === 'grid' ? (
+                            <Grid $columns={1} $tabletColumns={2} $desktopColumns={3} $gap="1.5rem">
                                 {clients.map(c => (
                                     <ClientCard 
                                         key={c.id} 
@@ -308,7 +322,7 @@ const ClientsPage: FC<{ isMobile: boolean; onViewDetails: (personId: string) => 
                                         onDeleteClient={(person) => openModal('delete', person)}
                                     />
                                 ))}
-                            </div>
+                            </Grid>
                         ) : (
                             <div style={styles.tableContainer}>
                                 <table style={styles.table}>
@@ -316,8 +330,8 @@ const ClientsPage: FC<{ isMobile: boolean; onViewDetails: (personId: string) => 
                                         <tr>
                                             <th style={{...styles.th, width: '60px'}}></th>
                                             <th style={styles.th}>Nombre</th>
-                                            {!isMobile && <th style={styles.th}>Contacto</th>}
-                                            {!isMobile && <th style={styles.th}>Folio</th>}
+                                            <th style={styles.th}>Contacto</th>
+                                            <th style={styles.th}>Folio</th>
                                             <th style={styles.th}>Estado Plan</th>
                                             <th style={styles.th}>Acciones</th>
                                         </tr>
@@ -330,10 +344,9 @@ const ClientsPage: FC<{ isMobile: boolean; onViewDetails: (personId: string) => 
                                                 </td>
                                                 <td style={styles.td}>
                                                     <div style={{fontWeight: 600, color: 'var(--text-color)'}}>{c.full_name || 'Sin Nombre'}</div>
-                                                    {isMobile && <div style={{fontSize: '0.8rem', color: 'var(--text-light)'}}>{c.phone_number}</div>}
                                                 </td>
-                                                {!isMobile && <td style={styles.td}>{c.phone_number || '-'}</td>}
-                                                {!isMobile && <td style={styles.td}><code style={{backgroundColor: 'var(--surface-hover-color)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85rem'}}>{c.folio || '-'}</code></td>}
+                                                <td style={styles.td}>{c.phone_number || '-'}</td>
+                                                <td style={styles.td}><code style={{backgroundColor: 'var(--surface-hover-color)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85rem'}}>{c.folio || '-'}</code></td>
                                                 <td style={styles.td}><PlanStatusIndicator planEndDate={c.subscription_end_date} /></td>
                                                 <td style={styles.td} onClick={(e) => e.stopPropagation()}>
                                                     <div style={{display: 'flex', gap: '0.5rem'}}>
@@ -355,3 +368,4 @@ const ClientsPage: FC<{ isMobile: boolean; onViewDetails: (personId: string) => 
 };
 
 export default ClientsPage;
+

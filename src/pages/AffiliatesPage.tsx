@@ -6,6 +6,7 @@ import { ICONS } from './AuthPage';
 import { AffiliateProgram, PopulatedAffiliateLink, PopulatedAffiliateEvent } from '../types';
 import FinancialSummaryCard from '../components/finanzas/FinancialSummaryCard';
 import SkeletonLoader from '../components/shared/SkeletonLoader';
+import { Grid, ScrollablePills, Pill, Flex } from '../components/layout';
 
 // --- Helper Components ---
 
@@ -304,11 +305,11 @@ const AffiliatesPage: FC<{ navigate: (page: string, context?: any) => void; }> =
             </div>
 
             {/* How it Works */}
-            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '3rem'}}>
+            <Grid $columns={1} $tabletColumns={3} $gap="1.5rem" style={{ marginBottom: '3rem' }}>
                 <StepCard number={1} icon={ICONS.link} title="Obtén tu Enlace" desc="Únete a un programa y recibe tu enlace único de referido." />
                 <StepCard number={2} icon={ICONS.send} title="Comparte" desc="Envía tu enlace a colegas o publícalo en tus redes." />
                 <StepCard number={3} icon={ICONS.dollar} title="Gana Comisiones" desc="Recibe dinero cuando tus referidos se suscriban a un plan." />
-            </div>
+            </Grid>
 
             {/* Programs Section */}
             {myLinks.length === 0 && unjoinedPrograms.length === 0 ? (
@@ -316,8 +317,8 @@ const AffiliatesPage: FC<{ navigate: (page: string, context?: any) => void; }> =
                     <p>No hay programas de afiliados activos en este momento.</p>
                 </div>
             ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem', marginBottom: '4rem' }}>
-                     {/* Joined Programs */}
+                <Grid $columns={1} $tabletColumns={2} $gap="2rem" style={{ marginBottom: '4rem' }}> 
+                    {/* Joined Programs */}
                     {myLinks.map(link => link.affiliate_programs && (
                         <ProgramCard 
                             key={link.id}
@@ -336,19 +337,19 @@ const AffiliatesPage: FC<{ navigate: (page: string, context?: any) => void; }> =
                             isJoining={actionLoading === program.id}
                         />
                     ))}
-                </div>
+                </Grid>
             )}
             
             {/* Dashboard Stats */}
             {myLinks.length > 0 && (
                 <>
                     <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', paddingLeft: '0.5rem', borderLeft: '4px solid var(--primary-color)' }}>Tu Rendimiento</h2>
-                    <div style={{...styles.dashboardGrid, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', marginBottom: '3rem'}}>
+                    <Grid $columns={1} $tabletColumns={2} $desktopColumns={4} $gap="1.5rem" style={{ marginBottom: '3rem' }}>
                         <FinancialSummaryCard title="Clics Totales" value={stats.totalClicks.toString()} icon={ICONS.activity} />
                         <FinancialSummaryCard title="Registros Exitosos" value={stats.registrations.toString()} icon={ICONS.users} />
                         <FinancialSummaryCard title="Comisiones Pendientes" value={`$${stats.pendingCommission.toFixed(2)}`} icon={ICONS.clock} />
                         <FinancialSummaryCard title="Total Pagado" value={`$${stats.totalPaidCommission.toFixed(2)}`} icon={ICONS.dollar} />
-                    </div>
+                    </Grid>
 
                     <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', paddingLeft: '0.5rem', borderLeft: '4px solid var(--primary-color)' }}>Historial de Referidos</h2>
                     <div style={styles.tableContainer}>

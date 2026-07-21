@@ -5,6 +5,7 @@ import { styles } from '../constants';
 import { ICONS } from './AuthPage';
 import { useClinic } from '../contexts/ClinicContext';
 import { PatientServicePlan, PopulatedReferral } from '../types';
+import { Grid } from '../components/layout';
 
 interface ClientFormPageProps {
     clientToEditId: string | null;

@@ -10,6 +10,7 @@ import ReceiptViewerModal from '../components/finanzas/ReceiptViewerModal';
 import FinancialSummaryCard from '../components/finanzas/FinancialSummaryCard';
 import RevenueChart from '../components/finanzas/RevenueChart';
 import ServicesChart from '../components/finanzas/ServicesChart';
+import { Grid } from '../components/layout';
 
 type TimeRange = 'today' | 'week' | 'month';
 
@@ -161,17 +162,17 @@ const FinanzasPage: FC<{ isMobile: boolean; navigate: (page: string, context?: a
                 </div>
             </div>
 
-            <div style={{...styles.dashboardGrid, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', marginBottom: '2rem'}}>
+            <Grid $columns={1} $tabletColumns={2} $desktopColumns={4} $gap="1.5rem" style={{ marginBottom: '2rem' }}>
                 <FinancialSummaryCard title="Ingresos del Periodo" value={`$${dashboardStats.totalRevenue.toFixed(2)}`} icon={ICONS.calculator} />
                 <FinancialSummaryCard title="Total de Pagos" value={dashboardStats.paymentCount.toString()} icon={ICONS.check} />
                 <FinancialSummaryCard title="Ticket Promedio" value={`$${dashboardStats.averageTicket.toFixed(2)}`} icon={ICONS.activity} />
                 <FinancialSummaryCard title="Servicio Más Popular" value={dashboardStats.bestSellingService} icon={ICONS.sparkles} />
-            </div>
+            </Grid>
 
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
+            <Grid $columns={1} $desktopColumns={2} $gap="2rem" style={{ marginBottom: '2rem' }}>
                 <RevenueChart data={dashboardStats.revenueByDay} />
                 <ServicesChart data={dashboardStats.servicesDistribution} />
-            </div>
+            </Grid>
 
             <h2 style={{ fontSize: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '2rem', marginTop: '2rem' }}>Registros Detallados</h2>
             <div style={!isMobile ? styles.tableContainer : {}}>

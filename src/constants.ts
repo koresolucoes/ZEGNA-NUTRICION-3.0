@@ -61,7 +61,7 @@ export const styles: { [key: string]: React.CSSProperties } = {
     hamburger: { display: 'inline-block', background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem', color: 'var(--text-color)' },
     
     // Tables - Clean Look
-    tableContainer: { backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow)', overflow: 'hidden', border: '1px solid var(--border-color)' },
+    tableContainer: { backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow)', overflowX: 'auto', border: '1px solid var(--border-color)' },
     table: { width: '100%', borderCollapse: 'collapse' as const },
     th: { padding: '1rem 1.5rem', textAlign: 'left' as const, borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', fontWeight: 600, color: 'var(--text-light)', fontSize: '0.75rem', textTransform: 'uppercase' as const, letterSpacing: '0.05em' },
     td: { padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', color: 'var(--text-color)', verticalAlign: 'middle', fontSize: '0.9rem' },

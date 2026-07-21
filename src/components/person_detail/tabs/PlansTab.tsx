@@ -6,6 +6,7 @@ import { ICONS } from '../../../pages/AuthPage';
 import DietPlanViewer from '../../DietPlanViewer';
 import ExercisePlanViewer from '../../ExercisePlanViewer';
 import PdfPreviewModal from '../../shared/PdfPreviewModal';
+import { ScrollablePills, Pill, Grid } from '../../layout';
 
 interface PlansTabProps {
     allDietLogs: DietLog[];
@@ -21,6 +22,7 @@ interface PlansTabProps {
     openModal: (action: 'deleteDietLog' | 'deleteExerciseLog', id: string, text: string) => void;
     hasAiFeature: boolean;
     personName?: string;
+    isMobile?: boolean;
 }
 
 interface PlanBatch<T> {
@@ -84,7 +86,7 @@ const groupLogsByBatch = <T extends { log_date: string; created_at: string }>(lo
 
 export const PlansTab: FC<PlansTabProps> = ({
     allDietLogs, allExerciseLogs, onGenerateMeal, onGenerateExercise, onAddManualDiet, onAddManualExercise,
-    onEditDietLog, onViewDietLog, onEditExerciseLog, onViewExerciseLog, openModal, hasAiFeature, personName
+    onEditDietLog, onViewDietLog, onEditExerciseLog, onViewExerciseLog, openModal, hasAiFeature, personName, isMobile = window.innerWidth <= 768
 }) => {
     const [activePlanTab, setActivePlanTab] = useState<'food' | 'exercise'>('food');
     const [expandedBatches, setExpandedBatches] = useState<Set<string>>(new Set());
@@ -298,18 +300,57 @@ export const PlansTab: FC<PlansTabProps> = ({
 
             {/* Segmented Control for Food/Exercise */}
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-                <div style={styles.filterButtonGroup}>
+                <div style={{
+                    backgroundColor: 'var(--surface-hover-color)',
+                    borderRadius: '14px',
+                    padding: '0.35rem',
+                    border: '1px solid var(--border-color)',
+                    display: 'inline-flex',
+                    gap: '0.35rem'
+                }}>
                     <button 
-                        className={`filter-button ${activePlanTab === 'food' ? 'active' : ''}`} 
+                        type="button"
                         onClick={() => { setActivePlanTab('food'); setSearchTerm(''); }}
-                        style={{ minWidth: '120px', justifyContent: 'center' }}
+                        style={{
+                            fontSize: '0.85rem',
+                            fontWeight: activePlanTab === 'food' ? 700 : 600,
+                            padding: '0.5rem 1.25rem',
+                            borderRadius: '10px',
+                            minHeight: '38px',
+                            backgroundColor: activePlanTab === 'food' ? 'var(--primary-color)' : 'transparent',
+                            color: activePlanTab === 'food' ? '#ffffff' : 'var(--text-color)',
+                            border: 'none',
+                            outline: 'none',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            transition: 'all 0.2s ease',
+                            boxShadow: activePlanTab === 'food' ? '0 2px 8px rgba(0,0,0,0.12)' : 'none'
+                        }}
                     >
                         {ICONS.book} Alimentación
                     </button>
                     <button 
-                        className={`filter-button ${activePlanTab === 'exercise' ? 'active' : ''}`} 
+                        type="button"
                         onClick={() => { setActivePlanTab('exercise'); setSearchTerm(''); }}
-                        style={{ minWidth: '120px', justifyContent: 'center' }}
+                        style={{
+                            fontSize: '0.85rem',
+                            fontWeight: activePlanTab === 'exercise' ? 700 : 600,
+                            padding: '0.5rem 1.25rem',
+                            borderRadius: '10px',
+                            minHeight: '38px',
+                            backgroundColor: activePlanTab === 'exercise' ? 'var(--primary-color)' : 'transparent',
+                            color: activePlanTab === 'exercise' ? '#ffffff' : 'var(--text-color)',
+                            border: 'none',
+                            outline: 'none',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            transition: 'all 0.2s ease',
+                            boxShadow: activePlanTab === 'exercise' ? '0 2px 8px rgba(0,0,0,0.12)' : 'none'
+                        }}
                     >
                         {ICONS.activity} Ejercicio
                     </button>
@@ -319,34 +360,36 @@ export const PlansTab: FC<PlansTabProps> = ({
             {/* Action Header */}
             <div style={{ 
                 display: 'flex', 
+                flexDirection: isMobile ? 'column' : 'row',
                 justifyContent: 'space-between', 
-                alignItems: 'center', 
-                padding: '1.5rem', 
+                alignItems: isMobile ? 'stretch' : 'center', 
+                padding: isMobile ? '1.0rem' : '1.5rem', 
                 backgroundColor: 'var(--surface-hover-color)', 
-                borderRadius: '12px', 
-                marginBottom: '1.5rem',
-                flexWrap: 'wrap',
+                borderRadius: '16px', 
+                marginBottom: '1rem',
+                border: '1px solid var(--border-color)',
                 gap: '1rem'
             }}>
                 <div>
-                    <h3 style={{margin: 0, fontSize: '1.1rem', color: 'var(--text-color)'}}>
+                    <h3 style={{margin: 0, fontSize: isMobile ? '1.05rem' : '1.1rem', color: 'var(--text-color)', fontWeight: 700}}>
                         {activePlanTab === 'food' ? 'Plan Alimenticio' : 'Rutina de Entrenamiento'}
                     </h3>
-                    <p style={{margin: '0.25rem 0 0 0', fontSize: '0.9rem', color: 'var(--text-light)'}}>
+                    <p style={{margin: '0.2rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-light)'}}>
                         {activePlanTab === 'food' ? 'Gestiona el menú y las comidas.' : 'Organiza los entrenamientos diarios.'}
                     </p>
                 </div>
-                <div style={{display: 'flex', gap: '0.75rem'}}>
+                <div style={{display: 'flex', gap: '0.6rem', width: isMobile ? '100%' : 'auto'}}>
                     <button
                         onClick={activePlanTab === 'food' ? onGenerateMeal : onGenerateExercise}
                         disabled={!hasAiFeature}
                         style={{
                             background: 'linear-gradient(135deg, var(--primary-color), var(--accent-color))',
                             border: 'none',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
                             color: 'white',
-                            display: 'flex', alignItems: 'center', gap: '0.5rem',
-                            padding: '0.6rem 1rem', borderRadius: '8px', cursor: 'pointer', fontSize: '0.9rem'
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                            padding: '0.65rem 1rem', borderRadius: '12px', cursor: 'pointer', fontSize: '0.85rem',
+                            fontWeight: 700, flex: 1, minHeight: '42px'
                         }}
                         title={!hasAiFeature ? "Función Premium" : "Generar con IA"}
                     >
@@ -355,7 +398,18 @@ export const PlansTab: FC<PlansTabProps> = ({
                     <button 
                         onClick={activePlanTab === 'food' ? onAddManualDiet : onAddManualExercise} 
                         className="button-secondary"
-                        style={{backgroundColor: 'var(--surface-color)', padding: '0.6rem 1rem', fontSize: '0.9rem'}}
+                        style={{
+                            backgroundColor: 'var(--surface-color)', 
+                            padding: '0.65rem 1rem', 
+                            fontSize: '0.85rem', 
+                            fontWeight: 600,
+                            borderRadius: '12px',
+                            minHeight: '42px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.4rem'
+                        }}
                     >
                         {ICONS.add} Manual
                     </button>
@@ -365,17 +419,16 @@ export const PlansTab: FC<PlansTabProps> = ({
             {/* Advanced Filters Bar */}
             <div style={{
                 display: 'flex',
-                flexWrap: 'wrap',
-                gap: '1rem',
-                alignItems: 'center',
+                flexDirection: isMobile ? 'column' : 'row',
+                gap: '0.75rem',
+                alignItems: isMobile ? 'stretch' : 'center',
                 backgroundColor: 'var(--surface-color)',
-                padding: '1rem',
-                borderRadius: '12px',
+                padding: isMobile ? '0.85rem' : '1rem',
+                borderRadius: '14px',
                 border: '1px solid var(--border-color)',
-                marginBottom: '1.5rem',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                marginBottom: '1.25rem'
             }}>
-                <div style={{flex: 1, minWidth: '200px'}}>
+                <div style={{flex: 1, width: '100%'}}>
                      <div style={styles.searchInputContainer}>
                         <span style={styles.searchInputIcon}>🔍</span>
                         <input 
@@ -383,17 +436,17 @@ export const PlansTab: FC<PlansTabProps> = ({
                             placeholder={activePlanTab === 'food' ? "Buscar comida..." : "Buscar ejercicio..."}
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
-                            style={{...styles.searchInput, height: '38px', fontSize: '0.9rem'}}
+                            style={{...styles.searchInput, height: '40px', fontSize: '0.85rem', borderRadius: '10px'}}
                         />
                     </div>
                 </div>
                 
-                <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap'}}>
+                <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', width: isMobile ? '100%' : 'auto'}}>
                      <input 
                         type="date" 
                         value={startDate} 
                         onChange={e => setStartDate(e.target.value)} 
-                        style={{...styles.input, margin: 0, height: '38px', width: '130px', fontSize: '0.85rem', padding: '0.4rem'}} 
+                        style={{...styles.input, margin: 0, height: '40px', flex: 1, fontSize: '0.8rem', padding: '0.4rem', borderRadius: '10px'}} 
                         placeholder="Desde"
                     />
                     <span style={{color: 'var(--text-light)'}}>-</span>
@@ -401,18 +454,25 @@ export const PlansTab: FC<PlansTabProps> = ({
                         type="date" 
                         value={endDate} 
                         onChange={e => setEndDate(e.target.value)} 
-                        style={{...styles.input, margin: 0, height: '38px', width: '130px', fontSize: '0.85rem', padding: '0.4rem'}} 
+                        style={{...styles.input, margin: 0, height: '40px', flex: 1, fontSize: '0.8rem', padding: '0.4rem', borderRadius: '10px'}} 
                         placeholder="Hasta"
                     />
-                </div>
-
-                <div style={{display: 'flex', gap: '0.5rem'}}>
                     <button 
                          onClick={() => setIsPrintModalOpen(true)}
                          className="button-secondary"
-                         style={{padding: '0.5rem 1rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem'}}
+                         style={{
+                             padding: '0.5rem 0.85rem', 
+                             fontSize: '0.85rem', 
+                             display: 'flex', 
+                             alignItems: 'center', 
+                             gap: '0.4rem',
+                             height: '40px',
+                             borderRadius: '10px',
+                             flexShrink: 0
+                         }}
+                         title="Imprimir Plan"
                     >
-                        {ICONS.print} Imprimir
+                        {ICONS.print} <span style={{display: isMobile ? 'none' : 'inline'}}>Imprimir</span>
                     </button>
                 </div>
             </div>

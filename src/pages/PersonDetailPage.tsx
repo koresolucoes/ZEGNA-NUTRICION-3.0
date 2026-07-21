@@ -51,6 +51,7 @@ import ExercisePlanGenerator from '../components/ExercisePlanGenerator';
 import ConsultationModePage from './ConsultationModePage';
 import SoapGeneratorModal from '../components/consultation_mode/SoapGeneratorModal';
 import { createPortal } from 'react-dom';
+import { ScrollablePills, Pill, Grid, BottomSheetModal, BottomSheetContent } from '../components/layout';
 
 const modalRoot = document.getElementById('modal-root');
 
@@ -167,6 +168,7 @@ const PersonDetailPage: FC<PersonDetailPageProps> = ({ user, personId, personTyp
     const [activeSubTab, setActiveSubTab] = useState('allergies');
     const [isConsultationMode, setConsultationMode] = useState(initialConsultationMode);
     const [isUploadingConsent, setIsUploadingConsent] = useState(false);
+    const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
     
     // Modal States
     const [isReferralModalOpen, setIsReferralModalOpen] = useState(false);
@@ -477,11 +479,11 @@ INSTRUCCIONES:
 
     // --- WIDGETS ---
     const QuickActionsWidget = () => (
-        <div className="glass-container" style={{...styles.detailCard}}>
-            <div style={{padding: '1.25rem', borderBottom: '1px solid var(--border-color)'}}>
+        <div className="glass-container" style={{...styles.detailCard, borderRadius: isMobile ? '16px' : '24px'}}>
+            <div style={{padding: isMobile ? '1rem' : '1.25rem', borderBottom: '1px solid var(--border-color)'}}>
                 <h3 style={{margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-color)'}}>Acciones Rápidas</h3>
             </div>
-            <div style={{padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
+            <div style={{padding: isMobile ? '1rem' : '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
                 <button 
                     onClick={() => { onStartConsultation(); setConsultationMode(true); }}
                     className="button-primary"
@@ -516,11 +518,11 @@ INSTRUCCIONES:
          const currentPlan = planHistory.length > 0 ? planHistory[0] : null;
         if (!currentPlan || !currentPlan.totals) {
             return (
-                <div className="glass-container" style={{...styles.detailCard}}>
-                    <div style={{padding: '1.25rem', borderBottom: '1px solid var(--border-color)'}}>
+                <div className="glass-container" style={{...styles.detailCard, borderRadius: isMobile ? '16px' : '24px'}}>
+                    <div style={{padding: isMobile ? '1rem' : '1.25rem', borderBottom: '1px solid var(--border-color)'}}>
                         <h3 style={{margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-color)'}}>Distribución de Dieta</h3>
                     </div>
-                     <div style={{padding: '1.5rem', textAlign: 'center', color: 'var(--text-light)', fontSize: '0.9rem'}}>
+                     <div style={{padding: isMobile ? '1.25rem' : '1.5rem', textAlign: 'center', color: 'var(--text-light)', fontSize: '0.9rem'}}>
                         No hay plan calculado.
                     </div>
                 </div>
@@ -532,11 +534,11 @@ INSTRUCCIONES:
         const lPercent = totalGrams ? (totals.lipid_g / totalGrams) * 100 : 0;
         const cPercent = totalGrams ? (totals.carb_g / totalGrams) * 100 : 0;
         return (
-            <div className="glass-container" style={{...styles.detailCard}}>
-                <div style={{padding: '1.25rem', borderBottom: '1px solid var(--border-color)'}}>
+            <div className="glass-container" style={{...styles.detailCard, borderRadius: isMobile ? '16px' : '24px'}}>
+                <div style={{padding: isMobile ? '1rem' : '1.25rem', borderBottom: '1px solid var(--border-color)'}}>
                     <h3 style={{margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-color)'}}>Distribución de Dieta</h3>
                 </div>
-                <div style={{padding: '1.25rem'}}>
+                <div style={{padding: isMobile ? '1rem' : '1.25rem'}}>
                     <div style={{display: 'flex', height: '12px', borderRadius: '6px', overflow: 'hidden', marginBottom: '1rem'}}>
                         <div style={{width: `${pPercent}%`, backgroundColor: '#EC4899'}}></div>
                         <div style={{width: `${lPercent}%`, backgroundColor: '#F59E0B'}}></div>
@@ -571,11 +573,11 @@ INSTRUCCIONES:
             .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())[0];
             
         return (
-            <div className="glass-container" style={{...styles.detailCard}}>
-                <div style={{padding: '1.25rem', borderBottom: '1px solid var(--border-color)'}}>
+            <div className="glass-container" style={{...styles.detailCard, borderRadius: isMobile ? '16px' : '24px'}}>
+                <div style={{padding: isMobile ? '1rem' : '1.25rem', borderBottom: '1px solid var(--border-color)'}}>
                      <h3 style={{margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-color)'}}>Próxima Cita</h3>
                 </div>
-                <div style={{padding: '1.25rem'}}>
+                <div style={{padding: isMobile ? '1rem' : '1.25rem'}}>
                     {upcomingAppointment ? (
                         <div style={{display: 'flex', gap: '1rem', alignItems: 'center'}}>
                             <div style={{
@@ -632,7 +634,7 @@ INSTRUCCIONES:
 
         return (
             <div className="glass-container" style={{
-                borderRadius: '24px',
+                borderRadius: isMobile ? '16px' : '24px',
                 position: 'relative',
                 overflow: 'hidden',
                 borderTop: '4px solid #FDE047' // Yellow accent to keep the "note" feel
@@ -650,7 +652,7 @@ INSTRUCCIONES:
                      saved ? <span style={{fontSize: '0.7rem', color: 'var(--primary-color)'}}>Guardado ✓</span> : null}
                 </div>
                 
-                <div style={{padding: '1rem'}}>
+                <div style={{padding: isMobile ? '0.75rem' : '1rem'}}>
                     <h3 style={{
                         margin: '0 0 0.5rem 0', 
                         fontSize: '0.9rem', 
@@ -676,7 +678,8 @@ INSTRUCCIONES:
                             color: 'var(--text-color)',
                             fontSize: '0.95rem',
                             lineHeight: '1.5',
-                            fontFamily: 'inherit'
+                            fontFamily: 'inherit',
+                            boxSizing: 'border-box'
                         }}
                     />
                 </div>
@@ -714,67 +717,79 @@ INSTRUCCIONES:
             {isConsultationMode && person ? (
                 <ConsultationModePage person={person} personType={personType} consultations={consultations} logs={logs} dietLogs={allDietLogs} exerciseLogs={allExerciseLogs} planHistory={planHistory} appointments={appointments} allergies={allergies} medicalHistory={medicalHistory} medications={medications} lifestyleHabits={lifestyleHabits} internalNotes={internalNotes} onDataRefresh={fetchData} onExit={handleFinishConsultation} isMobile={isMobile} setViewingConsultation={setViewingConsultation} setViewingLog={setViewingLog} setViewingDietLog={setViewingDietLog} setViewingExerciseLog={setViewingExerciseLog} clinic={clinic} subscription={subscription} nutritionistProfile={nutritionistProfile} />
             ) : (
-                <div className="fade-in" style={{maxWidth: '1400px', margin: '0 auto', paddingBottom: '4rem'}}>
+                <div className="fade-in" style={{maxWidth: '1400px', margin: '0 auto', padding: isMobile ? '0.5rem' : '2rem', paddingBottom: '4rem'}}>
                     {/* 1. Header Card */}
-                    {person && <PatientStickyHeader person={person} allergies={allergies} medicalHistory={medicalHistory} consultations={consultations} logs={logs} onBack={onBack} />}
+                    {person && (
+                        <PatientStickyHeader 
+                            person={person} 
+                            allergies={allergies} 
+                            medicalHistory={medicalHistory} 
+                            consultations={consultations} 
+                            logs={logs} 
+                            onBack={onBack} 
+                            onOpenQuickActions={() => setIsQuickActionsOpen(true)}
+                        />
+                    )}
 
                     {/* 2. Main Grid Layout */}
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
                         
                         {/* LEFT COLUMN: TABS & CONTENT */}
-                        <div>
-                             {/* Folder-Style Tab Bar */}
-                             <div style={{
-                                 display: 'flex', 
-                                 gap: '0.25rem', // Slight gap for visual separation
-                                 marginLeft: '1rem',
-                                 marginBottom: '-1px', // Pulls content up to merge with tabs
-                                 zIndex: 10,
-                                 position: 'relative',
-                                 overflowX: 'auto',
-                                 paddingRight: '1rem'
-                             }} className="hide-scrollbar">
-                                {[
-                                    { id: 'resumen', label: 'Resumen' },
-                                    { id: 'expediente', label: 'Expediente', sub: 'allergies' },
-                                    { id: 'planes', label: 'Planes', sub: 'current_plans' },
-                                    { id: 'gestion', label: 'Gestión', sub: 'appointments' },
-                                    { id: 'informacion', label: 'Información', sub: '' }
-                                ].map(tab => (
-                                    <button
-                                        key={tab.id}
-                                        onClick={() => handleTabClick(tab.id, tab.sub)}
-                                        style={{
-                                            padding: '0.75rem 1.5rem',
-                                            borderTopLeftRadius: '8px',
-                                            borderTopRightRadius: '8px',
-                                            border: '1px solid transparent',
-                                            borderBottom: activeTab === tab.id ? '1px solid var(--surface-color)' : '1px solid var(--border-color)', // Hide bottom border if active
-                                            backgroundColor: activeTab === tab.id ? 'var(--surface-color)' : 'transparent',
-                                            color: activeTab === tab.id ? 'var(--primary-color)' : 'var(--text-light)',
-                                            fontWeight: activeTab === tab.id ? 700 : 500,
-                                            fontSize: '0.95rem',
-                                            cursor: 'pointer',
-                                            whiteSpace: 'nowrap',
-                                            transition: 'all 0.2s',
-                                            position: 'relative',
-                                            zIndex: activeTab === tab.id ? 2 : 0, // Ensure active tab sits on top of content border
-                                            borderColor: activeTab === tab.id ? 'var(--border-color)' : 'transparent',
-                                            marginBottom: activeTab === tab.id ? '-1px' : '0' // Overlap
-                                        }}
-                                    >
-                                        {tab.label}
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* Tab Content Container - Replicates Folder Content */}
+                        <div style={{ minWidth: 0 }}>
+                            {/* Responsive Tabs Navigation Bar */}
                             <div style={{
                                 backgroundColor: 'var(--surface-color)',
-                                borderRadius: '8px',
-                                borderTopLeftRadius: activeTab === 'resumen' ? '0' : '8px', // Visual tweak if desired
+                                borderRadius: '16px',
+                                padding: '0.35rem',
+                                marginBottom: '0.85rem',
                                 border: '1px solid var(--border-color)',
-                                padding: '2rem',
+                                boxShadow: 'var(--shadow)',
+                                display: 'flex'
+                            }}>
+                                <ScrollablePills style={{ paddingBottom: '0', width: '100%' }}>
+                                    {[
+                                        { id: 'resumen', label: '📊 Resumen' },
+                                        { id: 'expediente', label: '📋 Expediente', sub: 'allergies' },
+                                        { id: 'planes', label: '🍏 Planes', sub: 'current_plans' },
+                                        { id: 'gestion', label: '📅 Gestión', sub: 'appointments' },
+                                        { id: 'informacion', label: 'ℹ️ Información', sub: '' }
+                                    ].map(tab => (
+                                        <button
+                                            key={tab.id}
+                                            type="button"
+                                            onClick={() => handleTabClick(tab.id, tab.sub)}
+                                            style={{
+                                                fontSize: '0.85rem',
+                                                fontWeight: activeTab === tab.id ? 700 : 600,
+                                                padding: '0.55rem 1.15rem',
+                                                borderRadius: '12px',
+                                                minHeight: '40px',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                backgroundColor: activeTab === tab.id ? 'var(--primary-color)' : 'transparent',
+                                                color: activeTab === tab.id ? '#ffffff' : 'var(--text-color)',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease',
+                                                boxShadow: activeTab === tab.id ? '0 3px 10px rgba(0,0,0,0.15)' : 'none',
+                                                border: 'none',
+                                                outline: 'none',
+                                                whiteSpace: 'nowrap',
+                                                flexShrink: 0
+                                            }}
+                                        >
+                                            {tab.label}
+                                        </button>
+                                    ))}
+                                </ScrollablePills>
+                            </div>
+
+                            {/* Tab Content Container */}
+                            <div style={{
+                                backgroundColor: 'var(--surface-color)',
+                                borderRadius: '20px',
+                                border: '1px solid var(--border-color)',
+                                padding: isMobile ? '0.85rem' : '1.75rem',
                                 boxShadow: 'var(--shadow)',
                                 position: 'relative',
                                 zIndex: 1
@@ -798,43 +813,68 @@ INSTRUCCIONES:
                                         onViewConsultation={(c) => setViewingConsultation(c)}
                                         openModal={openModal} 
                                         onOpenSoapGenerator={() => setIsSoapGeneratorOpen(true)}
+                                        isMobile={isMobile}
                                     />
                                 )}
 
                                 {activeTab === 'planes' && (
                                      <section className="fade-in">
-                                        <div style={{...styles.tabContainer, paddingLeft: 0, marginBottom: '-1px'}} className="hide-scrollbar">
-                                            {[
-                                                { key: 'current_plans', label: 'Planes actuales' },
-                                                { key: 'calculated_plans', label: 'Calculados' },
-                                                { key: 'log_files', label: 'Bitácora/Archivos' },
-                                                { key: 'daily_tracking', label: 'Auto-Registro' }
-                                            ].map(sub => (
-                                                <button
-                                                    key={sub.key}
-                                                    style={activeSubTab === sub.key ? {...styles.folderTab, ...styles.folderTabActive} : styles.folderTab}
-                                                    onClick={() => setActiveSubTab(sub.key)}
-                                                >
-                                                    {sub.label}
-                                                </button>
-                                            ))}
+                                        <div style={{
+                                            backgroundColor: 'var(--surface-hover-color)',
+                                            borderRadius: '14px',
+                                            padding: '0.35rem',
+                                            border: '1px solid var(--border-color)',
+                                            marginBottom: '1rem'
+                                        }}>
+                                            <ScrollablePills style={{ paddingBottom: '0' }}>
+                                                {[
+                                                    { key: 'current_plans', label: '🍏 Planes Actuales' },
+                                                    { key: 'calculated_plans', label: '📊 Calculados' },
+                                                    { key: 'log_files', label: '📁 Bitácora/Archivos' },
+                                                    { key: 'daily_tracking', label: '📱 Auto-Registro' }
+                                                ].map(sub => (
+                                                    <button
+                                                        key={sub.key}
+                                                        type="button"
+                                                        onClick={() => setActiveSubTab(sub.key)}
+                                                        style={{
+                                                            fontSize: '0.8rem',
+                                                            fontWeight: activeSubTab === sub.key ? 700 : 600,
+                                                            padding: '0.5rem 1rem',
+                                                            borderRadius: '10px',
+                                                            minHeight: '36px',
+                                                            backgroundColor: activeSubTab === sub.key ? 'var(--surface-color)' : 'transparent',
+                                                            color: activeSubTab === sub.key ? 'var(--primary-color)' : 'var(--text-light)',
+                                                            boxShadow: activeSubTab === sub.key ? '0 2px 6px rgba(0,0,0,0.08)' : 'none',
+                                                            cursor: 'pointer',
+                                                            whiteSpace: 'nowrap',
+                                                            flexShrink: 0,
+                                                            border: 'none',
+                                                            outline: 'none',
+                                                            transition: 'all 0.2s ease'
+                                                        }}
+                                                    >
+                                                        {sub.label}
+                                                    </button>
+                                                ))}
+                                            </ScrollablePills>
                                         </div>
                                         <div style={styles.nestedFolderContent}>
-                                            {activeSubTab === 'current_plans' && <PlansTab allDietLogs={allDietLogs} allExerciseLogs={allExerciseLogs} onGenerateMeal={() => setMealPlanModalOpen(true)} onGenerateExercise={() => setExercisePlanModalOpen(true)} onAddManualDiet={() => setIsCreatingManualLog('diet')} onAddManualExercise={() => setIsCreatingManualLog('exercise')} onEditDietLog={setEditingDietLog} onViewDietLog={setViewingDietLog} onEditExerciseLog={setEditingExerciseLog} onViewExerciseLog={setViewingExerciseLog} openModal={openModal} hasAiFeature={hasAiFeature} personName={person?.full_name} />}
+                                            {activeSubTab === 'current_plans' && <PlansTab allDietLogs={allDietLogs} allExerciseLogs={allExerciseLogs} onGenerateMeal={() => setMealPlanModalOpen(true)} onGenerateExercise={() => setExercisePlanModalOpen(true)} onAddManualDiet={() => setIsCreatingManualLog('diet')} onAddManualExercise={() => setIsCreatingManualLog('exercise')} onEditDietLog={setEditingDietLog} onViewDietLog={setViewingDietLog} onEditExerciseLog={setEditingExerciseLog} onViewExerciseLog={setViewingExerciseLog} openModal={openModal} hasAiFeature={hasAiFeature} personName={person?.full_name} isMobile={isMobile} />}
                                             {activeSubTab === 'calculated_plans' && <CalculatedPlansTab planHistory={planHistory} navigate={navigate} openModal={openModal} />}
                                             {activeSubTab === 'log_files' && (
-                                                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '2rem', alignItems: 'start' }}>
+                                                <Grid $columns={1} $tabletColumns={2} $gap="2rem">
                                                     <div style={{minWidth: 0}}>
                                                         <LogTab logs={logs} memberMap={memberMap} onAdd={() => navigate('log-form', { personId: person!.id, personType })} onEdit={(id) => navigate('log-form', { personId: person!.id, personType, logId: id })} onView={setViewingLog} openModal={openModal} />
                                                     </div>
                                                     <div style={{minWidth: 0}}>
                                                         <FilesTab files={files} memberMap={memberMap} onAdd={() => setFileUploadModalOpen(true)} onDelete={(file) => openModal('deleteFile', file.id, `¿Eliminar el archivo "${file.file_name}"?`, file.file_path)} />
                                                     </div>
-                                                </div>
+                                                </Grid>
                                             )}
                                             {activeSubTab === 'daily_tracking' && <DailyTrackingTab checkins={dailyCheckins} />}
                                         </div>
-                                    </section>
+                                     </section>
                                 )}
 
                                 {activeTab === 'informacion' && person && (
@@ -843,25 +883,49 @@ INSTRUCCIONES:
 
                                 {activeTab === 'gestion' && (
                                      <section className="fade-in">
-                                        <div style={{...styles.tabContainer, paddingLeft: 0, marginBottom: '-1px'}} className="hide-scrollbar">
-                                            {[
-                                                { key: 'appointments', label: 'Citas' },
-                                                { key: 'team', label: 'Equipo' }
-                                            ].map(sub => (
-                                                <button
-                                                    key={sub.key}
-                                                    style={activeSubTab === sub.key ? {...styles.folderTab, ...styles.folderTabActive} : styles.folderTab}
-                                                    onClick={() => setActiveSubTab(sub.key)}
-                                                >
-                                                    {sub.label}
-                                                </button>
-                                            ))}
+                                        <div style={{
+                                            backgroundColor: 'var(--surface-hover-color)',
+                                            borderRadius: '14px',
+                                            padding: '0.35rem',
+                                            border: '1px solid var(--border-color)',
+                                            marginBottom: '1rem'
+                                        }}>
+                                            <ScrollablePills style={{ paddingBottom: '0' }}>
+                                                {[
+                                                    { key: 'appointments', label: '📅 Citas' },
+                                                    { key: 'team', label: '👥 Equipo' }
+                                                ].map(sub => (
+                                                    <button
+                                                        key={sub.key}
+                                                        type="button"
+                                                        onClick={() => setActiveSubTab(sub.key)}
+                                                        style={{
+                                                            fontSize: '0.8rem',
+                                                            fontWeight: activeSubTab === sub.key ? 700 : 600,
+                                                            padding: '0.5rem 1rem',
+                                                            borderRadius: '10px',
+                                                            minHeight: '36px',
+                                                            backgroundColor: activeSubTab === sub.key ? 'var(--surface-color)' : 'transparent',
+                                                            color: activeSubTab === sub.key ? 'var(--primary-color)' : 'var(--text-light)',
+                                                            boxShadow: activeSubTab === sub.key ? '0 2px 6px rgba(0,0,0,0.08)' : 'none',
+                                                            cursor: 'pointer',
+                                                            whiteSpace: 'nowrap',
+                                                            flexShrink: 0,
+                                                            border: 'none',
+                                                            outline: 'none',
+                                                            transition: 'all 0.2s ease'
+                                                        }}
+                                                    >
+                                                        {sub.label}
+                                                    </button>
+                                                ))}
+                                            </ScrollablePills>
                                         </div>
                                          <div style={styles.nestedFolderContent}>
                                             {activeSubTab === 'appointments' && <AppointmentsTab appointments={appointments} memberMap={memberMap} onAdd={() => setIsAppointmentModalOpen(true)} onEdit={(a) => {setEditingAppointment(a); setIsAppointmentModalOpen(true);}} />}
                                             {activeSubTab === 'team' && <TeamTab careTeam={careTeam} allTeamMembers={teamMembers} personId={personId} isAdmin={role === 'admin'} onTeamUpdate={fetchData} internalNotes={internalNotes} user={user} />}
                                         </div>
-                                    </section>
+                                     </section>
                                 )}
                             </div>
                         </div>
@@ -878,7 +942,7 @@ INSTRUCCIONES:
                         
                         {/* Mobile Sidebar Content below main content */}
                         {isMobile && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '2rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem', minWidth: 0 }}>
                                 <QuickActionsWidget />
                                 <PrivateNotesWidget />
                                 <MacroDistributionWidget />
@@ -887,6 +951,31 @@ INSTRUCCIONES:
                         )}
 
                     </div>
+
+                    {/* Mobile Bottom Sheet Modal for Quick Actions */}
+                    {isMobile && isQuickActionsOpen && (
+                        <BottomSheetModal isOpen={isQuickActionsOpen} onClose={() => setIsQuickActionsOpen(false)}>
+                            <BottomSheetContent>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-color)' }}>
+                                        ⚡ Acciones Rápidas
+                                    </h3>
+                                    <button 
+                                        onClick={() => setIsQuickActionsOpen(false)}
+                                        style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--text-light)' }}
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '75vh', overflowY: 'auto' }}>
+                                    <QuickActionsWidget />
+                                    <PrivateNotesWidget />
+                                    <MacroDistributionWidget />
+                                    <NextAppointmentWidget />
+                                </div>
+                            </BottomSheetContent>
+                        </BottomSheetModal>
+                    )}
                 </div>
             )}
         </>

@@ -295,8 +295,14 @@ export const GlobalStyle = createGlobalStyle<{ theme: ThemeType }>`
         -moz-osx-font-smoothing: grayscale;
     }
 
+    *, *::before, *::after {
+        box-sizing: border-box;
+    }
+
     html, body {
         height: 100%;
+        margin: 0;
+        padding: 0;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         background: var(--background-color);
         background-attachment: fixed;
@@ -494,23 +500,22 @@ export const GlobalStyle = createGlobalStyle<{ theme: ThemeType }>`
         .fade-in { max-width: 100% !important; padding: 0 !important;}
         .glass-container { border-radius: 16px !important; }
         
-        /* Modals overrides */
-        div[style*="rgba(0, 0, 0, 0.4)"] {
+        /* Modals overrides - Bottom Sheets for Mobile */
+        .modal-overlay, div[style*="rgba(0, 0, 0, 0.4)"] {
             padding: 0px !important;
             align-items: flex-end !important; /* slide up on mobile */
         }
-        div[style*="rgba(0, 0, 0, 0.4)"] > div,
-        div[style*="rgba(0, 0, 0, 0.4)"] > form {
+        .modal-content, div[style*="rgba(0, 0, 0, 0.4)"] > div, div[style*="rgba(0, 0, 0, 0.4)"] > form {
             width: 100% !important;
             max-width: 100% !important;
-            max-height: 90vh !important;
-            border-bottom-left-radius: 0 !important;
-            border-bottom-right-radius: 0 !important;
-            border-top-left-radius: 24px !important;
-            border-top-right-radius: 24px !important;
+            max-height: 100dvh !important;
+            height: 100dvh !important;
+            border-radius: 0 !important;
             box-sizing: border-box !important;
             animation: slideUp 0.3s ease-out !important;
             margin: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
         }
     }
     

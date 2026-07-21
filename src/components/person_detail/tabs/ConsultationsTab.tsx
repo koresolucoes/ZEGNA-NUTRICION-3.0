@@ -4,6 +4,8 @@ import { ConsultationWithLabs, TeamMember } from '../../../types';
 import { styles } from '../../../constants';
 import { ICONS } from '../../../pages/AuthPage';
 
+import { Grid } from '../../layout';
+
 interface ConsultationsTabProps {
     consultations: ConsultationWithLabs[];
     memberMap: Map<string, TeamMember>;
@@ -45,7 +47,7 @@ export const ConsultationsTab: FC<ConsultationsTabProps> = ({ consultations, mem
             </div>
 
             {filteredConsultations.length > 0 ? (
-                <div className="info-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+                <Grid $columns={1} $tabletColumns={2} $desktopColumns={3} $gap="1rem">
                     {filteredConsultations.map(c => {
                         return (
                             <div key={c.id} onClick={() => onView(c)} style={{ 
@@ -89,7 +91,7 @@ export const ConsultationsTab: FC<ConsultationsTabProps> = ({ consultations, mem
                             </div>
                         )
                     })}
-                </div>
+                </Grid>
             ) : (
                 <div style={{textAlign: 'center', padding: '3rem', border: '2px dashed var(--border-color)', borderRadius: '12px', color: 'var(--text-light)'}}>
                     <p>No hay consultas registradas para el filtro seleccionado.</p>

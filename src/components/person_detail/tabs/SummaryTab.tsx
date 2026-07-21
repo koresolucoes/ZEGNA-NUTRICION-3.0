@@ -4,6 +4,7 @@ import { Person, ConsultationWithLabs, Allergy, MedicalHistory, DietLog, Exercis
 import { styles } from '../../../constants';
 import { ICONS } from '../../../pages/AuthPage';
 import ProgressChart from '../../shared/ProgressChart';
+import { Grid } from '../../layout';
 
 interface SummaryTabProps {
     person: Person;
@@ -33,7 +34,9 @@ export const SummaryTab: FC<SummaryTabProps> = ({ person, consultations, allergi
             borderRadius: '12px',
             border: '1px solid var(--border-color)',
             padding: '1.5rem',
-            boxShadow: 'var(--shadow)'
+            boxShadow: 'var(--shadow)',
+            width: '100%',
+            boxSizing: 'border-box'
         }}>
             <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem'}}>
                 {icon && <span style={{color: 'var(--primary-color)', fontSize: '1.2rem'}}>{icon}</span>}
@@ -50,13 +53,13 @@ export const SummaryTab: FC<SummaryTabProps> = ({ person, consultations, allergi
         <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             
             {/* Charts Section */}
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.5rem' }}>
+            <Grid $columns={1} $tabletColumns={2} $gap="1.5rem">
                 <ProgressChart title="Evolución del Peso" data={weightData} unit="kg" />
                 <ProgressChart title="Evolución del IMC" data={imcData} unit="pts" />
-            </div>
+            </Grid>
 
             {/* Recent Activity Section */}
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+            <Grid $columns={1} $tabletColumns={2} $desktopColumns={3} $gap="1.5rem">
                 <Widget title="Última Consulta" icon={ICONS.clinic}>
                     {latestConsultation ? (
                         <>
@@ -134,7 +137,7 @@ export const SummaryTab: FC<SummaryTabProps> = ({ person, consultations, allergi
                         </>
                     ) : <p style={{color: 'var(--text-light)', fontStyle: 'italic'}}>Día de descanso o sin asignar.</p>}
                 </Widget>
-            </div>
+            </Grid>
         </div>
     );
 };

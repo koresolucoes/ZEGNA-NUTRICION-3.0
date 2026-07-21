@@ -19,7 +19,7 @@ const DietPlanViewer: FC<{
         return (
             <div style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
                 <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-light)', width: '70px', textAlign: 'right', flexShrink: 0 }}>{label}</span>
-                <span style={{ fontSize: '0.95rem', color: 'var(--text-color)' }}>{content}</span>
+                <span style={{ fontSize: '0.95rem', color: 'var(--text-color)', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{content}</span>
             </div>
         );
     };

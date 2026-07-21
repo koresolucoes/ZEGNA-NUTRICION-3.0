@@ -8,6 +8,7 @@ import { Log, Person, NutritionistProfile, ChurnFeedback, AppointmentWithPerson 
 import { useClinic } from '../contexts/ClinicContext';
 import UpcomingAppointmentsWidget from '../components/dashboard/UpcomingAppointmentsWidget';
 import SkeletonLoader from '../components/shared/SkeletonLoader';
+import { Grid, ScrollablePills, Pill, Flex } from '../components/layout';
 
 type CombinedLog = Log & {
     person_type: 'client' | 'member';
@@ -145,7 +146,7 @@ const HomePage: FC<HomePageProps> = ({ user, isMobile, navigate, openQuickConsul
                             <li key={log.id} style={{...styles.activityItem, alignItems: 'flex-start', flexDirection: 'column', gap: '0.5rem'}}>
                                 <div style={{width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                                     <p style={{margin: 0, fontWeight: 600, fontSize: '0.9rem'}}>{log.log_type}</p>
-                                    <span style={{fontSize: '0.75rem', color: 'var(--text-light)', textAlign: 'right' as const, flexShrink: 0}}>{new Date(log.created_at).toLocaleDateString('es-MX', {day: '2-digit', month: 'short'})}</span>
+                                    <span style={{fontSize: '0.75rem', color: 'var(--text-light)', textAlign: 'right', flexShrink: 0}}>{new Date(log.created_at).toLocaleDateString('es-MX', {day: '2-digit', month: 'short'})}</span>
                                 </div>
                                  <p style={{margin: 0, fontSize: '0.85rem', color: 'var(--text-light)', width: '100%', lineHeight: 1.4}}>{log.description}</p>
                                 <p style={{margin: 0, fontSize: '0.8rem', color: 'var(--primary-color)'}}>{log.person_name || 'N/A'}</p>
@@ -166,7 +167,7 @@ const HomePage: FC<HomePageProps> = ({ user, isMobile, navigate, openQuickConsul
                 </div>
             </div>
 
-            <div style={{...styles.dashboardGrid, gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginBottom: '2rem'}}>
+            <Grid $columns={1} $tabletColumns={3} $gap="1.5rem" style={{ marginBottom: '2rem' }}>
                 {loading ? <SkeletonLoader type="widget" count={3} /> : (
                     <>
                         <div style={styles.summaryCard}>
@@ -186,17 +187,17 @@ const HomePage: FC<HomePageProps> = ({ user, isMobile, navigate, openQuickConsul
                         </div>
                     </>
                 )}
-            </div>
+            </Grid>
 
             <h2 style={{fontSize: '1.3rem', marginBottom: '1.5rem', marginTop: '1rem'}}>Visión General</h2>
             
             {isMobile ? (
                 <div>
-                    <div className="summary-tabs" style={{display: 'flex', gap: '0.5rem', marginBottom: '1rem', overflowX: 'auto', paddingBottom: '0.5rem'}}>
-                        <button className={`tab-button ${activeSummaryTab === 'appointments' ? 'active' : ''}`} onClick={() => setActiveSummaryTab('appointments')}>Agenda</button>
-                        <button className={`tab-button ${activeSummaryTab === 'expiring' ? 'active' : ''}`} onClick={() => setActiveSummaryTab('expiring')}>Vencimientos</button>
-                        <button className={`tab-button ${activeSummaryTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveSummaryTab('activity')}>Actividad</button>
-                    </div>
+                    <ScrollablePills style={{ marginBottom: '1rem' }}>
+                        <Pill $active={activeSummaryTab === 'appointments'} onClick={() => setActiveSummaryTab('appointments')}>Agenda</Pill>
+                        <Pill $active={activeSummaryTab === 'expiring'} onClick={() => setActiveSummaryTab('expiring')}>Vencimientos</Pill>
+                        <Pill $active={activeSummaryTab === 'activity'} onClick={() => setActiveSummaryTab('activity')}>Actividad</Pill>
+                    </ScrollablePills>
                     <div className="fade-in">
                         {activeSummaryTab === 'appointments' && <UpcomingAppointmentsWidget appointments={upcomingAppointments} loading={loading} navigateToDetail={navigateToDetail} />}
                         {activeSummaryTab === 'expiring' && renderExpiringPlans()}
@@ -204,11 +205,11 @@ const HomePage: FC<HomePageProps> = ({ user, isMobile, navigate, openQuickConsul
                     </div>
                 </div>
             ) : (
-                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem'}}>
+                <Grid $columns={3} $gap="1.5rem">
                     <UpcomingAppointmentsWidget appointments={upcomingAppointments} loading={loading} navigateToDetail={navigateToDetail} />
                     {renderExpiringPlans()}
                     {renderRecentActivity()}
-                </div>
+                </Grid>
             )}
         </div>
     );
